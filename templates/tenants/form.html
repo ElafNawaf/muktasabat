@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Edit Tenant') if tenant else _('Add Tenant') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Edit Tenant') if tenant else _('Add Tenant') }}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">{{ _('Name') }} *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ tenant.name if tenant else '' }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="phone" class="form-label">{{ _('Phone') }} *</label>
+                    <input type="text" class="form-control" id="phone" name="phone" value="{{ tenant.phone if tenant else '' }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="national_id" class="form-label">{{ _('National ID') }} *</label>
+                    <input type="text" class="form-control" id="national_id" name="national_id" value="{{ tenant.national_id if tenant else '' }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="email" class="form-label">{{ _('Email') }}</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ tenant.email if tenant else '' }}">
+                </div>
+                <div class="col-12 mb-3">
+                    <label for="notes" class="form-label">{{ _('Notes') }}</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ tenant.notes if tenant else '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ _('Save') }}</button>
+                <a href="{{ url_for('tenants.index') }}" class="btn btn-outline-secondary">{{ _('Cancel') }}</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

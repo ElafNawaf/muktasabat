@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Buildings') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Buildings') }}</h1>
+    <a href="{{ url_for('buildings.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> {{ _('Add Building') }}
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ _('Name') }}</th>
+                        <th>{{ _('Owner') }}</th>
+                        <th>{{ _('City') }}</th>
+                        <th>{{ _('District') }}</th>
+                        <th>{{ _('Units') }}</th>
+                        <th>{{ _('Actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for building in buildings %}
+                    <tr>
+                        <td><a href="{{ url_for('buildings.detail', building_id=building.id) }}">{{ building.name }}</a></td>
+                        <td><a href="{{ url_for('owners.detail', owner_id=building.owner.id) }}">{{ building.owner.name }}</a></td>
+                        <td>{{ building.city or '-' }}</td>
+                        <td>{{ building.district or '-' }}</td>
+                        <td><span class="badge bg-info">{{ building.units|length }}</span></td>
+                        <td>
+                            <a href="{{ url_for('buildings.edit', building_id=building.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">{{ _('No buildings yet') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

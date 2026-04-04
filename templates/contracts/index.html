@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Contracts') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Contracts') }}</h1>
+    <a href="{{ url_for('contracts.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> {{ _('New Contract') }}
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ _('Contract #') }}</th>
+                        <th>{{ _('Tenant') }}</th>
+                        <th>{{ _('Unit') }}</th>
+                        <th>{{ _('Building') }}</th>
+                        <th>{{ _('Start') }}</th>
+                        <th>{{ _('End') }}</th>
+                        <th>{{ _('Cycle') }}</th>
+                        <th>{{ _('Status') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contract in contracts %}
+                    <tr>
+                        <td><a href="{{ url_for('contracts.detail', contract_id=contract.id) }}">{{ contract.contract_number }}</a></td>
+                        <td>{{ contract.tenant.name }}</td>
+                        <td>{{ contract.unit.number }}</td>
+                        <td>{{ contract.unit.building.name }}</td>
+                        <td>{{ contract.start_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ contract.end_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ contract.payment_cycle }} {{ _('months') }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if contract.status == 'active' else ('danger' if contract.status == 'terminated' else 'secondary') }}">
+                                {{ _(contract.status) }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">{{ _('No contracts yet') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

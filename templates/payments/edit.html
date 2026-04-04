@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Edit Payment') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Edit Payment') }}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="amount" class="form-label">{{ _('Amount (SAR)') }} *</label>
+                    <input type="number" step="0.01" class="form-control" id="amount" name="amount" value="{{ payment.amount }}" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="due_date" class="form-label">{{ _('Due Date') }} *</label>
+                    <input type="date" class="form-control" id="due_date" name="due_date" value="{{ payment.due_date.isoformat() }}" required>
+                </div>
+                <div class="col-12 mb-3">
+                    <label for="notes" class="form-label">{{ _('Notes') }}</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ payment.notes or '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ _('Save') }}</button>
+                <a href="{{ url_for('payments.index') }}" class="btn btn-outline-secondary">{{ _('Cancel') }}</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

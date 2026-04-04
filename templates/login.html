@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Login') }}{% endblock %}
+
+{% block content_noauth %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <svg class="auth-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <h1>{{ _('Muktasbat') }}</h1>
+            <p>{{ _('Property Management System') }}</p>
+        </div>
+        <form method="POST" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" style="margin-bottom:16px">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+            <div class="mb-3">
+                <label for="username" class="form-label">{{ _('Username') }}</label>
+                <input type="text" class="form-control" id="username" name="username" required autofocus>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">{{ _('Password') }}</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn-primary w-100">{{ _('Login') }}</button>
+        </form>
+        <div class="auth-footer">
+            <a href="{{ url_for('auth.register') }}">{{ _('Create new account') }}</a>
+            <div class="lang-switch">
+                {% for code, label in languages.items() %}
+                    <a href="{{ url_for('auth.set_language', lang=code) }}"
+                       class="{% if code == current_locale %}active{% endif %}">{{ label }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+applyTheme(localStorage.getItem('muktasbat-theme') || 'dark');
+</script>
+{% endblock %}

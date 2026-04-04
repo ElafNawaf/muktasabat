@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ employee.name }}</h1>
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('employees.edit', employee_id=employee.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+    {% endif %}
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">{{ _('Employee Info') }}</h5></div>
+            <div class="card-body">
+                <dl class="detail-list">
+                    <dt>{{ _('Name') }}</dt><dd>{{ employee.name }}</dd>
+                    <dt>{{ _('Phone') }}</dt><dd>{{ employee.phone or '-' }}</dd>
+                    <dt>{{ _('Username') }}</dt><dd>{{ employee.user.username }}</dd>
+                    <dt>{{ _('Role') }}</dt><dd>{{ employee.user.role }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">{{ _('Assigned Owners') }}</h5></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>{{ _('Owner') }}</th>
+                                <th>{{ _('Phone') }}</th>
+                                <th>{{ _('Buildings') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for owner in employee.owners %}
+                            <tr>
+                                <td><a href="{{ url_for('owners.detail', owner_id=owner.id) }}">{{ owner.name }}</a></td>
+                                <td>{{ owner.phone or '-' }}</td>
+                                <td><span class="badge bg-info">{{ owner.buildings|length }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-center text-muted py-3">{{ _('No owners assigned') }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

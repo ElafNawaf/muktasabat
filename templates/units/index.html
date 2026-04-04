@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Units') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Units') }}</h1>
+    <a href="{{ url_for('units.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> {{ _('Add Unit') }}
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ _('Number') }}</th>
+                        <th>{{ _('Name') }}</th>
+                        <th>{{ _('Building') }}</th>
+                        <th>{{ _('Owner') }}</th>
+                        <th>{{ _('Rent') }}</th>
+                        <th>{{ _('Mgmt') }} %</th>
+                        <th>{{ _('Status') }}</th>
+                        <th>{{ _('Actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for unit in units %}
+                    <tr>
+                        <td><a href="{{ url_for('units.detail', unit_id=unit.id) }}">{{ unit.number }}</a></td>
+                        <td>{{ unit.name }}</td>
+                        <td><a href="{{ url_for('buildings.detail', building_id=unit.building.id) }}">{{ unit.building.name }}</a></td>
+                        <td>{{ unit.building.owner.name }}</td>
+                        <td>{{ '{:,.2f}'.format(unit.rent_amount) }}</td>
+                        <td>{{ unit.management_percentage }}%</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if unit.is_available else 'warning' }}">
+                                {{ _('Available') if unit.is_available else _('Occupied') }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('units.edit', unit_id=unit.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">{{ _('No units yet') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

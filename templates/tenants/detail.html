@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ tenant.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ tenant.name }}</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('tenants.edit', tenant_id=tenant.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+        <form method="POST" action="{{ url_for('tenants.delete', tenant_id=tenant.id) }}" onsubmit="return confirm('{{ _('Are you sure?') }}')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">{{ _('Tenant Info') }}</h5></div>
+            <div class="card-body">
+                <dl class="detail-list">
+                    <dt>{{ _('Phone') }}</dt><dd>{{ tenant.phone }}</dd>
+                    <dt>{{ _('National ID') }}</dt><dd>{{ tenant.national_id }}</dd>
+                    <dt>{{ _('Email') }}</dt><dd>{{ tenant.email or '-' }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">{{ _('Contracts') }}</h5></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>{{ _('Contract #') }}</th>
+                                <th>{{ _('Unit') }}</th>
+                                <th>{{ _('Building') }}</th>
+                                <th>{{ _('End Date') }}</th>
+                                <th>{{ _('Status') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in tenant.contracts %}
+                            <tr>
+                                <td><a href="{{ url_for('contracts.detail', contract_id=contract.id) }}">{{ contract.contract_number }}</a></td>
+                                <td>{{ contract.unit.number }}</td>
+                                <td>{{ contract.unit.building.name }}</td>
+                                <td>{{ contract.end_date.strftime('%Y-%m-%d') }}</td>
+                                <td><span class="badge bg-{{ 'success' if contract.status == 'active' else 'secondary' }}">{{ _(contract.status) }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center text-muted py-3">{{ _('No contracts') }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Owners') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Owners') }}</h1>
+    <a href="{{ url_for('owners.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> {{ _('Add Owner') }}
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ _('Name') }}</th>
+                        <th>{{ _('Phone') }}</th>
+                        <th>{{ _('National ID') }}</th>
+                        <th>{{ _('Buildings') }}</th>
+                        <th>{{ _('Actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for owner in owners %}
+                    <tr>
+                        <td><a href="{{ url_for('owners.detail', owner_id=owner.id) }}">{{ owner.name }}</a></td>
+                        <td>{{ owner.phone or '-' }}</td>
+                        <td>{{ owner.national_id or '-' }}</td>
+                        <td><span class="badge bg-info">{{ owner.buildings|length }}</span></td>
+                        <td>
+                            <a href="{{ url_for('owners.edit', owner_id=owner.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">{{ _('No owners yet. Add your first owner.') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

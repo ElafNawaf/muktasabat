@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ owner.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ owner.name }}</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('owners.edit', owner_id=owner.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+        <form method="POST" action="{{ url_for('owners.delete', owner_id=owner.id) }}" onsubmit="return confirm('{{ _('Are you sure?') }}')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">{{ _('Owner Info') }}</h5></div>
+            <div class="card-body">
+                <dl class="detail-list">
+                    <dt>{{ _('Phone') }}</dt><dd>{{ owner.phone or '-' }}</dd>
+                    <dt>{{ _('Email') }}</dt><dd>{{ owner.email or '-' }}</dd>
+                    <dt>{{ _('National ID') }}</dt><dd>{{ owner.national_id or '-' }}</dd>
+                    <dt>{{ _('Bank') }}</dt><dd>{{ owner.bank_name or '-' }}</dd>
+                    <dt>{{ _('IBAN') }}</dt><dd>{{ owner.iban or '-' }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">{{ _('Buildings') }}</h5>
+                <a href="{{ url_for('buildings.create') }}?owner_id={{ owner.id }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-lg"></i> {{ _('Add Building') }}
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>{{ _('Building Name') }}</th>
+                                <th>{{ _('City') }}</th>
+                                <th>{{ _('Units') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for building in owner.buildings %}
+                            <tr>
+                                <td><a href="{{ url_for('buildings.detail', building_id=building.id) }}">{{ building.name }}</a></td>
+                                <td>{{ building.city or '-' }}</td>
+                                <td><span class="badge bg-info">{{ building.units|length }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-center text-muted py-3">{{ _('No buildings yet') }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if owner.employees %}
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">{{ _('Assigned Employees') }}</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr><th>{{ _('Name') }}</th><th>{{ _('Phone') }}</th></tr></thead>
+                <tbody>
+                    {% for emp in owner.employees %}
+                    <tr>
+                        <td><a href="{{ url_for('employees.detail', employee_id=emp.id) }}">{{ emp.name }}</a></td>
+                        <td>{{ emp.phone or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

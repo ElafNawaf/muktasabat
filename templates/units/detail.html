@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Unit') }} {{ unit.number }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Unit') }} {{ unit.number }} - {{ unit.name }}</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('units.edit', unit_id=unit.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+        <form method="POST" action="{{ url_for('units.delete', unit_id=unit.id) }}" onsubmit="return confirm('{{ _('Are you sure?') }}')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">{{ _('Unit Info') }}</h5></div>
+            <div class="card-body">
+                <dl class="detail-list">
+                    <dt>{{ _('Building') }}</dt><dd><a href="{{ url_for('buildings.detail', building_id=unit.building.id) }}">{{ unit.building.name }}</a></dd>
+                    <dt>{{ _('Owner') }}</dt><dd><a href="{{ url_for('owners.detail', owner_id=unit.building.owner.id) }}">{{ unit.building.owner.name }}</a></dd>
+                    <dt>{{ _('Type') }}</dt><dd>{{ _(unit.unit_type or '-') }}</dd>
+                    <dt>{{ _('Area') }}</dt><dd>{{ unit.area_sqm or '-' }} {{ _('sqm') }}</dd>
+                    <dt>{{ _('Monthly Rent') }}</dt><dd>{{ '{:,.2f}'.format(unit.rent_amount) }} {{ _('SAR') }}</dd>
+                    <dt>{{ _('Status') }}</dt>
+                    <dd><span class="badge bg-{{ 'success' if unit.is_available else 'warning' }}">{{ _('Available') if unit.is_available else _('Occupied') }}</span></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">{{ _('Fees & Utilities') }}</h5></div>
+            <div class="card-body">
+                <dl class="detail-list">
+                    <dt>{{ _('Management') }} %</dt><dd>{{ unit.management_percentage }}%</dd>
+                    <dt>{{ _('Agent') }}</dt><dd>{{ unit.agent_name or '-' }} {% if unit.agent_percentage %}({{ unit.agent_percentage }}%){% endif %}</dd>
+                    <dt>{{ _('Ejar Fee') }}</dt><dd>{{ '{:,.2f}'.format(unit.ejar_fee) }} {{ _('SAR') }}</dd>
+                    <dt>{{ _('Electricity #') }}</dt><dd>{{ unit.electric_invoice or '-' }}</dd>
+                    <dt>{{ _('Water #') }}</dt><dd>{{ unit.water_invoice or '-' }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contracts for this unit -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">{{ _('Contracts') }}</h5>
+        {% if unit.is_available %}
+        <a href="{{ url_for('contracts.create') }}?unit_id={{ unit.id }}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg"></i> {{ _('New Contract') }}
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ _('Contract #') }}</th>
+                        <th>{{ _('Tenant') }}</th>
+                        <th>{{ _('Start') }}</th>
+                        <th>{{ _('End') }}</th>
+                        <th>{{ _('Rent') }}</th>
+                        <th>{{ _('Status') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contract in unit.contracts %}
+                    <tr>
+                        <td><a href="{{ url_for('contracts.detail', contract_id=contract.id) }}">{{ contract.contract_number }}</a></td>
+                        <td>{{ contract.tenant.name }}</td>
+                        <td>{{ contract.start_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ contract.end_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ '{:,.2f}'.format(contract.rent_amount) }} {{ _('SAR') }}</td>
+                        <td><span class="badge bg-{{ 'success' if contract.status == 'active' else 'secondary' }}">{{ _(contract.status) }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">{{ _('No contracts') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Edit Unit') if unit else _('Add Unit') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Edit Unit') if unit else _('Add Unit') }}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="building_id" class="form-label">{{ _('Building') }} *</label>
+                    <select class="form-select" id="building_id" name="building_id" required>
+                        <option value="">{{ _('Select Building') }}</option>
+                        {% for building in buildings %}
+                        <option value="{{ building.id }}" {% if (unit and unit.building_id == building.id) or request.args.get('building_id')|int == building.id %}selected{% endif %}>{{ building.name }} ({{ building.owner.name }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="number" class="form-label">{{ _('Unit Number') }} *</label>
+                    <input type="text" class="form-control" id="number" name="number" value="{{ unit.number if unit else '' }}" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="name" class="form-label">{{ _('Unit Name') }} *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ unit.name if unit else '' }}" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="unit_type" class="form-label">{{ _('Type') }}</label>
+                    <select class="form-select" id="unit_type" name="unit_type">
+                        <option value="">-</option>
+                        {% for t in ['apartment', 'shop', 'office', 'warehouse', 'villa', 'other'] %}
+                        <option value="{{ t }}" {% if unit and unit.unit_type == t %}selected{% endif %}>{{ _(t) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="area_sqm" class="form-label">{{ _('Area (sqm)') }}</label>
+                    <input type="number" step="0.01" class="form-control" id="area_sqm" name="area_sqm" value="{{ unit.area_sqm if unit and unit.area_sqm else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="rent_amount" class="form-label">{{ _('Monthly Rent (SAR)') }}</label>
+                    <input type="number" step="0.01" class="form-control" id="rent_amount" name="rent_amount" value="{{ unit.rent_amount if unit else 0 }}">
+                </div>
+
+                <div class="col-12"><hr><h5>{{ _('Fees & Commissions') }}</h5></div>
+                <div class="col-md-4 mb-3">
+                    <label for="management_percentage" class="form-label">{{ _('Property Management') }} %</label>
+                    <input type="number" step="0.01" class="form-control" id="management_percentage" name="management_percentage" value="{{ unit.management_percentage if unit else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="agent_name" class="form-label">{{ _('Agent Name') }}</label>
+                    <input type="text" class="form-control" id="agent_name" name="agent_name" value="{{ unit.agent_name if unit else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="agent_percentage" class="form-label">{{ _('Agent') }} %</label>
+                    <input type="number" step="0.01" class="form-control" id="agent_percentage" name="agent_percentage" value="{{ unit.agent_percentage if unit else 0 }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="ejar_fee" class="form-label">{{ _('Ejar Fee (SAR)') }}</label>
+                    <input type="number" step="0.01" class="form-control" id="ejar_fee" name="ejar_fee" value="{{ unit.ejar_fee if unit else 0 }}">
+                </div>
+
+                <div class="col-12"><hr><h5>{{ _('Utility Accounts') }}</h5></div>
+                <div class="col-md-6 mb-3">
+                    <label for="electric_invoice" class="form-label">{{ _('Electricity Account #') }}</label>
+                    <input type="text" class="form-control" id="electric_invoice" name="electric_invoice" value="{{ unit.electric_invoice if unit else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="water_invoice" class="form-label">{{ _('Water Account #') }}</label>
+                    <input type="text" class="form-control" id="water_invoice" name="water_invoice" value="{{ unit.water_invoice if unit else '' }}">
+                </div>
+
+                <div class="col-12 mb-3">
+                    <label for="notes" class="form-label">{{ _('Notes') }}</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ unit.notes if unit else '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ _('Save') }}</button>
+                <a href="{{ url_for('units.index') }}" class="btn btn-outline-secondary">{{ _('Cancel') }}</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Properties') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ _('Properties') }}</h1>
+        <p class="subtitle">{{ _('Browse owners, buildings, units, contracts, and payments.') }}</p>
+    </div>
+    <div class="header-actions">
+        <a class="btn-add" href="{{ url_for('owners.create') }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {{ _('Add Owner') }}
+        </a>
+    </div>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<div class="drill-layout">
+    <div class="drill-sidebar" id="ownerList">
+        <div class="drill-search">
+            <input type="text" id="ownerSearch" placeholder="{{ _('Search owners...') }}" oninput="filterOwners()">
+        </div>
+        <div id="ownerCards">
+            <div class="empty-state">{{ _('Loading...') }}</div>
+        </div>
+    </div>
+
+    <div class="drill-detail" id="detailPanel">
+        <div class="drill-empty" id="emptyState">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <p>{{ _('Select an owner to view their buildings, units, and contracts') }}</p>
+        </div>
+        <div id="ownerDetail" style="display:none;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* i18n strings for JS */
+const I18N = {
+    buildings: '{{ _("buildings") }}',
+    units: '{{ _("units") }}',
+    contracts: '{{ _("contracts") }}',
+    payments: '{{ _("payments") }}',
+    noBuildings: '{{ _("No buildings yet") }}',
+    noUnits: '{{ _("No units yet") }}',
+    noContracts: '{{ _("No contracts") }}',
+    noPayments: '{{ _("No payments") }}',
+    back: '{{ _("Back") }}',
+    addBuilding: '{{ _("Add Building") }}',
+    addUnit: '{{ _("Add Unit") }}',
+    newContract: '{{ _("New Contract") }}',
+    sar: '{{ _("SAR") }}',
+    months: '{{ _("months") }}',
+    available: '{{ _("Available") }}',
+    occupied: '{{ _("Occupied") }}',
+    active: '{{ _("active") }}',
+    expired: '{{ _("expired") }}',
+    terminated: '{{ _("terminated") }}',
+    pending: '{{ _("pending") }}',
+    paid: '{{ _("paid") }}',
+    mgmt: '{{ _("Management") }}',
+    agent: '{{ _("Agent") }}',
+    ejar: '{{ _("Ejar Fee") }}',
+    electric: '{{ _("Electricity") }}',
+    water: '{{ _("Water") }}',
+    rentAmount: '{{ _("Rent") }}',
+    paymentCycle: '{{ _("Payment Cycle") }}',
+    tenant: '{{ _("Tenant") }}',
+    phone: '{{ _("Phone") }}',
+    nationalId: '{{ _("National ID") }}',
+    pay: '{{ _("Pay") }}',
+    noMatch: '{{ _("No owners match your search") }}',
+    owners: '{{ _("Owners") }}',
+    loading: '{{ _("Loading...") }}',
+    properties: '{{ _("Properties") }}',
+};
+</script>
+<script src="{{ url_for('static', filename='js/drilldown.js') }}"></script>
+{% endblock %}

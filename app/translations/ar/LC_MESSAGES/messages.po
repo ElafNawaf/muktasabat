@@ -1,0 +1,597 @@
+# Arabic translations for Muktasbat
+msgid ""
+msgstr ""
+"Project-Id-Version: Muktasbat 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-04 00:00+0300\n"
+"PO-Revision-Date: 2026-04-04 00:00+0300\n"
+"Last-Translator: \n"
+"Language: ar\n"
+"Language-Team: ar\n"
+"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# App name
+msgid "Muktasbat"
+msgstr "مُقتبسات"
+
+msgid "Property Management"
+msgstr "إدارة الأملاك"
+
+msgid "Property Management System"
+msgstr "نظام إدارة الأملاك"
+
+# Navigation
+msgid "Dashboard"
+msgstr "لوحة التحكم"
+
+msgid "Owners"
+msgstr "الملاك"
+
+msgid "Buildings"
+msgstr "المباني"
+
+msgid "Units"
+msgstr "الوحدات"
+
+msgid "Tenants"
+msgstr "المستأجرون"
+
+msgid "Contracts"
+msgstr "العقود"
+
+msgid "Payments"
+msgstr "المدفوعات"
+
+msgid "Employees"
+msgstr "الموظفون"
+
+msgid "User Management"
+msgstr "إدارة المستخدمين"
+
+# Auth
+msgid "Login"
+msgstr "تسجيل الدخول"
+
+msgid "Register"
+msgstr "تسجيل حساب"
+
+msgid "Logout"
+msgstr "تسجيل الخروج"
+
+msgid "Username"
+msgstr "اسم المستخدم"
+
+msgid "Password"
+msgstr "كلمة المرور"
+
+msgid "Email"
+msgstr "البريد الإلكتروني"
+
+msgid "Create new account"
+msgstr "إنشاء حساب جديد"
+
+msgid "Create your account"
+msgstr "أنشئ حسابك"
+
+msgid "Already have an account? Login"
+msgstr "لديك حساب؟ تسجيل الدخول"
+
+msgid "Invalid username or password"
+msgstr "اسم المستخدم أو كلمة المرور غير صحيحة"
+
+msgid "Username already exists"
+msgstr "اسم المستخدم موجود مسبقاً"
+
+msgid "Email already exists"
+msgstr "البريد الإلكتروني موجود مسبقاً"
+
+msgid "Password must be at least 6 characters"
+msgstr "يجب أن تكون كلمة المرور 6 أحرف على الأقل"
+
+msgid "Registration successful. Please log in."
+msgstr "تم التسجيل بنجاح. الرجاء تسجيل الدخول."
+
+msgid "Access denied"
+msgstr "الوصول مرفوض"
+
+# Dashboard
+msgid "Occupied / Total Units"
+msgstr "مشغولة / إجمالي الوحدات"
+
+msgid "Active Contracts"
+msgstr "العقود النشطة"
+
+msgid "Overdue Payments"
+msgstr "مدفوعات متأخرة"
+
+msgid "Recent Contracts"
+msgstr "العقود الأخيرة"
+
+msgid "Upcoming Payments"
+msgstr "المدفوعات القادمة"
+
+msgid "View All"
+msgstr "عرض الكل"
+
+msgid "No contracts yet"
+msgstr "لا توجد عقود بعد"
+
+msgid "No upcoming payments"
+msgstr "لا توجد مدفوعات قادمة"
+
+# Common
+msgid "Name"
+msgstr "الاسم"
+
+msgid "Phone"
+msgstr "الهاتف"
+
+msgid "National ID"
+msgstr "رقم الهوية"
+
+msgid "Actions"
+msgstr "الإجراءات"
+
+msgid "Status"
+msgstr "الحالة"
+
+msgid "Notes"
+msgstr "ملاحظات"
+
+msgid "Save"
+msgstr "حفظ"
+
+msgid "Cancel"
+msgstr "إ��غاء"
+
+msgid "Edit"
+msgstr "تعديل"
+
+msgid "Delete"
+msgstr "حذف"
+
+msgid "Are you sure?"
+msgstr "هل أنت متأكد؟"
+
+msgid "Created"
+msgstr "تاريخ الإنشاء"
+
+msgid "SAR"
+msgstr "ر.س"
+
+msgid "sqm"
+msgstr "م²"
+
+# Status values
+msgid "active"
+msgstr "نشط"
+
+msgid "expired"
+msgstr "منتهي"
+
+msgid "terminated"
+msgstr "ملغي"
+
+msgid "pending"
+msgstr "معلق"
+
+msgid "paid"
+msgstr "مدفوع"
+
+msgid "overdue"
+msgstr "متأخر"
+
+# Roles
+msgid "Admin"
+msgstr "مدير"
+
+msgid "Manager"
+msgstr "مشرف"
+
+msgid "Viewer"
+msgstr "مشاهد"
+
+msgid "Active"
+msgstr "نشط"
+
+msgid "Inactive"
+msgstr "غير نشط"
+
+msgid "Deactivate"
+msgstr "تعطيل"
+
+msgid "Activate"
+msgstr "تفعيل"
+
+msgid "Role"
+msgstr "الدور"
+
+# Owners
+msgid "Add Owner"
+msgstr "إضافة مالك"
+
+msgid "Edit Owner"
+msgstr "تعديل المالك"
+
+msgid "Owner created successfully"
+msgstr "تم إنشاء المالك بنجاح"
+
+msgid "Owner updated successfully"
+msgstr "تم تحديث المالك بنجاح"
+
+msgid "Owner deleted"
+msgstr "تم حذف المالك"
+
+msgid "Owner Info"
+msgstr "معلومات المالك"
+
+msgid "No owners yet. Add your first owner."
+msgstr "لا يوجد ملاك بعد. أضف أول مالك."
+
+msgid "Bank Name"
+msgstr "اسم البنك"
+
+msgid "IBAN"
+msgstr "رقم الآيبان"
+
+# Buildings
+msgid "Add Building"
+msgstr "إضافة مبنى"
+
+msgid "Edit Building"
+msgstr "تعديل المبنى"
+
+msgid "Building Name"
+msgstr "اسم المبنى"
+
+msgid "Building created successfully"
+msgstr "تم إنشاء المبنى بنجاح"
+
+msgid "Building updated successfully"
+msgstr "تم تحديث المبنى بنجاح"
+
+msgid "Building deleted"
+msgstr "تم حذف المبنى"
+
+msgid "Building Info"
+msgstr "معلومات المبنى"
+
+msgid "Select Owner"
+msgstr "اختر المالك"
+
+msgid "Address"
+msgstr "العنوان"
+
+msgid "City"
+msgstr "المدينة"
+
+msgid "District"
+msgstr "الحي"
+
+msgid "Owner"
+msgstr "المالك"
+
+msgid "No buildings yet"
+msgstr "لا توجد مباني بعد"
+
+# Units
+msgid "Add Unit"
+msgstr "إضافة وحدة"
+
+msgid "Edit Unit"
+msgstr "تعديل الوحدة"
+
+msgid "Unit"
+msgstr "الوحدة"
+
+msgid "Unit Number"
+msgstr "رقم الوحدة"
+
+msgid "Unit Name"
+msgstr "اسم الو��دة"
+
+msgid "Number"
+msgstr "الرقم"
+
+msgid "Type"
+msgstr "النوع"
+
+msgid "Rent"
+msgstr "الإيجار"
+
+msgid "Mgmt %"
+msgstr "نسبة الإدارة %"
+
+msgid "Unit created successfully"
+msgstr "تم إنشاء الوحدة بنجاح"
+
+msgid "Unit updated successfully"
+msgstr "تم تحديث الوحدة بنجاح"
+
+msgid "Unit deleted"
+msgstr "تم حذف الوحدة"
+
+msgid "Unit Info"
+msgstr "معلومات الوحدة"
+
+msgid "Select Building"
+msgstr "اختر المبنى"
+
+msgid "Available"
+msgstr "متاحة"
+
+msgid "Occupied"
+msgstr "مشغول��"
+
+msgid "No units yet"
+msgstr "لا توجد وحدات بعد"
+
+# Unit types
+msgid "apartment"
+msgstr "شقة"
+
+msgid "shop"
+msgstr "محل"
+
+msgid "office"
+msgstr "مكتب"
+
+msgid "warehouse"
+msgstr "مست��دع"
+
+msgid "villa"
+msgstr "فيلا"
+
+msgid "other"
+msgstr "أخرى"
+
+# Fees
+msgid "Fees & Commissions"
+msgstr "الرسوم والعمولات"
+
+msgid "Property Management %"
+msgstr "نسبة إدارة الأملاك %"
+
+msgid "Agent Name"
+msgstr "اسم الوسيط"
+
+msgid "Agent %"
+msgstr "نسبة الوسيط %"
+
+msgid "Ejar Fee (SAR)"
+msgstr "رسوم إيجار (ر.س)"
+
+msgid "Monthly Rent (SAR)"
+msgstr "الإيجار الشهري (ر.س)"
+
+msgid "Monthly Rent"
+msgstr "الإيجار الشهري"
+
+msgid "Area (sqm)"
+msgstr "المساحة (م²)"
+
+msgid "Area"
+msgstr "المساحة"
+
+msgid "Fees & Utilities"
+msgstr "الرسوم والخدمات"
+
+msgid "Management %"
+msgstr "نسبة الإدارة %"
+
+msgid "Agent"
+msgstr "الوسيط"
+
+msgid "Ejar Fee"
+msgstr "رسوم إيجار"
+
+msgid "Utility Accounts"
+msgstr "حسابات الخدمات"
+
+msgid "Electricity Account #"
+msgstr "رقم حساب الكهرباء"
+
+msgid "Water Account #"
+msgstr "رقم حساب المياه"
+
+msgid "Electricity #"
+msgstr "رقم الكهرباء"
+
+msgid "Water #"
+msgstr "رقم المياه"
+
+# Tenants
+msgid "Add Tenant"
+msgstr "إضافة مستأجر"
+
+msgid "Edit Tenant"
+msgstr "تعديل المستأجر"
+
+msgid "Tenant"
+msgstr "المستأجر"
+
+msgid "Tenant Info"
+msgstr "معلومات المستأجر"
+
+msgid "Tenant created successfully"
+msgstr "تم إنشاء المستأجر بنجاح"
+
+msgid "Tenant updated successfully"
+msgstr "تم تحديث المستأجر بنجاح"
+
+msgid "Tenant deleted"
+msgstr "تم حذف المستأجر"
+
+msgid "No tenants yet"
+msgstr "لا يوجد مستأجرون بعد"
+
+# Contracts
+msgid "New Contract"
+msgstr "عقد جديد"
+
+msgid "Edit Contract"
+msgstr "تعديل العقد"
+
+msgid "Contract"
+msgstr "العقد"
+
+msgid "Contract #"
+msgstr "رقم ا��عقد"
+
+msgid "Contract Number"
+msgstr "رقم العقد"
+
+msgid "Contract Info"
+msgstr "معلومات العقد"
+
+msgid "Financial Summary"
+msgstr "الملخص المالي"
+
+msgid "Start Date"
+msgstr "تاريخ البداية"
+
+msgid "End Date"
+msgstr "تا��يخ النهاية"
+
+msgid "Start"
+msgstr "البداية"
+
+msgid "End"
+msgstr "النهاية"
+
+msgid "Cycle"
+msgstr "الدورة"
+
+msgid "Payment Cycle"
+msgstr "دورة الدفع"
+
+msgid "Select Unit"
+msgstr "اختر الو��دة"
+
+msgid "Select Tenant"
+msgstr "اختر المستأجر"
+
+msgid "Every 3 months"
+msgstr "كل 3 أشهر"
+
+msgid "Every 6 months"
+msgstr "كل 6 أشهر"
+
+msgid "Yearly"
+msgstr "سنوياً"
+
+msgid "months"
+msgstr "أشهر"
+
+msgid "Contract created successfully"
+msgstr "تم إنشاء العقد بن��اح"
+
+msgid "Contract updated successfully"
+msgstr "تم تحديث العقد بنجاح"
+
+msgid "Contract terminated"
+msgstr "تم إنهاء العقد"
+
+msgid "Terminate"
+msgstr "إنهاء العقد"
+
+msgid "Are you sure you want to terminate this contract?"
+msgstr "هل أنت متأكد من إنهاء هذا ال��قد؟"
+
+msgid "No contracts"
+msgstr "لا توجد عقود"
+
+msgid "Management Fee"
+msgstr "رسوم الإدارة"
+
+msgid "Agent Fee"
+msgstr "عمولة الوسيط"
+
+# Payments
+msgid "Payment Schedule"
+msgstr "جدول المدفوعات"
+
+msgid "Due Date"
+msgstr "تاريخ الاستحقاق"
+
+msgid "Paid Date"
+msgstr "تاريخ الدفع"
+
+msgid "Amount"
+msgstr "المبلغ"
+
+msgid "Amount (SAR)"
+msgstr "المبلغ (ر.س)"
+
+msgid "Pay"
+msgstr "دفع"
+
+msgid "Edit Payment"
+msgstr "تعديل الدفعة"
+
+msgid "Payment recorded successfully"
+msgstr "تم تسجيل الدفعة بنجاح"
+
+msgid "Payment updated"
+msgstr "تم تحديث الدفعة"
+
+msgid "All"
+msgstr "الكل"
+
+msgid "Pending"
+msgstr "معلق"
+
+msgid "Overdue"
+msgstr "متأخر"
+
+msgid "Paid"
+msgstr "مدفوع"
+
+msgid "No payments"
+msgstr "لا توجد مدفوعات"
+
+msgid "No payments found"
+msgstr "لا توجد مدفوعات"
+
+msgid "Building"
+msgstr "المبنى"
+
+# Employees
+msgid "Add Employee"
+msgstr "إضافة موظف"
+
+msgid "Edit Employee"
+msgstr "تعديل الموظف"
+
+msgid "Employee Info"
+msgstr "معلومات الموظف"
+
+msgid "Full Name"
+msgstr "الاسم الكامل"
+
+msgid "User Account"
+msgstr "حساب المستخدم"
+
+msgid "Select User"
+msgstr "اختر المستخدم"
+
+msgid "Assigned Owners"
+msgstr "الملاك المعينون"
+
+msgid "Employee created successfully"
+msgstr "تم إنشاء الموظف بنجاح"
+
+msgid "Employee updated successfully"
+msgstr "تم تحديث الموظف بنجاح"
+
+msgid "No employees yet"
+msgstr "لا يوجد موظفون بعد"
+
+msgid "No owners assigned"
+msgstr "لا يوجد ملاك معينون"
+
+msgid "Assigned Employees"
+msgstr "الموظفون المعينون"

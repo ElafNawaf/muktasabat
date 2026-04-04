@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Tenants') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ _('Tenants') }}</h1>
+    <a href="{{ url_for('tenants.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> {{ _('Add Tenant') }}
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ _('Name') }}</th>
+                        <th>{{ _('Phone') }}</th>
+                        <th>{{ _('National ID') }}</th>
+                        <th>{{ _('Contracts') }}</th>
+                        <th>{{ _('Actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tenant in tenants %}
+                    <tr>
+                        <td><a href="{{ url_for('tenants.detail', tenant_id=tenant.id) }}">{{ tenant.name }}</a></td>
+                        <td>{{ tenant.phone }}</td>
+                        <td>{{ tenant.national_id }}</td>
+                        <td><span class="badge bg-info">{{ tenant.contracts|length }}</span></td>
+                        <td>
+                            <a href="{{ url_for('tenants.edit', tenant_id=tenant.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">{{ _('No tenants yet') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

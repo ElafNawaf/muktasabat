@@ -1,0 +1,23 @@
+# English translations for Muktasbat (pass-through)
+msgid ""
+msgstr ""
+"Project-Id-Version: Muktasbat 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-04-04 00:00+0300\n"
+"PO-Revision-Date: 2026-04-04 00:00+0300\n"
+"Last-Translator: \n"
+"Language: en\n"
+"Language-Team: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Muktasbat"
+msgstr "Muktasbat"
+
+msgid "Property Management"
+msgstr "Property Management"
+
+msgid "Property Management System"
+msgstr "Property Management System"
