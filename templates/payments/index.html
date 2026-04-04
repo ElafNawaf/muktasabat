@@ -2,9 +2,9 @@
 {% block title %}{{ _('Payments') }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>{{ _('Payments') }}</h1>
-    <div class="btn-group">
+<div class="page-header page-header--toolbar payment-filters">
+    <h1 class="mb-0">{{ _('Payments') }}</h1>
+    <div class="btn-group flex-wrap" role="group" aria-label="{{ _('Payments') }}">
         <a href="{{ url_for('payments.index', status='all') }}" class="btn btn-{{ 'primary' if status_filter == 'all' else 'outline-primary' }} btn-sm">{{ _('All') }}</a>
         <a href="{{ url_for('payments.index', status='pending') }}" class="btn btn-{{ 'warning' if status_filter == 'pending' else 'outline-warning' }} btn-sm">{{ _('Pending') }}</a>
         <a href="{{ url_for('payments.index', status='overdue') }}" class="btn btn-{{ 'danger' if status_filter == 'overdue' else 'outline-danger' }} btn-sm">{{ _('Overdue') }}</a>
@@ -31,9 +31,9 @@
                     {% for payment in payments %}
                     <tr>
                         <td>{{ payment.due_date.strftime('%Y-%m-%d') }}</td>
-                        <td>{{ payment.contract.tenant.name }}</td>
+                        <td>{{ payment.contract.tenant|localized('name') }}</td>
                         <td>{{ payment.contract.unit.number }}</td>
-                        <td>{{ payment.contract.unit.building.name }}</td>
+                        <td>{{ payment.contract.unit.building|localized('name') }}</td>
                         <td>{{ '{:,.2f}'.format(payment.amount) }} {{ _('SAR') }}</td>
                         <td>
                             <span class="badge bg-{{ 'success' if payment.status == 'paid' else 'warning' }}">
@@ -51,7 +51,13 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" class="text-center text-muted py-4">{{ _('No payments found') }}</td></tr>
+                    <tr><td colspan="7" class="table-empty-message">
+                        <div class="empty-placeholder">
+                            <i class="bi bi-credit-card" aria-hidden="true"></i>
+                            <p>{{ _('No payments found') }}</p>
+                            <a href="{{ url_for('contracts.index') }}" class="btn btn-primary btn-sm">{{ _('Contracts') }}</a>
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>

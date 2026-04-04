@@ -1,0 +1,65 @@
+<div class="modal fade" id="ownerCreateModal" tabindex="-1" aria-labelledby="ownerCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ownerCreateModalLabel">{{ _('Add Owner') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+            </div>
+            <form method="POST" action="{{ url_for('owners.create') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="create_owner_name" class="form-label">{{ _('Name') }} *</label>
+                            <input type="text" class="form-control" id="create_owner_name" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_name_en" class="form-label">{{ _('Name in English') }}</label>
+                            <input type="text" class="form-control" id="create_owner_name_en" name="name_en" placeholder="{{ _('Optional') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_name_ar" class="form-label">{{ _('Name in Arabic') }}</label>
+                            <input type="text" class="form-control" id="create_owner_name_ar" name="name_ar" placeholder="{{ _('Optional') }}" dir="rtl">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_phone" class="form-label">{{ _('Phone') }}</label>
+                            <input type="text" class="form-control" id="create_owner_phone" name="phone">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_email" class="form-label">{{ _('Email') }}</label>
+                            <input type="email" class="form-control" id="create_owner_email" name="email">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_nid" class="form-label">{{ _('National ID') }}</label>
+                            <input type="text" class="form-control" id="create_owner_nid" name="national_id">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_bank" class="form-label">{{ _('Bank Name') }}</label>
+                            <input type="text" class="form-control" id="create_owner_bank" name="bank_name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_iban" class="form-label">{{ _('IBAN') }}</label>
+                            <input type="text" class="form-control" id="create_owner_iban" name="iban">
+                        </div>
+                        <div class="col-12">
+                            <label for="create_owner_notes" class="form-label">{{ _('Notes') }}</label>
+                            <textarea class="form-control" id="create_owner_notes" name="notes" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_notes_en" class="form-label">{{ _('Notes in English') }}</label>
+                            <textarea class="form-control" id="create_owner_notes_en" name="notes_en" rows="2" placeholder="{{ _('Optional') }}"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_owner_notes_ar" class="form-label">{{ _('Notes in Arabic') }}</label>
+                            <textarea class="form-control" id="create_owner_notes_ar" name="notes_ar" rows="2" placeholder="{{ _('Optional') }}" dir="rtl"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ _('Save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

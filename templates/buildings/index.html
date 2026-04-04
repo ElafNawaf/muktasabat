@@ -4,9 +4,11 @@
 {% block content %}
 <div class="page-header">
     <h1>{{ _('Buildings') }}</h1>
-    <a href="{{ url_for('buildings.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> {{ _('Add Building') }}
-    </a>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#buildingCreateModal">
+            <i class="bi bi-plus-lg"></i> {{ _('Add Building') }}
+        </button>
+    </div>
 </div>
 
 <div class="card">
@@ -26,21 +28,45 @@
                 <tbody>
                     {% for building in buildings %}
                     <tr>
-                        <td><a href="{{ url_for('buildings.detail', building_id=building.id) }}">{{ building.name }}</a></td>
-                        <td><a href="{{ url_for('owners.detail', owner_id=building.owner.id) }}">{{ building.owner.name }}</a></td>
+                        <td><a href="{{ url_for('buildings.detail', building_id=building.id) }}">{{ building|localized('name') }}</a></td>
+                        <td><a href="{{ url_for('owners.detail', owner_id=building.owner.id) }}">{{ building.owner|localized('name') }}</a></td>
                         <td>{{ building.city or '-' }}</td>
                         <td>{{ building.district or '-' }}</td>
                         <td><span class="badge bg-info">{{ building.units|length }}</span></td>
                         <td>
-                            <a href="{{ url_for('buildings.edit', building_id=building.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('buildings.detail', building_id=building.id, edit=1) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" class="text-center text-muted py-4">{{ _('No buildings yet') }}</td></tr>
+                    <tr><td colspan="6" class="table-empty-message">
+                        <div class="empty-placeholder">
+                            <i class="bi bi-building" aria-hidden="true"></i>
+                            <p>{{ _('No buildings yet') }}</p>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#buildingCreateModal">
+                                <i class="bi bi-plus-lg"></i> {{ _('Add Building') }}
+                            </button>
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+{% include 'buildings/_create_modal.html' %}
+
+{% endblock %}
+
+{# Open modal after Bootstrap loads (scripts in block content run before bundle otherwise) #}
+{% block extra_js %}
+{% if request.args.get('new') %}
+<script>
+(function () {
+    var el = document.getElementById('buildingCreateModal');
+    if (!el || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+    bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, keyboard: true, focus: true }).show();
+})();
+</script>
+{% endif %}
 {% endblock %}

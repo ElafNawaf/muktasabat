@@ -2,6 +2,7 @@
 from flask import Blueprint, jsonify
 from flask_login import login_required
 from app import db
+from app.i18n_data import localized_value
 from app.models import Owner, Building, Unit, Contract, Payment, Tenant
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -20,7 +21,7 @@ def owners():
         )
         result.append({
             'id': o.id,
-            'name': o.name,
+            'name': localized_value(o, 'name'),
             'phone': o.phone,
             'national_id': o.national_id,
             'building_count': building_count,
@@ -56,7 +57,7 @@ def owner_detail(owner_id):
                 contracts.append({
                     'id': c.id,
                     'contract_number': c.contract_number,
-                    'tenant_name': c.tenant.name,
+                    'tenant_name': localized_value(c.tenant, 'name'),
                     'tenant_phone': c.tenant.phone,
                     'tenant_national_id': c.tenant.national_id,
                     'start_date': c.start_date.isoformat(),
@@ -71,7 +72,7 @@ def owner_detail(owner_id):
             units.append({
                 'id': u.id,
                 'number': u.number,
-                'name': u.name,
+                'name': localized_value(u, 'name'),
                 'unit_type': u.unit_type,
                 'rent_amount': u.rent_amount,
                 'is_available': u.is_available,
@@ -85,17 +86,17 @@ def owner_detail(owner_id):
             })
         buildings.append({
             'id': b.id,
-            'name': b.name,
-            'address': b.address,
-            'city': b.city,
-            'district': b.district,
+            'name': localized_value(b, 'name'),
+            'address': localized_value(b, 'address'),
+            'city': localized_value(b, 'city'),
+            'district': localized_value(b, 'district'),
             'units': units,
         })
 
     return jsonify({
         'owner': {
             'id': owner.id,
-            'name': owner.name,
+            'name': localized_value(owner, 'name'),
             'phone': owner.phone,
             'email': owner.email,
             'national_id': owner.national_id,

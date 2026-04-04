@@ -1,4 +1,4 @@
-"""Seed the database with an admin user and sample data."""
+"""Seed the database with an admin user and optional mock data for POC demos."""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,5 +21,13 @@ with app.app_context():
         print('Admin user created: admin / admin123')
     else:
         print('Admin user already exists.')
+
+    # Mock data — controlled by SEED_MOCK_DATA env var
+    seed_mock = os.environ.get('SEED_MOCK_DATA', 'false').lower() in ('1', 'true', 'yes', 'on')
+    if seed_mock:
+        from scripts.mock_data import seed_mock_data
+        seed_mock_data(db)
+    else:
+        print('Mock data skipped (set SEED_MOCK_DATA=true to enable).')
 
     print('Database seeded successfully.')

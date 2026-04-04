@@ -5,9 +5,8 @@
 <div class="auth-container">
     <div class="auth-card">
         <div class="auth-header">
-            <svg class="auth-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <h1>{{ _('Muktasbat') }}</h1>
-            <p>{{ _('Create your account') }}</p>
+            <img class="auth-logo-img" src="{{ url_for('static', filename='img/logo.png') }}" alt="{{ _('Muktasbat') }}" width="280" height="96" loading="eager" decoding="async">
+            <p class="auth-tagline">{{ _('Create your account') }}</p>
         </div>
         <form method="POST" class="auth-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -30,7 +29,7 @@
                 <label for="password" class="form-label">{{ _('Password') }}</label>
                 <input type="password" class="form-control" id="password" name="password" required minlength="6">
             </div>
-            <button type="submit" class="btn-primary w-100">{{ _('Register') }}</button>
+            <button type="submit" class="btn btn-primary w-100">{{ _('Register') }}</button>
         </form>
         <div class="auth-footer">
             <a href="{{ url_for('auth.login') }}">{{ _('Already have an account? Login') }}</a>
@@ -38,6 +37,6 @@
     </div>
 </div>
 <script>
-applyTheme(localStorage.getItem('muktasbat-theme') || 'dark');
+applyTheme(localStorage.getItem('muktasbat-theme') || 'light');
 </script>
 {% endblock %}

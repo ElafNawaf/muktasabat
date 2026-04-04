@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Owner Dashboard') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ _('Owner Dashboard') }}</h1>
+        {% if owner %}
+        <p class="subtitle">{{ owner|localized('name') }}</p>
+        {% endif %}
+    </div>
+    {% if owners_list and not owner %}
+    <div class="report-toolbar">
+        <select id="ownerSelect" onchange="if(this.value) window.location='?owner_id='+this.value">
+            <option value="">{{ _('Select Owner') }}</option>
+            {% for o in owners_list %}
+            <option value="{{ o.id }}">{{ o|localized('name') }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+</div>
+
+{% if not owner %}
+<div class="drill-empty" style="height:auto;padding:60px">
+    <i class="bi bi-bar-chart-line drill-empty__icon" aria-hidden="true"></i>
+    <p class="drill-empty__title">{{ _('Select an owner to view their dashboard') }}</p>
+</div>
+{% else %}
+
+<!-- KPI Cards -->
+<div class="kpi-grid anim-stagger" id="kpiGrid">
+    <!-- Skeleton loaders while loading -->
+    {% for _ in range(6) %}
+    <div class="kpi-card"><div class="skeleton skeleton--line"></div><div class="skeleton skeleton--line" style="width:50%;margin-top:12px"></div></div>
+    {% endfor %}
+</div>
+
+<!-- Contract Expiry -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-bell" style="margin-inline-end:8px;opacity:0.5"></i>{{ _('Contract Expiry Alerts') }}</h5></div>
+    <div class="card-body" style="padding:20px">
+        <div class="expiry-badges" id="expiryBadges">
+            <div class="skeleton" style="width:110px;height:70px;border-radius:12px"></div>
+            <div class="skeleton" style="width:110px;height:70px;border-radius:12px"></div>
+            <div class="skeleton" style="width:110px;height:70px;border-radius:12px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-lg-8 mb-4">
+        <div class="card chart-card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-graph-up" style="margin-inline-end:8px;opacity:0.5"></i>{{ _('Monthly Revenue') }}</h5></div>
+            <div class="card-body"><canvas id="revenueChart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card chart-card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-pie-chart" style="margin-inline-end:8px;opacity:0.5"></i>{{ _('Payment Status') }}</h5></div>
+            <div class="card-body"><canvas id="statusPie"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Building Performance -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0"><i class="bi bi-buildings" style="margin-inline-end:8px;opacity:0.5"></i>{{ _('Building Performance') }}</h5></div>
+    <div class="card-body" style="padding:20px"><canvas id="buildingChart" style="max-height:260px"></canvas></div>
+</div>
+
+<!-- Financial Report -->
+<div class="card mb-4">
+    <div class="card-header" style="flex-wrap:wrap;gap:10px">
+        <h5 class="mb-0"><i class="bi bi-file-earmark-spreadsheet" style="margin-inline-end:8px;opacity:0.5"></i>{{ _('Financial Report') }}</h5>
+        <div class="report-toolbar" style="margin:0">
+            <select id="reportMonth">
+                {% for m in range(1, 13) %}
+                <option value="{{ m }}" {% if m == today_month %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+            <select id="reportYear">
+                {% for y in range(today_year - 2, today_year + 1) %}
+                <option value="{{ y }}" {% if y == today_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn-sm" onclick="loadReport()">
+                <i class="bi bi-arrow-clockwise"></i> {{ _('Load') }}
+            </button>
+            <button class="btn-sm" onclick="printReport()">
+                <i class="bi bi-printer"></i> {{ _('Print') }}
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0" id="reportArea">
+        <div class="empty-placeholder" style="padding:3rem">
+            <i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i>
+            <p>{{ _('Click Load to generate the report') }}</p>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if owner %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const OWNER_ID = {{ owner.id }};
+const IS_RTL = {{ 'true' if is_rtl else 'false' }};
+const SAR = '{{ _("SAR") }}';
+const BRAND = getComputedStyle(document.documentElement).getPropertyValue('--brand-500').trim();
+const BRAND_DARK = getComputedStyle(document.documentElement).getPropertyValue('--brand-600').trim();
+
+Chart.defaults.font.family = IS_RTL ? "'IBM Plex Sans Arabic', sans-serif" : "'Plus Jakarta Sans', sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+Chart.defaults.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border-td').trim();
+
+function fmt(n) { return Number(n).toLocaleString('en-US', {maximumFractionDigits: 0}); }
+function fmtD(n) { return Number(n).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+
+let revenueChart, statusPie, buildingChart;
+
+async function loadDashboard() {
+    const res = await fetch('/portal/api/dashboard-data?owner_id=' + OWNER_ID);
+    const data = await res.json();
+    if (data.error) return;
+
+    const s = data.summary;
+
+    document.getElementById('kpiGrid').innerHTML =
+        kpi('{{ _("Buildings") }}', s.total_buildings, '', '', 'bi-buildings') +
+        kpi('{{ _("Units") }}', s.occupied_units + ' / ' + s.total_units, '{{ _("Occupied / Total Units") }}', '', 'bi-door-open') +
+        kpi('{{ _("Vacancy Rate") }}', s.vacancy_rate + '%', '', s.vacancy_rate > 20 ? 'danger' : (s.vacancy_rate > 10 ? 'warning' : 'success'), 'bi-graph-down') +
+        kpi('{{ _("Active Contracts") }}', s.active_contracts, '', '', 'bi-file-earmark-text') +
+        kpi('{{ _("Overdue Payments") }}', s.overdue_count, fmtD(s.overdue_amount) + ' ' + SAR, s.overdue_count > 0 ? 'danger' : '', 'bi-exclamation-triangle') +
+        kpi('{{ _("Annual Rent") }}', fmt(s.total_annual_rent), SAR, '', 'bi-cash-stack') +
+        kpi('{{ _("Net Annual Income") }}', fmt(s.net_annual_income), SAR + ' · {{ _("After all fees") }}', 'success', 'bi-wallet2') +
+        kpi('{{ _("Mgmt Fees") }}', fmt(s.total_annual_mgmt), SAR + (s.total_annual_agent > 0 ? ' + ' + fmt(s.total_annual_agent) + ' {{ _("agent") }}' : ''), '', 'bi-percent');
+
+    const exp = data.expiring_contracts;
+    document.getElementById('expiryBadges').innerHTML =
+        expiryBadge(exp['30_days'], '30 {{ _("days") }}', 'rgba(202,53,33,0.12)', 'var(--red-500)') +
+        expiryBadge(exp['60_days'], '60 {{ _("days") }}', 'rgba(245,192,0,0.12)', 'var(--yellow-500)') +
+        expiryBadge(exp['90_days'], '90 {{ _("days") }}', 'rgba(34,197,94,0.12)', '#22C55E');
+
+    // Revenue chart
+    const ctx1 = document.getElementById('revenueChart').getContext('2d');
+    if (revenueChart) revenueChart.destroy();
+    revenueChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: data.monthly_chart.labels,
+            datasets: [
+                { label: '{{ _("Collected") }}', data: data.monthly_chart.collected, backgroundColor: BRAND + 'B3', borderRadius: 6, borderSkipped: false },
+                { label: '{{ _("Expected") }}', data: data.monthly_chart.expected, backgroundColor: 'rgba(158,158,158,0.25)', borderRadius: 6, borderSkipped: false },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16 } } },
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,0.08)' } }, x: { grid: { display: false } } },
+        }
+    });
+
+    // Status pie
+    const ctx2 = document.getElementById('statusPie').getContext('2d');
+    if (statusPie) statusPie.destroy();
+    statusPie = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['{{ _("Collected") }}', '{{ _("Pending") }}', '{{ _("Overdue") }}'],
+            datasets: [{
+                data: [data.income_pie.collected, data.income_pie.pending, data.income_pie.overdue],
+                backgroundColor: [BRAND, '#F5C000', '#CA3521'],
+                borderWidth: 0,
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '65%',
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 14 } } }
+        }
+    });
+
+    // Building chart
+    if (data.buildings.length) {
+        const ctx3 = document.getElementById('buildingChart').getContext('2d');
+        if (buildingChart) buildingChart.destroy();
+        buildingChart = new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: data.buildings.map(function(b) { return b.name; }),
+                datasets: [
+                    { label: '{{ _("Occupied") }}', data: data.buildings.map(function(b) { return b.occupied; }), backgroundColor: BRAND + 'B3', borderRadius: 6 },
+                    { label: '{{ _("Total Units") }}', data: data.buildings.map(function(b) { return b.units; }), backgroundColor: 'rgba(158,158,158,0.25)', borderRadius: 6 },
+                ]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16 } } },
+                scales: { x: { beginAtZero: true, grid: { color: 'rgba(128,128,128,0.08)' } }, y: { grid: { display: false } } },
+            }
+        });
+    }
+}
+
+function kpi(label, value, sub, cls, icon) {
+    return '<div class="kpi-card ' + (cls||'') + '">' +
+        (icon ? '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px"><i class="bi ' + icon + '" style="font-size:1rem;opacity:0.4"></i><div class="kpi-label">' + label + '</div></div>' : '<div class="kpi-label">' + label + '</div>') +
+        '<div class="kpi-value animate-number">' + value + '</div>' +
+        (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') +
+    '</div>';
+}
+
+function expiryBadge(count, label, bg, color) {
+    return '<div class="expiry-badge" style="background:' + bg + ';color:' + color + '">' +
+        '<div class="eb-count">' + count + '</div>' +
+        '<div class="eb-label">' + label + '</div></div>';
+}
+
+/* Financial Report */
+async function loadReport() {
+    var m = document.getElementById('reportMonth').value;
+    var y = document.getElementById('reportYear').value;
+    var area = document.getElementById('reportArea');
+    area.innerHTML = '<div style="padding:40px;text-align:center"><div class="skeleton skeleton--line"></div><div class="skeleton skeleton--line" style="width:70%"></div></div>';
+
+    var res = await fetch('/portal/api/financial-report?owner_id=' + OWNER_ID + '&year=' + y + '&month=' + m);
+    var data = await res.json();
+    if (data.error) { area.innerHTML = '<div class="empty-state">' + data.error + '</div>'; return; }
+
+    var html = '<div style="padding:20px" id="printableReport">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">';
+    html += '<div><strong style="font-size:1.1rem;color:var(--text-primary)">' + data.owner.name + '</strong><br><span class="mono" style="color:var(--text-muted);font-size:0.82rem">' + data.period + '</span></div></div>';
+
+    var t = data.totals;
+    html += '<div class="kpi-grid" style="margin-bottom:20px">' +
+        kpi('{{ _("Gross Rent") }}', fmtD(t.gross_rent) + ' ' + SAR, '', '', 'bi-cash') +
+        kpi('{{ _("Collected") }}', fmtD(t.collected) + ' ' + SAR, '', 'success', 'bi-check-circle') +
+        kpi('{{ _("Pending") }}', fmtD(t.pending) + ' ' + SAR, '', t.pending > 0 ? 'danger' : '', 'bi-hourglass-split') +
+        kpi('{{ _("Mgmt Fees") }}', fmtD(t.management_fees) + ' ' + SAR, '', '', 'bi-percent') +
+        kpi('{{ _("Agent Fees") }}', fmtD(t.agent_fees) + ' ' + SAR, '', '', 'bi-person') +
+        kpi('{{ _("Ejar Fees") }}', fmtD(t.ejar_fees) + ' ' + SAR, '', '', 'bi-file-text') +
+        kpi('{{ _("Net Owner Income") }}', fmtD(t.net_owner_income) + ' ' + SAR, '', 'success', 'bi-wallet2') +
+    '</div>';
+
+    html += '<div class="table-responsive"><table class="report-table"><thead><tr>' +
+        '<th>{{ _("Building") }}</th><th>{{ _("Unit") }}</th><th>{{ _("Tenant") }}</th>' +
+        '<th>{{ _("Due Date") }}</th><th>{{ _("Amount") }}</th><th>{{ _("Mgmt Fee") }}</th>' +
+        '<th>{{ _("Agent Fee") }}</th><th>{{ _("Owner Share") }}</th><th>{{ _("Status") }}</th>' +
+    '</tr></thead><tbody>';
+
+    data.payments.forEach(function(p) {
+        var sc = 'badge-' + p.status;
+        html += '<tr><td>' + p.building + '</td><td class="mono">' + p.unit + '</td><td>' + p.tenant + '</td>' +
+            '<td class="mono">' + p.due_date + '</td><td class="mono">' + fmtD(p.amount) + '</td>' +
+            '<td class="mono" style="color:var(--red-400)">' + fmtD(p.mgmt_fee) + '</td>' +
+            '<td class="mono" style="color:var(--red-400)">' + fmtD(p.agent_fee) + '</td>' +
+            '<td class="mono" style="font-weight:700">' + fmtD(p.owner_share) + '</td>' +
+            '<td><span class="badge ' + sc + '">' + p.status + '</span></td></tr>';
+    });
+
+    html += '<tr class="total-row"><td colspan="4"><strong>{{ _("Total") }}</strong></td>' +
+        '<td class="mono">' + fmtD(t.gross_rent) + '</td><td class="mono">' + fmtD(t.management_fees) + '</td>' +
+        '<td class="mono">' + fmtD(t.agent_fees) + '</td><td class="mono" style="font-weight:700">' + fmtD(t.net_owner_income) + '</td><td></td></tr>';
+
+    html += '</tbody></table></div></div>';
+    area.innerHTML = html;
+}
+
+function printReport() {
+    var el = document.getElementById('printableReport');
+    if (!el) { loadReport().then(function() { setTimeout(printReport, 500); }); return; }
+    window.print();
+}
+
+loadDashboard();
+</script>
+{% endif %}
+{% endblock %}

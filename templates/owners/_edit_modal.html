@@ -1,0 +1,65 @@
+<div class="modal fade" id="ownerEditModal" tabindex="-1" aria-labelledby="ownerEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ownerEditModalLabel">{{ _('Edit Owner') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+            </div>
+            <form method="POST" action="{{ url_for('owners.edit', owner_id=owner.id) }}">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="edit_owner_name" class="form-label">{{ _('Name') }} *</label>
+                            <input type="text" class="form-control" id="edit_owner_name" name="name" value="{{ owner.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_name_en" class="form-label">{{ _('Name in English') }}</label>
+                            <input type="text" class="form-control" id="edit_owner_name_en" name="name_en" value="{{ owner.name_en or '' }}" placeholder="{{ _('Optional') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_name_ar" class="form-label">{{ _('Name in Arabic') }}</label>
+                            <input type="text" class="form-control" id="edit_owner_name_ar" name="name_ar" value="{{ owner.name_ar or '' }}" placeholder="{{ _('Optional') }}" dir="rtl">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_phone" class="form-label">{{ _('Phone') }}</label>
+                            <input type="text" class="form-control" id="edit_owner_phone" name="phone" value="{{ owner.phone or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_email" class="form-label">{{ _('Email') }}</label>
+                            <input type="email" class="form-control" id="edit_owner_email" name="email" value="{{ owner.email or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_nid" class="form-label">{{ _('National ID') }}</label>
+                            <input type="text" class="form-control" id="edit_owner_nid" name="national_id" value="{{ owner.national_id or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_bank" class="form-label">{{ _('Bank Name') }}</label>
+                            <input type="text" class="form-control" id="edit_owner_bank" name="bank_name" value="{{ owner.bank_name or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_iban" class="form-label">{{ _('IBAN') }}</label>
+                            <input type="text" class="form-control" id="edit_owner_iban" name="iban" value="{{ owner.iban or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label for="edit_owner_notes" class="form-label">{{ _('Notes') }}</label>
+                            <textarea class="form-control" id="edit_owner_notes" name="notes" rows="3">{{ owner.notes or '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_notes_en" class="form-label">{{ _('Notes in English') }}</label>
+                            <textarea class="form-control" id="edit_owner_notes_en" name="notes_en" rows="2" placeholder="{{ _('Optional') }}">{{ owner.notes_en or '' }}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_owner_notes_ar" class="form-label">{{ _('Notes in Arabic') }}</label>
+                            <textarea class="form-control" id="edit_owner_notes_ar" name="notes_ar" rows="2" placeholder="{{ _('Optional') }}" dir="rtl">{{ owner.notes_ar or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> {{ _('Save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

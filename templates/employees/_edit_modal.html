@@ -1,0 +1,53 @@
+{% if current_user.is_admin %}
+<div class="modal fade" id="employeeEditModal" tabindex="-1" aria-labelledby="employeeEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="employeeEditModalLabel">{{ _('Edit Employee') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+            </div>
+            <form method="POST" action="{{ url_for('employees.edit', employee_id=employee.id) }}">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Full Name') }} *</label>
+                            <input type="text" class="form-control" name="name" value="{{ employee.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Name in English') }}</label>
+                            <input type="text" class="form-control" name="name_en" value="{{ employee.name_en or '' }}" placeholder="{{ _('Optional') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Name in Arabic') }}</label>
+                            <input type="text" class="form-control" name="name_ar" value="{{ employee.name_ar or '' }}" placeholder="{{ _('Optional') }}" dir="rtl">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Phone') }}</label>
+                            <input type="text" class="form-control" name="phone" value="{{ employee.phone or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">{{ _('Assigned Owners') }}</label>
+                            <div class="row g-2 assigned-owners-grid">
+                                {% for owner in all_owners %}
+                                <div class="col-md-4 col-sm-6">
+                                    <div class="form-check form-check--card">
+                                        <input class="form-check-input" type="checkbox" name="owner_ids" value="{{ owner.id }}" id="edit_emp_owner_{{ owner.id }}"
+                                            {% if owner in employee.owners %}checked{% endif %}>
+                                        <label class="form-check-label" for="edit_emp_owner_{{ owner.id }}">{{ owner|localized('name') }}</label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> {{ _('Save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}

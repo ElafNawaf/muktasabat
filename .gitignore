@@ -22,3 +22,5 @@ logs/
 htmlcov/
 .coverage
 .pytest_cache/
+messages.pot
+vendor_polib/

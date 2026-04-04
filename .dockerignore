@@ -1,0 +1,7 @@
+# Local dev artifacts (avoid root-owned files shadowing /app/logs in the image)
+logs/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.git/

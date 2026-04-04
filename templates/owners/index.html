@@ -4,9 +4,11 @@
 {% block content %}
 <div class="page-header">
     <h1>{{ _('Owners') }}</h1>
-    <a href="{{ url_for('owners.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> {{ _('Add Owner') }}
-    </a>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ownerCreateModal">
+            <i class="bi bi-plus-lg"></i> {{ _('Add Owner') }}
+        </button>
+    </div>
 </div>
 
 <div class="card">
@@ -25,20 +27,43 @@
                 <tbody>
                     {% for owner in owners %}
                     <tr>
-                        <td><a href="{{ url_for('owners.detail', owner_id=owner.id) }}">{{ owner.name }}</a></td>
+                        <td><a href="{{ url_for('owners.detail', owner_id=owner.id) }}">{{ owner|localized('name') }}</a></td>
                         <td>{{ owner.phone or '-' }}</td>
                         <td>{{ owner.national_id or '-' }}</td>
                         <td><span class="badge bg-info">{{ owner.buildings|length }}</span></td>
                         <td>
-                            <a href="{{ url_for('owners.edit', owner_id=owner.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('owners.detail', owner_id=owner.id, edit=1) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="5" class="text-center text-muted py-4">{{ _('No owners yet. Add your first owner.') }}</td></tr>
+                    <tr><td colspan="5" class="table-empty-message">
+                        <div class="empty-placeholder">
+                            <i class="bi bi-people" aria-hidden="true"></i>
+                            <p>{{ _('No owners yet. Add your first owner.') }}</p>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#ownerCreateModal">
+                                <i class="bi bi-plus-lg"></i> {{ _('Add Owner') }}
+                            </button>
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+{% include 'owners/_create_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('new') %}
+<script>
+(function () {
+    var el = document.getElementById('ownerCreateModal');
+    if (!el || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+    bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, keyboard: true, focus: true }).show();
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -4,9 +4,11 @@
 {% block content %}
 <div class="page-header">
     <h1>{{ _('Contracts') }}</h1>
-    <a href="{{ url_for('contracts.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> {{ _('New Contract') }}
-    </a>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#contractCreateModal">
+            <i class="bi bi-plus-lg"></i> {{ _('New Contract') }}
+        </button>
+    </div>
 </div>
 
 <div class="card">
@@ -29,9 +31,9 @@
                     {% for contract in contracts %}
                     <tr>
                         <td><a href="{{ url_for('contracts.detail', contract_id=contract.id) }}">{{ contract.contract_number }}</a></td>
-                        <td>{{ contract.tenant.name }}</td>
+                        <td>{{ contract.tenant|localized('name') }}</td>
                         <td>{{ contract.unit.number }}</td>
-                        <td>{{ contract.unit.building.name }}</td>
+                        <td>{{ contract.unit.building|localized('name') }}</td>
                         <td>{{ contract.start_date.strftime('%Y-%m-%d') }}</td>
                         <td>{{ contract.end_date.strftime('%Y-%m-%d') }}</td>
                         <td>{{ contract.payment_cycle }} {{ _('months') }}</td>
@@ -42,11 +44,34 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="8" class="text-center text-muted py-4">{{ _('No contracts yet') }}</td></tr>
+                    <tr><td colspan="8" class="table-empty-message">
+                        <div class="empty-placeholder">
+                            <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
+                            <p>{{ _('No contracts yet') }}</p>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#contractCreateModal">
+                                <i class="bi bi-plus-lg"></i> {{ _('New Contract') }}
+                            </button>
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+{% include 'contracts/_create_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('new') %}
+<script>
+(function () {
+    var el = document.getElementById('contractCreateModal');
+    if (!el || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+    bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, keyboard: true, focus: true }).show();
+})();
+</script>
+{% endif %}
 {% endblock %}

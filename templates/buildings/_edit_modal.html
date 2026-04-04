@@ -1,0 +1,58 @@
+<div class="modal fade" id="buildingEditModal" tabindex="-1" aria-labelledby="buildingEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="buildingEditModalLabel">{{ _('Edit Building') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+            </div>
+            <form method="POST" action="{{ url_for('buildings.edit', building_id=building.id) }}">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Owner') }} *</label>
+                            <select class="form-select" name="owner_id" required>
+                                <option value="">{{ _('Select Owner') }}</option>
+                                {% for owner in building.owner.query.order_by('name').all() %}
+                                <option value="{{ owner.id }}" {% if building.owner_id == owner.id %}selected{% endif %}>{{ owner|localized('name') }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Building Name') }} *</label>
+                            <input type="text" class="form-control" name="name" value="{{ building.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Name in English') }}</label>
+                            <input type="text" class="form-control" name="name_en" value="{{ building.name_en or '' }}" placeholder="{{ _('Optional') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Name in Arabic') }}</label>
+                            <input type="text" class="form-control" name="name_ar" value="{{ building.name_ar or '' }}" placeholder="{{ _('Optional') }}" dir="rtl">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">{{ _('Address') }}</label>
+                            <input type="text" class="form-control" name="address" value="{{ building.address or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('City') }}</label>
+                            <input type="text" class="form-control" name="city" value="{{ building.city or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('District') }}</label>
+                            <input type="text" class="form-control" name="district" value="{{ building.district or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">{{ _('Notes') }}</label>
+                            <textarea class="form-control" name="notes" rows="3">{{ building.notes or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> {{ _('Save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

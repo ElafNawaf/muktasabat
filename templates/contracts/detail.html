@@ -5,7 +5,7 @@
 <div class="page-header">
     <h1>{{ _('Contract') }} {{ contract.contract_number }}</h1>
     <div class="d-flex gap-2">
-        <a href="{{ url_for('contracts.edit', contract_id=contract.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#contractEditModal"><i class="bi bi-pencil"></i> {{ _('Edit') }}</button>
         {% if contract.status == 'active' %}
         <form method="POST" action="{{ url_for('contracts.terminate', contract_id=contract.id) }}" onsubmit="return confirm('{{ _('Are you sure you want to terminate this contract?') }}')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -21,9 +21,9 @@
             <div class="card-header"><h5 class="mb-0">{{ _('Contract Info') }}</h5></div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>{{ _('Tenant') }}</dt><dd><a href="{{ url_for('tenants.detail', tenant_id=contract.tenant.id) }}">{{ contract.tenant.name }}</a></dd>
-                    <dt>{{ _('Unit') }}</dt><dd><a href="{{ url_for('units.detail', unit_id=contract.unit.id) }}">{{ contract.unit.number }} - {{ contract.unit.building.name }}</a></dd>
-                    <dt>{{ _('Owner') }}</dt><dd>{{ contract.unit.building.owner.name }}</dd>
+                    <dt>{{ _('Tenant') }}</dt><dd><a href="{{ url_for('tenants.detail', tenant_id=contract.tenant.id) }}">{{ contract.tenant|localized('name') }}</a></dd>
+                    <dt>{{ _('Unit') }}</dt><dd><a href="{{ url_for('units.detail', unit_id=contract.unit.id) }}">{{ contract.unit.number }} - {{ contract.unit.building|localized('name') }}</a></dd>
+                    <dt>{{ _('Owner') }}</dt><dd>{{ contract.unit.building.owner|localized('name') }}</dd>
                     <dt>{{ _('Start Date') }}</dt><dd>{{ contract.start_date.strftime('%Y-%m-%d') }}</dd>
                     <dt>{{ _('End Date') }}</dt><dd>{{ contract.end_date.strftime('%Y-%m-%d') }}</dd>
                     <dt>{{ _('Monthly Rent') }}</dt><dd>{{ '{:,.2f}'.format(contract.rent_amount) }} {{ _('SAR') }}</dd>
@@ -93,4 +93,12 @@
         </div>
     </div>
 </div>
+
+{% include 'contracts/_edit_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('edit') %}
+<script>(function(){var el=document.getElementById('contractEditModal');if(el&&typeof bootstrap!=='undefined'&&bootstrap.Modal)bootstrap.Modal.getOrCreateInstance(el).show();})();</script>
+{% endif %}
 {% endblock %}

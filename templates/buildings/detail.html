@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ building.name }}{% endblock %}
+{% block title %}{{ building|localized('name') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>{{ building.name }}</h1>
+    <h1>{{ building|localized('name') }}</h1>
     <div class="d-flex gap-2">
-        <a href="{{ url_for('buildings.edit', building_id=building.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#buildingEditModal"><i class="bi bi-pencil"></i> {{ _('Edit') }}</button>
         <form method="POST" action="{{ url_for('buildings.delete', building_id=building.id) }}" onsubmit="return confirm('{{ _('Are you sure?') }}')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
@@ -19,10 +19,10 @@
             <div class="card-header"><h5 class="mb-0">{{ _('Building Info') }}</h5></div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>{{ _('Owner') }}</dt><dd><a href="{{ url_for('owners.detail', owner_id=building.owner.id) }}">{{ building.owner.name }}</a></dd>
-                    <dt>{{ _('Address') }}</dt><dd>{{ building.address or '-' }}</dd>
-                    <dt>{{ _('City') }}</dt><dd>{{ building.city or '-' }}</dd>
-                    <dt>{{ _('District') }}</dt><dd>{{ building.district or '-' }}</dd>
+                    <dt>{{ _('Owner') }}</dt><dd><a href="{{ url_for('owners.detail', owner_id=building.owner.id) }}">{{ building.owner|localized('name') }}</a></dd>
+                    <dt>{{ _('Address') }}</dt><dd>{{ building|localized('address') or '-' }}</dd>
+                    <dt>{{ _('City') }}</dt><dd>{{ building|localized('city') or '-' }}</dd>
+                    <dt>{{ _('District') }}</dt><dd>{{ building|localized('district') or '-' }}</dd>
                 </dl>
             </div>
         </div>
@@ -31,7 +31,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">{{ _('Units') }}</h5>
-                <a href="{{ url_for('units.create') }}?building_id={{ building.id }}" class="btn btn-sm btn-primary">
+                <a href="{{ url_for('units.index', new=1, building_id=building.id) }}" class="btn btn-sm btn-primary">
                     <i class="bi bi-plus-lg"></i> {{ _('Add Unit') }}
                 </a>
             </div>
@@ -51,7 +51,7 @@
                             {% for unit in building.units %}
                             <tr>
                                 <td><a href="{{ url_for('units.detail', unit_id=unit.id) }}">{{ unit.number }}</a></td>
-                                <td>{{ unit.name }}</td>
+                                <td>{{ unit|localized('name') }}</td>
                                 <td>{{ _(unit.unit_type or '-') }}</td>
                                 <td>{{ '{:,.2f}'.format(unit.rent_amount) }} {{ _('SAR') }}</td>
                                 <td>
@@ -70,4 +70,14 @@
         </div>
     </div>
 </div>
+
+{% include 'buildings/_edit_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('edit') %}
+<script>
+(function(){var el=document.getElementById('buildingEditModal');if(el&&typeof bootstrap!=='undefined'&&bootstrap.Modal)bootstrap.Modal.getOrCreateInstance(el).show();})();
+</script>
+{% endif %}
 {% endblock %}

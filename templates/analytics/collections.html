@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Collection Management') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-clock-history" style="opacity:0.5;margin-inline-end:8px"></i>{{ _('Collection Management') }}</h1>
+        <p class="subtitle">{{ _('Aging receivables analysis and follow-up tracking') }}</p>
+    </div>
+</div>
+
+<div class="kpi-grid anim-stagger" id="agingKPIs">
+    {% for _ in range(5) %}<div class="kpi-card"><div class="skeleton skeleton--line"></div></div>{% endfor %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">{{ _('Aging Receivables') }}</h5></div>
+    <div class="card-body"><canvas id="agingChart" style="max-height:260px"></canvas></div>
+</div>
+
+<!-- Aging buckets with detail tables -->
+{% for bucket_key, bucket_label, color in [('1_30', '1-30 days', 'var(--yellow-500)'), ('31_60', '31-60 days', '#E68A00'), ('61_90', '61-90 days', 'var(--red-400)'), ('90_plus', '90+ days', 'var(--red-500)')] %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0" style="display:flex;align-items:center;gap:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:{{ color }}"></span>
+            {{ bucket_label }} {{ _('Overdue') }}
+            <span class="badge badge-pending" id="count_{{ bucket_key }}" style="margin-inline-start:auto">0</span>
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="data-tbl">
+                <thead><tr>
+                    <th>{{ _('Tenant') }}</th><th>{{ _('Phone') }}</th><th>{{ _('Unit') }}</th>
+                    <th>{{ _('Building') }}</th><th>{{ _('Owner') }}</th><th>{{ _('Amount') }}</th>
+                    <th>{{ _('Due Date') }}</th><th>{{ _('Days Overdue') }}</th>
+                </tr></thead>
+                <tbody id="rows_{{ bucket_key }}">
+                    <tr><td colspan="8" class="empty-state">{{ _('Loading...') }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const BRAND = getComputedStyle(document.documentElement).getPropertyValue('--brand-500').trim();
+const SAR = '{{ _("SAR") }}';
+const LOCALE = {{ locale_js|tojson }};
+function fmt(n){return Number(n).toLocaleString(LOCALE,{maximumFractionDigits:0});}
+function fmtD(n){return Number(n).toLocaleString(LOCALE,{minimumFractionDigits:2,maximumFractionDigits:2});}
+function kpi(l,v,s,c,i){return '<div class="kpi-card '+(c||'')+'"><div style="display:flex;align-items:center;gap:10px;margin-bottom:2px"><i class="bi '+i+'" style="font-size:1rem;opacity:0.4"></i><div class="kpi-label">'+l+'</div></div><div class="kpi-value animate-number">'+v+'</div>'+(s?'<div class="kpi-sub">'+s+'</div>':'')+'</div>';}
+
+async function load() {
+    var data = await fetch('/analytics/api/aging').then(r=>r.json());
+    var b = data.buckets;
+
+    document.getElementById('agingKPIs').innerHTML =
+        kpi('{{ _("Total Overdue") }}', fmt(data.total_overdue)+' '+SAR, data.total_count+' {{ _("payments") }}', 'danger', 'bi-exclamation-triangle') +
+        kpi('1-30 {{ _("days") }}', fmt(b['1_30'].amount)+' '+SAR, b['1_30'].count+' {{ _("payments") }}', 'warning', 'bi-clock') +
+        kpi('31-60 {{ _("days") }}', fmt(b['31_60'].amount)+' '+SAR, b['31_60'].count, 'warning', 'bi-clock-history') +
+        kpi('61-90 {{ _("days") }}', fmt(b['61_90'].amount)+' '+SAR, b['61_90'].count, 'danger', 'bi-alarm') +
+        kpi('90+ {{ _("days") }}', fmt(b['90_plus'].amount)+' '+SAR, b['90_plus'].count, 'danger', 'bi-exclamation-octagon');
+
+    new Chart(document.getElementById('agingChart'),{
+        type:'bar',data:{
+            labels:['1-30','31-60','61-90','90+'],
+            datasets:[{data:[b['1_30'].amount,b['31_60'].amount,b['61_90'].amount,b['90_plus'].amount],backgroundColor:['rgba(245,192,0,0.6)','rgba(230,138,0,0.6)','rgba(213,93,77,0.6)','rgba(202,53,33,0.7)'],borderRadius:6}]
+        },options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}
+    });
+
+    ['1_30','31_60','61_90','90_plus'].forEach(function(key){
+        var items = b[key].items;
+        document.getElementById('count_'+key).textContent = items.length;
+        if(!items.length){document.getElementById('rows_'+key).innerHTML='<tr><td colspan="8" class="empty-state">{{ _("No overdue payments") }}</td></tr>';return;}
+        document.getElementById('rows_'+key).innerHTML = items.map(function(r){
+            return '<tr><td><strong>'+r.tenant+'</strong></td><td class="mono">'+r.tenant_phone+'</td><td class="mono">'+r.unit+'</td><td>'+r.building+'</td><td>'+r.owner+'</td><td class="mono" style="font-weight:700">'+fmtD(r.amount)+' '+SAR+'</td><td class="mono">'+r.due_date+'</td><td><span class="badge badge-overdue">'+r.days_overdue+' {{ _("days") }}</span></td></tr>';
+        }).join('');
+    });
+}
+load();
+</script>
+{% endblock %}

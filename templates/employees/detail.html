@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ employee.name }}{% endblock %}
+{% block title %}{{ employee|localized('name') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>{{ employee.name }}</h1>
+    <h1>{{ employee|localized('name') }}</h1>
     {% if current_user.is_admin %}
-    <a href="{{ url_for('employees.edit', employee_id=employee.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#employeeEditModal"><i class="bi bi-pencil"></i> {{ _('Edit') }}</button>
     {% endif %}
 </div>
 
@@ -15,7 +15,7 @@
             <div class="card-header"><h5 class="mb-0">{{ _('Employee Info') }}</h5></div>
             <div class="card-body">
                 <dl class="detail-list">
-                    <dt>{{ _('Name') }}</dt><dd>{{ employee.name }}</dd>
+                    <dt>{{ _('Name') }}</dt><dd>{{ employee|localized('name') }}</dd>
                     <dt>{{ _('Phone') }}</dt><dd>{{ employee.phone or '-' }}</dd>
                     <dt>{{ _('Username') }}</dt><dd>{{ employee.user.username }}</dd>
                     <dt>{{ _('Role') }}</dt><dd>{{ employee.user.role }}</dd>
@@ -39,7 +39,7 @@
                         <tbody>
                             {% for owner in employee.owners %}
                             <tr>
-                                <td><a href="{{ url_for('owners.detail', owner_id=owner.id) }}">{{ owner.name }}</a></td>
+                                <td><a href="{{ url_for('owners.detail', owner_id=owner.id) }}">{{ owner|localized('name') }}</a></td>
                                 <td>{{ owner.phone or '-' }}</td>
                                 <td><span class="badge bg-info">{{ owner.buildings|length }}</span></td>
                             </tr>
@@ -53,4 +53,12 @@
         </div>
     </div>
 </div>
+
+{% include 'employees/_edit_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('edit') %}
+<script>(function(){var el=document.getElementById('employeeEditModal');if(el&&typeof bootstrap!=='undefined'&&bootstrap.Modal)bootstrap.Modal.getOrCreateInstance(el).show();})();</script>
+{% endif %}
 {% endblock %}

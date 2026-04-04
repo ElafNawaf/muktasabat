@@ -8,7 +8,7 @@
         <p class="subtitle">{{ _('Browse owners, buildings, units, contracts, and payments.') }}</p>
     </div>
     <div class="header-actions">
-        <a class="btn-add" href="{{ url_for('owners.create') }}">
+        <a class="btn-add" href="{{ url_for('owners.index', new=1) }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             {{ _('Add Owner') }}
         </a>
@@ -29,8 +29,8 @@
 
     <div class="drill-detail" id="detailPanel">
         <div class="drill-empty" id="emptyState">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <p>{{ _('Select an owner to view their buildings, units, and contracts') }}</p>
+            <i class="bi bi-house-door drill-empty__icon" aria-hidden="true"></i>
+            <p class="drill-empty__title">{{ _('Select an owner to view their buildings, units, and contracts') }}</p>
         </div>
         <div id="ownerDetail" style="display:none;"></div>
     </div>

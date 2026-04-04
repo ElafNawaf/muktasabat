@@ -14,7 +14,9 @@ COPY . .
 # Compile translations
 RUN pybabel compile -d app/translations
 
-RUN adduser --disabled-password --gecos '' appuser
+RUN adduser --disabled-password --gecos '' appuser \
+    && mkdir -p /app/logs \
+    && chown -R appuser:appuser /app/logs
 USER appuser
 
 EXPOSE 5000

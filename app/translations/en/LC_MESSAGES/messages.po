@@ -3,21 +3,1668 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Muktasbat 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-04 00:00+0300\n"
+"POT-Creation-Date: 2026-04-04 20:24+0300\n"
 "PO-Revision-Date: 2026-04-04 00:00+0300\n"
 "Last-Translator: \n"
-"Language: en\n"
 "Language-Team: en\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Generated-By: Babel 2.14.0\n"
 
+#: app/routes/auth.py:39
+msgid "Invalid username or password"
+msgstr "Invalid username or password"
+
+#: app/routes/auth.py:56
+msgid "Username already exists"
+msgstr "Username already exists"
+
+#: app/routes/auth.py:58
+msgid "Email already exists"
+msgstr "Email already exists"
+
+#: app/routes/auth.py:60
+msgid "Password must be at least 6 characters"
+msgstr "Password must be at least 6 characters"
+
+#: app/routes/auth.py:66
+msgid "Registration successful. Please log in."
+msgstr "Registration successful. Please log in."
+
+#: app/routes/auth.py:91 app/routes/employees.py:33 app/routes/employees.py:71
+msgid "Access denied"
+msgstr "Access denied"
+
+#: app/routes/buildings.py:38
+msgid "Building created successfully"
+msgstr "Building created successfully"
+
+#: app/routes/buildings.py:63
+msgid "Building updated successfully"
+msgstr "Building updated successfully"
+
+#: app/routes/buildings.py:75
+msgid "Building deleted"
+msgstr "Building deleted"
+
+#: app/routes/contracts.py:66
+msgid "Contract created successfully"
+msgstr "Contract created successfully"
+
+#: app/routes/contracts.py:92
+msgid "Contract updated successfully"
+msgstr "Contract updated successfully"
+
+#: app/routes/contracts.py:108
+msgid "Contract terminated"
+msgstr "Contract terminated"
+
+#: app/routes/employees.py:54
+msgid "Employee created successfully"
+msgstr "Employee created successfully"
+
+#: app/routes/employees.py:86
+msgid "Employee updated successfully"
+msgstr "Employee updated successfully"
+
+#: app/routes/expenses.py:43
+msgid "Expense recorded"
+msgstr "Expense recorded"
+
+#: app/routes/expenses.py:53
+msgid "Expense deleted"
+msgstr "Expense deleted"
+
+#: app/routes/owners.py:36
+msgid "Owner created successfully"
+msgstr "Owner created successfully"
+
+#: app/routes/owners.py:62
+msgid "Owner updated successfully"
+msgstr "Owner updated successfully"
+
+#: app/routes/owners.py:73
+msgid "Owner deleted"
+msgstr "Owner deleted"
+
+#: app/routes/payments.py:40
+msgid "Payment recorded successfully"
+msgstr "Payment recorded successfully"
+
+#: app/routes/payments.py:53
+msgid "Payment updated"
+msgstr "Payment updated"
+
+#: app/routes/tenants.py:33
+msgid "Tenant created successfully"
+msgstr "Tenant created successfully"
+
+#: app/routes/tenants.py:57
+msgid "Tenant updated successfully"
+msgstr "Tenant updated successfully"
+
+#: app/routes/tenants.py:68
+msgid "Tenant deleted"
+msgstr "Tenant deleted"
+
+#: app/routes/units.py:45
+msgid "Unit created successfully"
+msgstr "Unit created successfully"
+
+#: app/routes/units.py:77
+msgid "Unit updated successfully"
+msgstr "Unit updated successfully"
+
+#: app/routes/units.py:89
+msgid "Unit deleted"
+msgstr "Unit deleted"
+
+#: templates/admin_users.html:2 templates/admin_users.html:6
+#: templates/base.html:122
+msgid "User Management"
+msgstr "Property Management"
+
+#: templates/admin_users.html:15 templates/employees/detail.html:20
+#: templates/employees/index.html:24 templates/login.html:20
+#: templates/owner_portal/subscription.html:149 templates/register.html:21
+msgid "Username"
+msgstr "Username"
+
+#: templates/admin_users.html:16 templates/owner_portal/subscription.html:153
+#: templates/owners/_create_modal.html:21 templates/owners/detail.html:23
+#: templates/owners/form.html:23 templates/register.html:25
+#: templates/tenants/_create_modal.html:25 templates/tenants/detail.html:24
+#: templates/tenants/form.html:27
+msgid "Email"
+msgstr "Email"
+
+#: templates/admin_users.html:17 templates/employees/detail.html:21
+msgid "Role"
+msgstr "Role"
+
+#: templates/admin_users.html:18 templates/buildings/detail.html:47
+#: templates/contracts/detail.html:31 templates/contracts/detail.html:62
+#: templates/contracts/form.html:60 templates/contracts/index.html:27
+#: templates/dashboard.html:74 templates/dashboard.html:116
+#: templates/owner_portal/dashboard.html:257
+#: templates/owner_portal/subscription.html:98
+#: templates/owner_portal/subscription.html:118
+#: templates/payments/index.html:26 templates/tenants/detail.html:41
+#: templates/units/detail.html:27 templates/units/detail.html:69
+#: templates/units/index.html:26
+msgid "Status"
+msgstr "Status"
+
+#: templates/admin_users.html:19
+msgid "Created"
+msgstr "Created"
+
+#: templates/admin_users.html:20 templates/buildings/index.html:25
+#: templates/contracts/detail.html:64 templates/employees/index.html:26
+#: templates/expenses/index.html:28 templates/owners/index.html:24
+#: templates/payments/index.html:27 templates/tenants/index.html:24
+#: templates/units/index.html:27
+msgid "Actions"
+msgstr "Actions"
+
+#: templates/admin_users.html:30 templates/base.html:119
+msgid "Admin"
+msgstr "Admin"
+
+#: templates/admin_users.html:31
+msgid "Manager"
+msgstr "Manager"
+
+#: templates/admin_users.html:32
+msgid "Viewer"
+msgstr "Viewer"
+
+#: templates/admin_users.html:37 templates/contracts/form.html:62
+msgid "Active"
+msgstr "Active"
+
+#: templates/admin_users.html:37
+msgid "Inactive"
+msgstr "Inactive"
+
+#: templates/admin_users.html:44
+msgid "Deactivate"
+msgstr "Deactivate"
+
+#: templates/admin_users.html:44
+msgid "Activate"
+msgstr "Activate"
+
+#: templates/base.html:11 templates/base.html:41 templates/base.html:158
+#: templates/login.html:8 templates/register.html:8
 msgid "Muktasbat"
 msgstr "Muktasbat"
 
+#: templates/base.html:11 templates/base.html:41
+#: templates/units/_create_modal.html:49 templates/units/form.html:51
 msgid "Property Management"
 msgstr "Property Management"
 
+#: templates/base.html:32
+msgid "Collapse sidebar"
+msgstr "Collapse sidebar"
+
+#: templates/base.html:50
+msgid "Main"
+msgstr "Main"
+
+#: templates/base.html:51 templates/base.html:53 templates/dashboard.html:2
+#: templates/dashboard.html:7
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: templates/base.html:55 templates/base.html:57 templates/dashboard.html:13
+#: templates/drilldown.html:2 templates/drilldown.html:7
+#: templates/drilldown.html:79
+msgid "Properties"
+msgstr "Properties"
+
+#: templates/base.html:61
+msgid "Data"
+msgstr "Data"
+
+#: templates/analytics/company_dashboard.html:108
+#: templates/analytics/employee_performance.html:34 templates/base.html:64
+#: templates/dashboard.html:21 templates/drilldown.html:77
+#: templates/owners/index.html:2 templates/owners/index.html:6
+msgid "Owners"
+msgstr "Owners"
+
+#: templates/base.html:68 templates/tenants/index.html:2
+#: templates/tenants/index.html:6
+msgid "Tenants"
+msgstr "Tenants"
+
+#: templates/base.html:72 templates/contracts/index.html:2
+#: templates/contracts/index.html:6 templates/payments/index.html:58
+#: templates/tenants/detail.html:31 templates/tenants/index.html:23
+#: templates/units/detail.html:52
+msgid "Contracts"
+msgstr "Contracts"
+
+#: templates/base.html:76 templates/payments/index.html:2
+#: templates/payments/index.html:6 templates/payments/index.html:7
+msgid "Payments"
+msgstr "Payments"
+
+#: templates/base.html:80 templates/employees/index.html:2
+#: templates/employees/index.html:6
+msgid "Employees"
+msgstr "Employees"
+
+#: templates/base.html:84
+msgid "Analytics"
+msgstr "Analytics"
+
+#: templates/analytics/company_dashboard.html:2
+#: templates/analytics/company_dashboard.html:7 templates/base.html:87
+msgid "Company Dashboard"
+msgstr "Company Dashboard"
+
+#: templates/base.html:91
+msgid "Collections"
+msgstr "Collections"
+
+#: templates/base.html:95
+msgid "Contract Intel"
+msgstr "Property Management"
+
+#: templates/analytics/company_dashboard.html:189
+#: templates/analytics/expenses.html:78 templates/base.html:99
+#: templates/expenses/index.html:2 templates/expenses/index.html:7
+msgid "Expenses"
+msgstr "Expenses"
+
+#: templates/base.html:103
+msgid "Employee KPIs"
+msgstr "Employee KPIs"
+
+#: templates/base.html:107
+msgid "Portal"
+msgstr "Portal"
+
+#: templates/base.html:110 templates/owner_portal/dashboard.html:2
+#: templates/owner_portal/dashboard.html:7
+msgid "Owner Dashboard"
+msgstr "Owner Dashboard"
+
+#: templates/analytics/company_dashboard.html:133 templates/base.html:114
+#: templates/owner_portal/subscription.html:2
+msgid "Subscriptions"
+msgstr "Subscriptions"
+
+#: templates/base.html:130
+msgid "Signed in as"
+msgstr "Signed in as"
+
+#: templates/base.html:136
+msgid "Light mode"
+msgstr "Light mode"
+
+#: templates/base.html:148
+msgid "Logout"
+msgstr "Logout"
+
+#: templates/dashboard.html:8
+msgid "Overview of your property portfolio"
+msgstr "Overview of your property portfolio"
+
+#: templates/analytics/company_dashboard.html:109
+#: templates/analytics/employee_performance.html:34
+#: templates/buildings/index.html:2 templates/buildings/index.html:6
+#: templates/dashboard.html:25 templates/employees/detail.html:36
+#: templates/owner_portal/dashboard.html:135 templates/owners/detail.html:34
+#: templates/owners/index.html:23
+msgid "Buildings"
+msgstr "Buildings"
+
+#: templates/analytics/company_dashboard.html:110 templates/dashboard.html:29
+msgid "Occupancy"
+msgstr "Occupancy"
+
+#: templates/dashboard.html:41 templates/owner_portal/dashboard.html:136
+msgid "Occupied / Total Units"
+msgstr "Occupied / Total Units"
+
+#: templates/analytics/company_dashboard.html:164
+#: templates/analytics/contracts_intel.html:62
+#: templates/analytics/employee_performance.html:35
+#: templates/dashboard.html:46 templates/owner_portal/dashboard.html:138
+msgid "Active Contracts"
+msgstr "Active Contracts"
+
+#: templates/dashboard.html:50 templates/owner_portal/dashboard.html:139
+msgid "Overdue Payments"
+msgstr "Overdue Payments"
+
+#: templates/dashboard.html:53
+msgid "Requires attention"
+msgstr "Requires attention"
+
+#: templates/dashboard.html:63
+msgid "Recent Contracts"
+msgstr "Recent Contracts"
+
+#: templates/analytics/company_dashboard.html:60 templates/dashboard.html:64
+#: templates/dashboard.html:106
+msgid "View All"
+msgstr "View All"
+
+#: templates/analytics/contracts_intel.html:38
+#: templates/contracts/index.html:20 templates/dashboard.html:71
+#: templates/tenants/detail.html:37 templates/units/detail.html:64
+msgid "Contract #"
+msgstr "Contract #"
+
+#: templates/analytics/collections.html:35
+#: templates/analytics/contracts_intel.html:38
+#: templates/contracts/_create_modal.html:25
+#: templates/contracts/detail.html:24 templates/contracts/form.html:26
+#: templates/contracts/index.html:21 templates/dashboard.html:72
+#: templates/dashboard.html:114 templates/drilldown.html:72
+#: templates/expenses/index.html:112 templates/owner_portal/dashboard.html:255
+#: templates/payments/index.html:22 templates/units/detail.html:65
+msgid "Tenant"
+msgstr "Tenant"
+
+#: templates/analytics/collections.html:35
+#: templates/analytics/contracts_intel.html:39
+#: templates/contracts/_create_modal.html:14
+#: templates/contracts/detail.html:25 templates/contracts/form.html:15
+#: templates/contracts/index.html:22 templates/dashboard.html:73
+#: templates/owner_portal/dashboard.html:255 templates/payments/index.html:23
+#: templates/tenants/detail.html:38 templates/units/detail.html:2
+#: templates/units/detail.html:6
+msgid "Unit"
+msgstr "Unit"
+
+#: templates/contracts/index.html:50 templates/dashboard.html:89
+msgid "No contracts yet"
+msgstr "No contracts yet"
+
+#: templates/contracts/_create_modal.html:6 templates/contracts/form.html:2
+#: templates/contracts/form.html:6 templates/contracts/index.html:9
+#: templates/contracts/index.html:52 templates/dashboard.html:90
+#: templates/drilldown.html:55 templates/units/detail.html:55
+msgid "New Contract"
+msgstr "New Contract"
+
+#: templates/dashboard.html:105
+msgid "Upcoming Payments"
+msgstr "Upcoming Payments"
+
+#: templates/analytics/collections.html:37 templates/contracts/detail.html:60
+#: templates/dashboard.html:113 templates/owner_portal/dashboard.html:256
+#: templates/payments/edit.html:19 templates/payments/index.html:21
+msgid "Due Date"
+msgstr "Due Date"
+
+#: templates/analytics/collections.html:36
+#: templates/analytics/expenses.html:47 templates/contracts/detail.html:61
+#: templates/dashboard.html:115 templates/expenses/index.html:24
+#: templates/expenses/index.html:82 templates/owner_portal/dashboard.html:256
+#: templates/owner_portal/subscription.html:117
+#: templates/payments/index.html:25
+msgid "Amount"
+msgstr "Amount"
+
+#: templates/analytics/collections.html:53
+#: templates/analytics/company_dashboard.html:81
+#: templates/analytics/contracts_intel.html:53
+#: templates/analytics/employee_performance.html:49
+#: templates/analytics/expenses.html:61 templates/buildings/detail.html:56
+#: templates/contracts/detail.html:29 templates/contracts/detail.html:42
+#: templates/contracts/detail.html:43 templates/contracts/detail.html:44
+#: templates/contracts/detail.html:72 templates/dashboard.html:124
+#: templates/drilldown.html:56 templates/expenses/index.html:36
+#: templates/expenses/index.html:82 templates/owner_portal/dashboard.html:113
+#: templates/owner_portal/subscription.html:31
+#: templates/owner_portal/subscription.html:49
+#: templates/owner_portal/subscription.html:68
+#: templates/owner_portal/subscription.html:99
+#: templates/owner_portal/subscription.html:127
+#: templates/payments/index.html:37 templates/units/detail.html:26
+#: templates/units/detail.html:40 templates/units/detail.html:79
+msgid "SAR"
+msgstr "SAR"
+
+#: templates/dashboard.html:131
+msgid "No upcoming payments"
+msgstr "No upcoming payments"
+
+#: templates/drilldown.html:8
+msgid "Browse owners, buildings, units, contracts, and payments."
+msgstr "Browse owners, buildings, units, contracts, and payments."
+
+#: templates/drilldown.html:13 templates/owners/_create_modal.html:5
+#: templates/owners/form.html:2 templates/owners/form.html:6
+#: templates/owners/index.html:9 templates/owners/index.html:44
+msgid "Add Owner"
+msgstr "Add Owner"
+
+#: templates/drilldown.html:23
+msgid "Search owners..."
+msgstr "Search owners..."
+
+#: templates/analytics/collections.html:40
+#: templates/analytics/contracts_intel.html:42
+#: templates/analytics/employee_performance.html:38
+#: templates/analytics/expenses.html:48 templates/drilldown.html:26
+#: templates/drilldown.html:78
+msgid "Loading..."
+msgstr "Loading..."
+
+#: templates/drilldown.html:33
+msgid "Select an owner to view their buildings, units, and contracts"
+msgstr "Select an owner to view their buildings, units, and contracts"
+
+#: templates/drilldown.html:44
+msgid "buildings"
+msgstr "buildings"
+
+#: templates/analytics/company_dashboard.html:109 templates/drilldown.html:45
+msgid "units"
+msgstr "units"
+
+#: templates/drilldown.html:46
+msgid "contracts"
+msgstr "contracts"
+
+#: templates/analytics/collections.html:63
+#: templates/analytics/collections.html:64
+#: templates/analytics/company_dashboard.html:114 templates/drilldown.html:47
+msgid "payments"
+msgstr "payments"
+
+#: templates/buildings/index.html:44 templates/drilldown.html:48
+#: templates/owners/detail.html:57
+msgid "No buildings yet"
+msgstr "No buildings yet"
+
+#: templates/buildings/detail.html:64 templates/drilldown.html:49
+#: templates/units/index.html:52
+msgid "No units yet"
+msgstr "No units yet"
+
+#: templates/drilldown.html:50 templates/tenants/detail.html:54
+#: templates/units/detail.html:83
+msgid "No contracts"
+msgstr "No contracts"
+
+#: templates/contracts/detail.html:89 templates/drilldown.html:51
+msgid "No payments"
+msgstr "No payments"
+
+#: templates/drilldown.html:52
+msgid "Back"
+msgstr "Back"
+
+#: templates/buildings/_create_modal.html:5 templates/buildings/form.html:2
+#: templates/buildings/form.html:6 templates/buildings/index.html:9
+#: templates/buildings/index.html:46 templates/drilldown.html:53
+#: templates/owners/detail.html:36
+msgid "Add Building"
+msgstr "Add Building"
+
+#: templates/buildings/detail.html:35 templates/drilldown.html:54
+#: templates/units/_create_modal.html:5 templates/units/form.html:2
+#: templates/units/form.html:6 templates/units/index.html:9
+#: templates/units/index.html:54
+msgid "Add Unit"
+msgstr "Add Unit"
+
+#: templates/contracts/detail.html:30 templates/contracts/index.html:39
+#: templates/drilldown.html:57
+msgid "months"
+msgstr "months"
+
+#: templates/buildings/detail.html:59 templates/drilldown.html:58
+#: templates/units/detail.html:28 templates/units/index.html:41
+msgid "Available"
+msgstr "Available"
+
+#: templates/buildings/detail.html:59 templates/drilldown.html:59
+#: templates/owner_portal/dashboard.html:200 templates/units/detail.html:28
+#: templates/units/index.html:41
+msgid "Occupied"
+msgstr "Occupied"
+
+#: templates/drilldown.html:60
+msgid "active"
+msgstr "active"
+
+#: templates/drilldown.html:61
+msgid "expired"
+msgstr "expired"
+
+#: templates/drilldown.html:62
+msgid "terminated"
+msgstr "terminated"
+
+#: templates/drilldown.html:63
+msgid "pending"
+msgstr "pending"
+
+#: templates/drilldown.html:64
+msgid "paid"
+msgstr "paid"
+
+#: templates/drilldown.html:65 templates/units/detail.html:38
+msgid "Management"
+msgstr "Property Management"
+
+#: templates/drilldown.html:66 templates/units/_create_modal.html:57
+#: templates/units/detail.html:39 templates/units/form.html:59
+msgid "Agent"
+msgstr "Agent"
+
+#: templates/contracts/detail.html:44 templates/drilldown.html:67
+#: templates/units/detail.html:40
+msgid "Ejar Fee"
+msgstr "Ejar Fee"
+
+#: templates/drilldown.html:68
+msgid "Electricity"
+msgstr "Electricity"
+
+#: templates/drilldown.html:69
+msgid "Water"
+msgstr "Water"
+
+#: templates/buildings/detail.html:46 templates/drilldown.html:70
+#: templates/units/detail.html:68 templates/units/index.html:24
+msgid "Rent"
+msgstr "Rent"
+
+#: templates/contracts/_create_modal.html:50
+#: templates/contracts/detail.html:30 templates/contracts/form.html:51
+#: templates/drilldown.html:71
+msgid "Payment Cycle"
+msgstr "Payment Cycle"
+
+#: templates/analytics/collections.html:35
+#: templates/analytics/contracts_intel.html:38
+#: templates/analytics/employee_performance.html:33
+#: templates/drilldown.html:73 templates/employees/_create_modal.html:31
+#: templates/employees/detail.html:19 templates/employees/detail.html:35
+#: templates/employees/form.html:30 templates/employees/index.html:23
+#: templates/owners/_create_modal.html:17 templates/owners/detail.html:22
+#: templates/owners/detail.html:73 templates/owners/form.html:19
+#: templates/owners/index.html:21 templates/tenants/_create_modal.html:17
+#: templates/tenants/detail.html:22 templates/tenants/form.html:19
+#: templates/tenants/index.html:21
+msgid "Phone"
+msgstr "Phone"
+
+#: templates/drilldown.html:74 templates/owners/_create_modal.html:25
+#: templates/owners/detail.html:24 templates/owners/form.html:27
+#: templates/owners/index.html:22 templates/tenants/_create_modal.html:21
+#: templates/tenants/detail.html:23 templates/tenants/form.html:23
+#: templates/tenants/index.html:22
+msgid "National ID"
+msgstr "National ID"
+
+#: templates/contracts/detail.html:83 templates/drilldown.html:75
+msgid "Pay"
+msgstr "Pay"
+
+#: templates/drilldown.html:76
+msgid "No owners match your search"
+msgstr "No owners match your search"
+
+#: templates/login.html:2 templates/login.html:27
+msgid "Login"
+msgstr "Login"
+
+#: templates/login.html:8
 msgid "Property Management System"
 msgstr "Property Management System"
+
+#: templates/login.html:24 templates/owner_portal/subscription.html:157
+#: templates/register.html:29
+msgid "Password"
+msgstr "Password"
+
+#: templates/login.html:30
+msgid "Create new account"
+msgstr "Create new account"
+
+#: templates/register.html:2 templates/register.html:32
+msgid "Register"
+msgstr "Register"
+
+#: templates/register.html:9
+msgid "Create your account"
+msgstr "Create your account"
+
+#: templates/register.html:35
+msgid "Already have an account? Login"
+msgstr "Already have an account? Login"
+
+#: templates/analytics/collections.html:2
+#: templates/analytics/collections.html:7
+msgid "Collection Management"
+msgstr "Property Management"
+
+#: templates/analytics/collections.html:8
+msgid "Aging receivables analysis and follow-up tracking"
+msgstr "Aging receivables analysis and follow-up tracking"
+
+#: templates/analytics/collections.html:17
+#: templates/analytics/company_dashboard.html:38
+msgid "Aging Receivables"
+msgstr "Aging Receivables"
+
+#: templates/analytics/collections.html:27
+#: templates/analytics/company_dashboard.html:114
+#: templates/analytics/employee_performance.html:36
+#: templates/analytics/employee_performance.html:70
+#: templates/owner_portal/dashboard.html:176 templates/payments/index.html:10
+msgid "Overdue"
+msgstr "Overdue"
+
+#: templates/analytics/collections.html:36
+#: templates/analytics/contracts_intel.html:39
+#: templates/contracts/index.html:23 templates/expenses/index.html:26
+#: templates/expenses/index.html:101 templates/owner_portal/dashboard.html:255
+#: templates/payments/index.html:24 templates/tenants/detail.html:39
+#: templates/units/_create_modal.html:13 templates/units/detail.html:22
+#: templates/units/form.html:15 templates/units/index.html:22
+msgid "Building"
+msgstr "Building"
+
+#: templates/analytics/collections.html:36
+#: templates/analytics/contracts_intel.html:39
+#: templates/analytics/expenses.html:47
+#: templates/buildings/_create_modal.html:13
+#: templates/buildings/detail.html:22 templates/buildings/form.html:15
+#: templates/buildings/index.html:21 templates/contracts/detail.html:26
+#: templates/employees/detail.html:34 templates/expenses/index.html:25
+#: templates/expenses/index.html:94 templates/expenses/index.html:111
+#: templates/units/detail.html:23 templates/units/index.html:23
+msgid "Owner"
+msgstr "Owner"
+
+#: templates/analytics/collections.html:37
+msgid "Days Overdue"
+msgstr "Days Overdue"
+
+#: templates/analytics/collections.html:63
+msgid "Total Overdue"
+msgstr "Total Overdue"
+
+#: templates/analytics/collections.html:64
+#: templates/analytics/collections.html:65
+#: templates/analytics/collections.html:66
+#: templates/analytics/collections.html:67
+#: templates/analytics/collections.html:81
+#: templates/analytics/company_dashboard.html:143
+#: templates/analytics/company_dashboard.html:157
+#: templates/analytics/company_dashboard.html:158
+#: templates/analytics/company_dashboard.html:159
+#: templates/analytics/company_dashboard.html:160
+#: templates/analytics/contracts_intel.html:89
+#: templates/owner_portal/dashboard.html:146
+#: templates/owner_portal/dashboard.html:147
+#: templates/owner_portal/dashboard.html:148
+msgid "days"
+msgstr "days"
+
+#: templates/analytics/collections.html:79
+msgid "No overdue payments"
+msgstr "No overdue payments"
+
+#: templates/analytics/company_dashboard.html:8
+msgid "Enterprise portfolio overview and financial analytics"
+msgstr "Enterprise portfolio overview and financial analytics"
+
+#: templates/analytics/company_dashboard.html:21
+msgid "Revenue Trends"
+msgstr "Revenue Trends"
+
+#: templates/analytics/company_dashboard.html:27
+msgid "Company Income"
+msgstr "Company Income"
+
+#: templates/analytics/company_dashboard.html:39
+msgid "View Details"
+msgstr "View Details"
+
+#: templates/analytics/company_dashboard.html:47
+msgid "Building Yield"
+msgstr "Building Yield"
+
+#: templates/analytics/company_dashboard.html:59
+msgid "Contract Renewal Pipeline"
+msgstr "Contract Renewal Pipeline"
+
+#: templates/analytics/company_dashboard.html:68
+msgid "Expense Breakdown"
+msgstr "Expense Breakdown"
+
+#: templates/analytics/company_dashboard.html:69
+msgid "Manage"
+msgstr "Property Management"
+
+#: templates/analytics/company_dashboard.html:110
+msgid "occupied"
+msgstr "occupied"
+
+#: templates/analytics/company_dashboard.html:111
+#: templates/analytics/employee_performance.html:35
+#: templates/analytics/employee_performance.html:61
+msgid "Collection Rate"
+msgstr "Collection Rate"
+
+#: templates/analytics/company_dashboard.html:112
+msgid "Monthly Potential"
+msgstr "Monthly Potential"
+
+#: templates/analytics/company_dashboard.html:113
+#: templates/analytics/employee_performance.html:36
+msgid "Total Collected"
+msgstr "Total Collected"
+
+#: templates/analytics/company_dashboard.html:115
+msgid "Mgmt Fee Income"
+msgstr "Mgmt Fee Income"
+
+#: templates/analytics/company_dashboard.html:115
+msgid "Subs"
+msgstr "Subs"
+
+#: templates/analytics/company_dashboard.html:122
+#: templates/owner_portal/dashboard.html:158
+#: templates/owner_portal/dashboard.html:176
+#: templates/owner_portal/dashboard.html:246
+msgid "Collected"
+msgstr "Collected"
+
+#: templates/analytics/company_dashboard.html:123
+#: templates/owner_portal/dashboard.html:159
+msgid "Expected"
+msgstr "Expected"
+
+#: templates/analytics/company_dashboard.html:124
+#: templates/analytics/company_dashboard.html:133
+#: templates/owner_portal/dashboard.html:142
+#: templates/owner_portal/dashboard.html:248
+msgid "Mgmt Fees"
+msgstr "Mgmt Fees"
+
+#: templates/analytics/company_dashboard.html:133
+#: templates/owner_portal/dashboard.html:249
+msgid "Agent Fees"
+msgstr "Agent Fees"
+
+#: templates/analytics/company_dashboard.html:145
+msgid "Overdue Amount"
+msgstr "Overdue Amount"
+
+#: templates/analytics/company_dashboard.html:163
+#: templates/analytics/contracts_intel.html:64
+msgid "Revenue at Risk"
+msgstr "Revenue at Risk"
+
+#: templates/analytics/company_dashboard.html:163
+msgid "Contracts expiring in 90 days"
+msgstr "Contracts expiring in 90 days"
+
+#: templates/analytics/company_dashboard.html:164
+#: templates/analytics/contracts_intel.html:63
+msgid "Total Annual Value"
+msgstr "Total Annual Value"
+
+#: templates/analytics/company_dashboard.html:178
+#: templates/expenses/index.html:51
+msgid "No expenses recorded yet"
+msgstr "No expenses recorded yet"
+
+#: templates/analytics/company_dashboard.html:188
+#: templates/owner_portal/dashboard.html:140
+msgid "Annual Rent"
+msgstr "Annual Rent"
+
+#: templates/analytics/contracts_intel.html:2
+#: templates/analytics/contracts_intel.html:7
+msgid "Contract Intelligence"
+msgstr "Property Management"
+
+#: templates/analytics/contracts_intel.html:8
+msgid "Renewal pipeline, occupancy trends, and revenue risk analysis"
+msgstr "Renewal pipeline, occupancy trends, and revenue risk analysis"
+
+#: templates/analytics/contracts_intel.html:19
+msgid "Occupancy Trend"
+msgstr "Occupancy Trend"
+
+#: templates/analytics/contracts_intel.html:25
+msgid "Renewal Pipeline"
+msgstr "Renewal Pipeline"
+
+#: templates/analytics/contracts_intel.html:33
+msgid "Contracts Expiring Soon"
+msgstr "Contracts Expiring Soon"
+
+#: templates/analytics/contracts_intel.html:40
+#: templates/contracts/_create_modal.html:42
+#: templates/contracts/detail.html:28 templates/contracts/form.html:43
+#: templates/tenants/detail.html:40
+msgid "End Date"
+msgstr "End Date"
+
+#: templates/analytics/contracts_intel.html:40
+msgid "Days Left"
+msgstr "Days Left"
+
+#: templates/analytics/contracts_intel.html:40
+msgid "Annual Value"
+msgstr "Annual Value"
+
+#: templates/analytics/contracts_intel.html:64
+msgid "Expiring in 90 days"
+msgstr "Expiring in 90 days"
+
+#: templates/analytics/contracts_intel.html:65
+msgid "Expiring Soon"
+msgstr "Expiring Soon"
+
+#: templates/analytics/contracts_intel.html:65
+msgid "Within 90 days"
+msgstr "Within 90 days"
+
+#: templates/analytics/contracts_intel.html:71
+msgid "Occupancy Rate"
+msgstr "Occupancy Rate"
+
+#: templates/analytics/contracts_intel.html:78
+msgid "Safe"
+msgstr "Safe"
+
+#: templates/analytics/contracts_intel.html:86
+msgid "No contracts expiring soon"
+msgstr "No contracts expiring soon"
+
+#: templates/analytics/employee_performance.html:2
+#: templates/analytics/employee_performance.html:7
+msgid "Employee Performance"
+msgstr "Employee Performance"
+
+#: templates/analytics/employee_performance.html:8
+msgid "Portfolio allocation, collection rates, and revenue per employee"
+msgstr "Portfolio allocation, collection rates, and revenue per employee"
+
+#: templates/analytics/employee_performance.html:15
+msgid "Collection Rate by Employee"
+msgstr "Collection Rate by Employee"
+
+#: templates/analytics/employee_performance.html:21
+msgid "Monthly Revenue by Employee"
+msgstr "Monthly Revenue by Employee"
+
+#: templates/analytics/employee_performance.html:28
+msgid "Performance Details"
+msgstr "Performance Details"
+
+#: templates/analytics/employee_performance.html:33
+msgid "Employee"
+msgstr "Employee"
+
+#: templates/analytics/employee_performance.html:34
+#: templates/buildings/detail.html:33 templates/buildings/index.html:24
+#: templates/owner_portal/dashboard.html:136 templates/owners/detail.html:46
+#: templates/units/index.html:2 templates/units/index.html:6
+msgid "Units"
+msgstr "Units"
+
+#: templates/analytics/employee_performance.html:36
+#: templates/analytics/employee_performance.html:69
+#: templates/owner_portal/dashboard.html:55
+msgid "Monthly Revenue"
+msgstr "Monthly Revenue"
+
+#: templates/analytics/employee_performance.html:56
+msgid "No employees found"
+msgstr "No employees found"
+
+#: templates/analytics/expenses.html:2 templates/analytics/expenses.html:7
+msgid "Expense Analytics"
+msgstr "Expense Analytics"
+
+#: templates/analytics/expenses.html:8
+msgid "Track and analyze operational costs across the portfolio"
+msgstr "Track and analyze operational costs across the portfolio"
+
+#: templates/analytics/expenses.html:11
+msgid "Manage Expenses"
+msgstr "Property Management"
+
+#: templates/analytics/expenses.html:22
+msgid "Monthly Expense Trend"
+msgstr "Monthly Expense Trend"
+
+#: templates/analytics/expenses.html:28
+msgid "By Category"
+msgstr "By Category"
+
+#: templates/analytics/expenses.html:37
+msgid "Top Owners by Expense"
+msgstr "Top Owners by Expense"
+
+#: templates/analytics/expenses.html:43
+msgid "Recent Expenses"
+msgstr "Recent Expenses"
+
+#: templates/analytics/expenses.html:47 templates/expenses/index.html:21
+#: templates/expenses/index.html:86
+msgid "Date"
+msgstr "Date"
+
+#: templates/analytics/expenses.html:47 templates/expenses/index.html:22
+#: templates/expenses/index.html:74
+msgid "Category"
+msgstr "Category"
+
+#: templates/analytics/expenses.html:47 templates/expenses/index.html:23
+#: templates/expenses/index.html:90
+msgid "Description"
+msgstr "Description"
+
+#: templates/analytics/expenses.html:70
+msgid "Year Total"
+msgstr "Year Total"
+
+#: templates/analytics/expenses.html:70
+msgid "categories"
+msgstr "categories"
+
+#: templates/analytics/expenses.html:71
+msgid "Categories"
+msgstr "Categories"
+
+#: templates/analytics/expenses.html:72
+msgid "Recent"
+msgstr "Recent"
+
+#: templates/analytics/expenses.html:72
+msgid "last 20 entries"
+msgstr "last 20 entries"
+
+#: templates/analytics/expenses.html:103
+msgid "No expenses yet"
+msgstr "No expenses yet"
+
+#: templates/buildings/_create_modal.html:6
+#: templates/contracts/_create_modal.html:7
+#: templates/employees/_create_modal.html:7
+#: templates/owners/_create_modal.html:6
+#: templates/tenants/_create_modal.html:6 templates/units/_create_modal.html:6
+msgid "Close"
+msgstr "Close"
+
+#: templates/buildings/_create_modal.html:15 templates/buildings/form.html:17
+#: templates/owner_portal/dashboard.html:15
+#: templates/owner_portal/subscription.html:13
+msgid "Select Owner"
+msgstr "Select Owner"
+
+#: templates/buildings/_create_modal.html:23 templates/buildings/form.html:24
+#: templates/owners/detail.html:44
+msgid "Building Name"
+msgstr "Building Name"
+
+#: templates/buildings/_create_modal.html:27
+#: templates/buildings/detail.html:23 templates/buildings/form.html:28
+msgid "Address"
+msgstr "Address"
+
+#: templates/buildings/_create_modal.html:31
+#: templates/buildings/detail.html:24 templates/buildings/form.html:32
+#: templates/buildings/index.html:22 templates/owners/detail.html:45
+msgid "City"
+msgstr "City"
+
+#: templates/buildings/_create_modal.html:35
+#: templates/buildings/detail.html:25 templates/buildings/form.html:36
+#: templates/buildings/index.html:23
+msgid "District"
+msgstr "District"
+
+#: templates/buildings/_create_modal.html:39 templates/buildings/form.html:40
+#: templates/contracts/_create_modal.html:58 templates/contracts/form.html:69
+#: templates/owners/_create_modal.html:37 templates/owners/form.html:39
+#: templates/payments/edit.html:23 templates/tenants/_create_modal.html:29
+#: templates/tenants/form.html:31 templates/units/_create_modal.html:76
+#: templates/units/form.html:78
+msgid "Notes"
+msgstr "Notes"
+
+#: templates/buildings/_create_modal.html:45 templates/buildings/form.html:46
+#: templates/contracts/_create_modal.html:64 templates/contracts/form.html:75
+#: templates/employees/_create_modal.html:54 templates/employees/form.html:54
+#: templates/expenses/index.html:126 templates/owners/_create_modal.html:43
+#: templates/owners/form.html:45 templates/payments/edit.html:29
+#: templates/tenants/_create_modal.html:35 templates/tenants/form.html:37
+#: templates/units/_create_modal.html:82 templates/units/form.html:84
+msgid "Cancel"
+msgstr "Cancel"
+
+#: templates/buildings/_create_modal.html:46 templates/buildings/form.html:45
+#: templates/contracts/_create_modal.html:65 templates/contracts/form.html:74
+#: templates/employees/_create_modal.html:55 templates/employees/form.html:53
+#: templates/expenses/index.html:127 templates/owners/_create_modal.html:44
+#: templates/owners/form.html:44 templates/payments/edit.html:28
+#: templates/tenants/_create_modal.html:36 templates/tenants/form.html:36
+#: templates/units/_create_modal.html:83 templates/units/form.html:83
+msgid "Save"
+msgstr "Save"
+
+#: templates/buildings/detail.html:8 templates/contracts/detail.html:8
+#: templates/employees/detail.html:8 templates/owners/detail.html:8
+#: templates/tenants/detail.html:8 templates/units/detail.html:8
+msgid "Edit"
+msgstr "Edit"
+
+#: templates/buildings/detail.html:9 templates/expenses/index.html:41
+#: templates/owners/detail.html:9 templates/tenants/detail.html:9
+#: templates/units/detail.html:9
+msgid "Are you sure?"
+msgstr "Are you sure?"
+
+#: templates/buildings/detail.html:11 templates/owners/detail.html:11
+#: templates/tenants/detail.html:11 templates/units/detail.html:11
+msgid "Delete"
+msgstr "Delete"
+
+#: templates/buildings/detail.html:19
+msgid "Building Info"
+msgstr "Building Info"
+
+#: templates/buildings/detail.html:43 templates/units/index.html:20
+msgid "Number"
+msgstr "Number"
+
+#: templates/buildings/detail.html:44 templates/buildings/index.html:20
+#: templates/employees/detail.html:18 templates/employees/index.html:22
+#: templates/owners/_create_modal.html:13 templates/owners/detail.html:73
+#: templates/owners/form.html:15 templates/owners/index.html:20
+#: templates/tenants/_create_modal.html:13 templates/tenants/form.html:15
+#: templates/tenants/index.html:20 templates/units/index.html:21
+msgid "Name"
+msgstr "Name"
+
+#: templates/buildings/detail.html:45 templates/units/_create_modal.html:30
+#: templates/units/detail.html:24 templates/units/form.html:32
+msgid "Type"
+msgstr "Type"
+
+#: templates/buildings/form.html:2 templates/buildings/form.html:6
+msgid "Edit Building"
+msgstr "Edit Building"
+
+#: templates/contracts/_create_modal.html:16 templates/contracts/form.html:17
+msgid "Select Unit"
+msgstr "Select Unit"
+
+#: templates/contracts/_create_modal.html:27 templates/contracts/form.html:28
+msgid "Select Tenant"
+msgstr "Select Tenant"
+
+#: templates/contracts/_create_modal.html:34 templates/contracts/form.html:35
+msgid "Contract Number"
+msgstr "Contract Number"
+
+#: templates/contracts/_create_modal.html:38
+#: templates/contracts/detail.html:27 templates/contracts/form.html:39
+#: templates/owner_portal/subscription.html:101
+msgid "Start Date"
+msgstr "Start Date"
+
+#: templates/contracts/_create_modal.html:46 templates/contracts/form.html:47
+#: templates/units/_create_modal.html:43 templates/units/form.html:45
+msgid "Monthly Rent (SAR)"
+msgstr "Monthly Rent (SAR)"
+
+#: templates/contracts/_create_modal.html:52 templates/contracts/form.html:53
+msgid "Every 3 months"
+msgstr "Every 3 months"
+
+#: templates/contracts/_create_modal.html:53 templates/contracts/form.html:54
+msgid "Every 6 months"
+msgstr "Every 6 months"
+
+#: templates/contracts/_create_modal.html:54 templates/contracts/form.html:55
+msgid "Yearly"
+msgstr "Yearly"
+
+#: templates/contracts/detail.html:2 templates/contracts/detail.html:6
+msgid "Contract"
+msgstr "Contract"
+
+#: templates/contracts/detail.html:10
+msgid "Are you sure you want to terminate this contract?"
+msgstr "Are you sure you want to terminate this contract?"
+
+#: templates/contracts/detail.html:12
+msgid "Terminate"
+msgstr "Terminate"
+
+#: templates/contracts/detail.html:21
+msgid "Contract Info"
+msgstr "Contract Info"
+
+#: templates/contracts/detail.html:29 templates/units/detail.html:26
+msgid "Monthly Rent"
+msgstr "Monthly Rent"
+
+#: templates/contracts/detail.html:39
+msgid "Financial Summary"
+msgstr "Financial Summary"
+
+#: templates/contracts/detail.html:42
+msgid "Management Fee"
+msgstr "Property Management"
+
+#: templates/contracts/detail.html:43
+#: templates/owner_portal/dashboard.html:257
+msgid "Agent Fee"
+msgstr "Agent Fee"
+
+#: templates/contracts/detail.html:53
+msgid "Payment Schedule"
+msgstr "Payment Schedule"
+
+#: templates/contracts/detail.html:63
+#: templates/owner_portal/subscription.html:119
+msgid "Paid Date"
+msgstr "Paid Date"
+
+#: templates/contracts/form.html:2 templates/contracts/form.html:6
+msgid "Edit Contract"
+msgstr "Edit Contract"
+
+#: templates/contracts/form.html:63
+msgid "Expired"
+msgstr "Expired"
+
+#: templates/contracts/form.html:64
+msgid "Terminated"
+msgstr "Terminated"
+
+#: templates/contracts/index.html:24 templates/units/detail.html:66
+msgid "Start"
+msgstr "Start"
+
+#: templates/contracts/index.html:25 templates/units/detail.html:67
+msgid "End"
+msgstr "End"
+
+#: templates/contracts/index.html:26
+msgid "Cycle"
+msgstr "Cycle"
+
+#: templates/employees/_create_modal.html:6 templates/employees/form.html:2
+#: templates/employees/form.html:6 templates/employees/index.html:10
+#: templates/employees/index.html:49
+msgid "Add Employee"
+msgstr "Add Employee"
+
+#: templates/employees/_create_modal.html:14 templates/employees/form.html:15
+msgid "Full Name"
+msgstr "Full Name"
+
+#: templates/employees/_create_modal.html:18 templates/employees/form.html:20
+msgid "User Account"
+msgstr "User Account"
+
+#: templates/employees/_create_modal.html:21 templates/employees/form.html:22
+msgid "Select User"
+msgstr "Select User"
+
+#: templates/employees/_create_modal.html:27
+msgid "No user accounts available to link. Register a user first."
+msgstr "No user accounts available to link. Register a user first."
+
+#: templates/employees/_create_modal.html:35
+#: templates/employees/detail.html:28 templates/employees/form.html:34
+#: templates/employees/index.html:25
+msgid "Assigned Owners"
+msgstr "Assigned Owners"
+
+#: templates/employees/_create_modal.html:48 templates/employees/form.html:48
+msgid "No owners to assign"
+msgstr "No owners to assign"
+
+#: templates/employees/detail.html:15
+msgid "Employee Info"
+msgstr "Employee Info"
+
+#: templates/employees/detail.html:47
+msgid "No owners assigned"
+msgstr "No owners assigned"
+
+#: templates/employees/form.html:2 templates/employees/form.html:6
+msgid "Edit Employee"
+msgstr "Edit Employee"
+
+#: templates/employees/index.html:46
+msgid "No employees yet"
+msgstr "No employees yet"
+
+#: templates/expenses/index.html:11 templates/expenses/index.html:66
+msgid "Add Expense"
+msgstr "Add Expense"
+
+#: templates/expenses/index.html:27 templates/expenses/index.html:108
+msgid "Paid By"
+msgstr "Paid By"
+
+#: templates/expenses/index.html:110
+msgid "Company"
+msgstr "Company"
+
+#: templates/expenses/index.html:116
+msgid "Vendor"
+msgstr "Vendor"
+
+#: templates/expenses/index.html:120
+msgid "Receipt #"
+msgstr "Receipt #"
+
+#: templates/owner_portal/dashboard.html:27
+msgid "Select an owner to view their dashboard"
+msgstr "Select an owner to view their dashboard"
+
+#: templates/owner_portal/dashboard.html:41
+msgid "Contract Expiry Alerts"
+msgstr "Contract Expiry Alerts"
+
+#: templates/owner_portal/dashboard.html:61
+msgid "Payment Status"
+msgstr "Payment Status"
+
+#: templates/owner_portal/dashboard.html:69
+msgid "Building Performance"
+msgstr "Building Performance"
+
+#: templates/owner_portal/dashboard.html:76
+msgid "Financial Report"
+msgstr "Financial Report"
+
+#: templates/owner_portal/dashboard.html:89
+msgid "Load"
+msgstr "Load"
+
+#: templates/owner_portal/dashboard.html:92
+msgid "Print"
+msgstr "Print"
+
+#: templates/owner_portal/dashboard.html:99
+msgid "Click Load to generate the report"
+msgstr "Click Load to generate the report"
+
+#: templates/owner_portal/dashboard.html:137
+msgid "Vacancy Rate"
+msgstr "Vacancy Rate"
+
+#: templates/owner_portal/dashboard.html:141
+msgid "Net Annual Income"
+msgstr "Net Annual Income"
+
+#: templates/owner_portal/dashboard.html:141
+msgid "After all fees"
+msgstr "After all fees"
+
+#: templates/owner_portal/dashboard.html:142
+msgid "agent"
+msgstr "agent"
+
+#: templates/owner_portal/dashboard.html:176
+#: templates/owner_portal/dashboard.html:247 templates/payments/index.html:9
+msgid "Pending"
+msgstr "Pending"
+
+#: templates/owner_portal/dashboard.html:201
+msgid "Total Units"
+msgstr "Total Units"
+
+#: templates/owner_portal/dashboard.html:245
+msgid "Gross Rent"
+msgstr "Gross Rent"
+
+#: templates/owner_portal/dashboard.html:250
+msgid "Ejar Fees"
+msgstr "Ejar Fees"
+
+#: templates/owner_portal/dashboard.html:251
+msgid "Net Owner Income"
+msgstr "Net Owner Income"
+
+#: templates/owner_portal/dashboard.html:256
+msgid "Mgmt Fee"
+msgstr "Mgmt Fee"
+
+#: templates/owner_portal/dashboard.html:257
+msgid "Owner Share"
+msgstr "Owner Share"
+
+#: templates/owner_portal/dashboard.html:270
+msgid "Total"
+msgstr "Total"
+
+#: templates/owner_portal/subscription.html:7
+msgid "Subscription Plans"
+msgstr "Subscription Plans"
+
+#: templates/owner_portal/subscription.html:8
+msgid "Manage subscription plans for property owners"
+msgstr "Manage subscription plans for property owners"
+
+#: templates/owner_portal/subscription.html:31
+#: templates/owner_portal/subscription.html:49
+#: templates/owner_portal/subscription.html:68
+#: templates/owner_portal/subscription.html:99
+msgid "month"
+msgstr "month"
+
+#: templates/owner_portal/subscription.html:33
+msgid "Up to 10 units"
+msgstr "Up to 10 units"
+
+#: templates/owner_portal/subscription.html:34
+msgid "Dashboard & reports"
+msgstr "Dashboard & reports"
+
+#: templates/owner_portal/subscription.html:35
+msgid "Contract management"
+msgstr "Property Management"
+
+#: templates/owner_portal/subscription.html:36
+msgid "Payment tracking"
+msgstr "Payment tracking"
+
+#: templates/owner_portal/subscription.html:41
+#: templates/owner_portal/subscription.html:60
+#: templates/owner_portal/subscription.html:80
+msgid "Current Plan"
+msgstr "Current Plan"
+
+#: templates/owner_portal/subscription.html:41
+#: templates/owner_portal/subscription.html:60
+#: templates/owner_portal/subscription.html:80
+msgid "Select Plan"
+msgstr "Select Plan"
+
+#: templates/owner_portal/subscription.html:47
+msgid "Recommended"
+msgstr "Recommended"
+
+#: templates/owner_portal/subscription.html:51
+msgid "Up to 50 units"
+msgstr "Up to 50 units"
+
+#: templates/owner_portal/subscription.html:52
+msgid "Everything in Basic"
+msgstr "Everything in Basic"
+
+#: templates/owner_portal/subscription.html:53
+msgid "Financial PDF reports"
+msgstr "Financial PDF reports"
+
+#: templates/owner_portal/subscription.html:54
+msgid "SMS & email alerts"
+msgstr "SMS & email alerts"
+
+#: templates/owner_portal/subscription.html:55
+msgid "Ejar integration"
+msgstr "Ejar integration"
+
+#: templates/owner_portal/subscription.html:70
+msgid "Unlimited units"
+msgstr "Unlimited units"
+
+#: templates/owner_portal/subscription.html:71
+msgid "Everything in Pro"
+msgstr "Everything in Pro"
+
+#: templates/owner_portal/subscription.html:72
+msgid "API access"
+msgstr "API access"
+
+#: templates/owner_portal/subscription.html:73
+msgid "Multi-branch support"
+msgstr "Multi-branch support"
+
+#: templates/owner_portal/subscription.html:74
+msgid "White-label reports"
+msgstr "White-label reports"
+
+#: templates/owner_portal/subscription.html:75
+msgid "Priority support"
+msgstr "Priority support"
+
+#: templates/owner_portal/subscription.html:90
+msgid "Subscription Status"
+msgstr "Subscription Status"
+
+#: templates/owner_portal/subscription.html:92
+msgid "Cancel Subscription"
+msgstr "Cancel Subscription"
+
+#: templates/owner_portal/subscription.html:97
+msgid "Plan"
+msgstr "Plan"
+
+#: templates/owner_portal/subscription.html:99
+msgid "Price"
+msgstr "Price"
+
+#: templates/owner_portal/subscription.html:100
+msgid "Max Units"
+msgstr "Max Units"
+
+#: templates/owner_portal/subscription.html:102
+msgid "Auto Renew"
+msgstr "Auto Renew"
+
+#: templates/owner_portal/subscription.html:102
+msgid "Yes"
+msgstr "Yes"
+
+#: templates/owner_portal/subscription.html:102
+msgid "No"
+msgstr "No"
+
+#: templates/owner_portal/subscription.html:109
+msgid "Subscription Invoices"
+msgstr "Subscription Invoices"
+
+#: templates/owner_portal/subscription.html:115
+msgid "Invoice #"
+msgstr "Invoice #"
+
+#: templates/owner_portal/subscription.html:116
+msgid "Period"
+msgstr "Period"
+
+#: templates/owner_portal/subscription.html:132
+msgid "No invoices yet"
+msgstr "No invoices yet"
+
+#: templates/owner_portal/subscription.html:144
+msgid "Create Owner Login"
+msgstr "Create Owner Login"
+
+#: templates/owner_portal/subscription.html:146
+msgid "Create a login account so this owner can access their dashboard"
+msgstr "Create a login account so this owner can access their dashboard"
+
+#: templates/owner_portal/subscription.html:161
+msgid "Create Account"
+msgstr "Create Account"
+
+#: templates/owner_portal/subscription.html:175
+msgid "Activate this plan?"
+msgstr "Activate this plan?"
+
+#: templates/owner_portal/subscription.html:186
+msgid "Cancel this subscription?"
+msgstr "Cancel this subscription?"
+
+#: templates/owner_portal/subscription.html:199
+msgid "All fields required"
+msgstr "All fields required"
+
+#: templates/owner_portal/subscription.html:206
+msgid "Account created successfully"
+msgstr "Account created successfully"
+
+#: templates/owners/_create_modal.html:29 templates/owners/form.html:31
+msgid "Bank Name"
+msgstr "Bank Name"
+
+#: templates/owners/_create_modal.html:33 templates/owners/detail.html:26
+#: templates/owners/form.html:35
+msgid "IBAN"
+msgstr "IBAN"
+
+#: templates/owners/detail.html:19
+msgid "Owner Info"
+msgstr "Owner Info"
+
+#: templates/owners/detail.html:25
+msgid "Bank"
+msgstr "Bank"
+
+#: templates/owners/detail.html:69
+msgid "Assigned Employees"
+msgstr "Assigned Employees"
+
+#: templates/owners/form.html:2 templates/owners/form.html:6
+msgid "Edit Owner"
+msgstr "Edit Owner"
+
+#: templates/owners/index.html:42
+msgid "No owners yet. Add your first owner."
+msgstr "No owners yet. Add your first owner."
+
+#: templates/payments/edit.html:2 templates/payments/edit.html:6
+msgid "Edit Payment"
+msgstr "Edit Payment"
+
+#: templates/payments/edit.html:15
+msgid "Amount (SAR)"
+msgstr "Amount (SAR)"
+
+#: templates/payments/index.html:8
+msgid "All"
+msgstr "All"
+
+#: templates/payments/index.html:11
+msgid "Paid"
+msgstr "Paid"
+
+#: templates/payments/index.html:57
+msgid "No payments found"
+msgstr "No payments found"
+
+#: templates/tenants/_create_modal.html:5 templates/tenants/form.html:2
+#: templates/tenants/form.html:6 templates/tenants/index.html:9
+#: templates/tenants/index.html:44
+msgid "Add Tenant"
+msgstr "Add Tenant"
+
+#: templates/tenants/detail.html:19
+msgid "Tenant Info"
+msgstr "Tenant Info"
+
+#: templates/tenants/form.html:2 templates/tenants/form.html:6
+msgid "Edit Tenant"
+msgstr "Edit Tenant"
+
+#: templates/tenants/index.html:42
+msgid "No tenants yet"
+msgstr "No tenants yet"
+
+#: templates/units/_create_modal.html:15 templates/units/form.html:17
+msgid "Select Building"
+msgstr "Select Building"
+
+#: templates/units/_create_modal.html:22 templates/units/form.html:24
+msgid "Unit Number"
+msgstr "Unit Number"
+
+#: templates/units/_create_modal.html:26 templates/units/form.html:28
+msgid "Unit Name"
+msgstr "Unit Name"
+
+#: templates/units/_create_modal.html:39 templates/units/form.html:41
+msgid "Area (sqm)"
+msgstr "Area (sqm)"
+
+#: templates/units/_create_modal.html:47 templates/units/form.html:49
+msgid "Fees & Commissions"
+msgstr "Fees & Commissions"
+
+#: templates/units/_create_modal.html:53 templates/units/form.html:55
+msgid "Agent Name"
+msgstr "Agent Name"
+
+#: templates/units/_create_modal.html:61 templates/units/form.html:63
+msgid "Ejar Fee (SAR)"
+msgstr "Ejar Fee (SAR)"
+
+#: templates/units/_create_modal.html:65 templates/units/form.html:67
+msgid "Utility Accounts"
+msgstr "Utility Accounts"
+
+#: templates/units/_create_modal.html:67 templates/units/form.html:69
+msgid "Electricity Account #"
+msgstr "Electricity Account #"
+
+#: templates/units/_create_modal.html:71 templates/units/form.html:73
+msgid "Water Account #"
+msgstr "Water Account #"
+
+#: templates/units/detail.html:19
+msgid "Unit Info"
+msgstr "Unit Info"
+
+#: templates/units/detail.html:25
+msgid "Area"
+msgstr "Area"
+
+#: templates/units/detail.html:25
+msgid "sqm"
+msgstr "sqm"
+
+#: templates/units/detail.html:35
+msgid "Fees & Utilities"
+msgstr "Fees & Utilities"
+
+#: templates/units/detail.html:41
+msgid "Electricity #"
+msgstr "Electricity #"
+
+#: templates/units/detail.html:42
+msgid "Water #"
+msgstr "Water #"
+
+#: templates/units/form.html:2 templates/units/form.html:6
+msgid "Edit Unit"
+msgstr "Edit Unit"
+
+#: templates/units/index.html:25
+msgid "Mgmt"
+msgstr "Mgmt"
+
+msgid "Dark mode"
+msgstr "Dark mode"

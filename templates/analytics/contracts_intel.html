@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Contract Intelligence') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1><i class="bi bi-file-earmark-bar-graph" style="opacity:0.5;margin-inline-end:8px"></i>{{ _('Contract Intelligence') }}</h1>
+        <p class="subtitle">{{ _('Renewal pipeline, occupancy trends, and revenue risk analysis') }}</p>
+    </div>
+</div>
+
+<div class="kpi-grid anim-stagger" id="contractKPIs">
+    {% for _ in range(4) %}<div class="kpi-card"><div class="skeleton skeleton--line"></div></div>{% endfor %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+        <div class="card chart-card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-graph-up" style="margin-inline-end:8px;opacity:0.5"></i>{{ _('Occupancy Trend') }}</h5></div>
+            <div class="card-body"><canvas id="occChart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card chart-card">
+            <div class="card-header"><h5 class="mb-0"><i class="bi bi-funnel" style="margin-inline-end:8px;opacity:0.5"></i>{{ _('Renewal Pipeline') }}</h5></div>
+            <div class="card-body"><canvas id="pipelineChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Expiring contracts table -->
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">{{ _('Contracts Expiring Soon') }}</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="data-tbl">
+                <thead><tr>
+                    <th>{{ _('Contract #') }}</th><th>{{ _('Tenant') }}</th><th>{{ _('Phone') }}</th>
+                    <th>{{ _('Unit') }}</th><th>{{ _('Building') }}</th><th>{{ _('Owner') }}</th>
+                    <th>{{ _('End Date') }}</th><th>{{ _('Days Left') }}</th><th>{{ _('Annual Value') }}</th>
+                </tr></thead>
+                <tbody id="expiringRows"><tr><td colspan="9" class="empty-state">{{ _('Loading...') }}</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const BRAND = getComputedStyle(document.documentElement).getPropertyValue('--brand-500').trim();
+const SAR = '{{ _("SAR") }}';
+const LOCALE = {{ locale_js|tojson }};
+function fmt(n){return Number(n).toLocaleString(LOCALE,{maximumFractionDigits:0});}
+function kpi(l,v,s,c,i){return '<div class="kpi-card '+(c||'')+'"><div style="display:flex;align-items:center;gap:10px;margin-bottom:2px"><i class="bi '+i+'" style="font-size:1rem;opacity:0.4"></i><div class="kpi-label">'+l+'</div></div><div class="kpi-value animate-number">'+v+'</div>'+(s?'<div class="kpi-sub">'+s+'</div>':'')+'</div>';}
+
+async function load(){
+    var d = await fetch('/analytics/api/contract-intel').then(r=>r.json());
+    var p = d.pipeline;
+
+    document.getElementById('contractKPIs').innerHTML =
+        kpi('{{ _("Active Contracts") }}', d.active_count, '', '', 'bi-file-earmark-check') +
+        kpi('{{ _("Total Annual Value") }}', fmt(d.total_annual_value)+' '+SAR, '', 'success', 'bi-cash-stack') +
+        kpi('{{ _("Revenue at Risk") }}', fmt(d.revenue_at_risk)+' '+SAR, '{{ _("Expiring in 90 days") }}', d.revenue_at_risk>0?'danger':'', 'bi-shield-exclamation') +
+        kpi('{{ _("Expiring Soon") }}', (p['30'].count+p['60'].count+p['90'].count), '{{ _("Within 90 days") }}', (p['30'].count+p['60'].count+p['90'].count)>0?'warning':'', 'bi-calendar-event');
+
+    // Occupancy trend
+    new Chart(document.getElementById('occChart'),{
+        type:'line',data:{
+            labels:d.occupancy_trend.map(o=>o.label),
+            datasets:[{label:'{{ _("Occupancy Rate") }}',data:d.occupancy_trend.map(o=>o.rate),borderColor:BRAND,backgroundColor:BRAND+'20',fill:true,tension:0.4,pointRadius:4}]
+        },options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,grid:{color:'rgba(128,128,128,0.08)'}},x:{grid:{display:false}}}}
+    });
+
+    // Pipeline bar
+    new Chart(document.getElementById('pipelineChart'),{
+        type:'bar',data:{
+            labels:['30d','60d','90d','180d','{{ _("Safe") }}'],
+            datasets:[{data:[p['30'].count,p['60'].count,p['90'].count,p['180'].count,p['safe'].count],backgroundColor:['rgba(202,53,33,0.7)','rgba(245,140,0,0.6)','rgba(245,192,0,0.6)','rgba(78,103,232,0.5)','rgba(34,197,94,0.5)'],borderRadius:6}]
+        },options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}
+    });
+
+    // Expiring table (30+60+90 days)
+    var rows = [].concat(p['30'].items, p['60'].items, p['90'].items);
+    rows.sort(function(a,b){return a.days_left - b.days_left;});
+    if(!rows.length){document.getElementById('expiringRows').innerHTML='<tr><td colspan="9" class="empty-state">{{ _("No contracts expiring soon") }}</td></tr>';return;}
+    document.getElementById('expiringRows').innerHTML = rows.map(function(r){
+        var cls = r.days_left<=30?'danger':r.days_left<=60?'warning':'';
+        return '<tr><td class="mono" style="font-weight:600"><a href="/contracts/'+r.id+'">'+r.contract_number+'</a></td><td>'+r.tenant+'</td><td class="mono">'+r.tenant_phone+'</td><td class="mono">'+r.unit+'</td><td>'+r.building+'</td><td>'+r.owner+'</td><td class="mono">'+r.end_date+'</td><td><span class="badge badge-'+(cls||'pending')+'">'+r.days_left+' {{ _("days") }}</span></td><td class="mono" style="font-weight:600">'+fmt(r.annual_value)+' '+SAR+'</td></tr>';
+    }).join('');
+}
+load();
+</script>
+{% endblock %}

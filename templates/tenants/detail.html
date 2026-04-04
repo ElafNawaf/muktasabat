@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ tenant.name }}{% endblock %}
+{% block title %}{{ tenant|localized('name') }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>{{ tenant.name }}</h1>
+    <h1>{{ tenant|localized('name') }}</h1>
     <div class="d-flex gap-2">
-        <a href="{{ url_for('tenants.edit', tenant_id=tenant.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> {{ _('Edit') }}</a>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#tenantEditModal"><i class="bi bi-pencil"></i> {{ _('Edit') }}</button>
         <form method="POST" action="{{ url_for('tenants.delete', tenant_id=tenant.id) }}" onsubmit="return confirm('{{ _('Are you sure?') }}')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-outline-danger"><i class="bi bi-trash"></i> {{ _('Delete') }}</button>
@@ -46,7 +46,7 @@
                             <tr>
                                 <td><a href="{{ url_for('contracts.detail', contract_id=contract.id) }}">{{ contract.contract_number }}</a></td>
                                 <td>{{ contract.unit.number }}</td>
-                                <td>{{ contract.unit.building.name }}</td>
+                                <td>{{ contract.unit.building|localized('name') }}</td>
                                 <td>{{ contract.end_date.strftime('%Y-%m-%d') }}</td>
                                 <td><span class="badge bg-{{ 'success' if contract.status == 'active' else 'secondary' }}">{{ _(contract.status) }}</span></td>
                             </tr>
@@ -60,4 +60,12 @@
         </div>
     </div>
 </div>
+
+{% include 'tenants/_edit_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('edit') %}
+<script>(function(){var el=document.getElementById('tenantEditModal');if(el&&typeof bootstrap!=='undefined'&&bootstrap.Modal)bootstrap.Modal.getOrCreateInstance(el).show();})();</script>
+{% endif %}
 {% endblock %}

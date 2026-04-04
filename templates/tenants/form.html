@@ -16,6 +16,14 @@
                     <input type="text" class="form-control" id="name" name="name" value="{{ tenant.name if tenant else '' }}" required>
                 </div>
                 <div class="col-md-6 mb-3">
+                    <label for="name_en" class="form-label">{{ _('Name in English') }}</label>
+                    <input type="text" class="form-control" id="name_en" name="name_en" value="{{ tenant.name_en if tenant else '' }}" placeholder="{{ _('Optional') }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="name_ar" class="form-label">{{ _('Name in Arabic') }}</label>
+                    <input type="text" class="form-control" id="name_ar" name="name_ar" value="{{ tenant.name_ar if tenant else '' }}" placeholder="{{ _('Optional') }}" dir="rtl">
+                </div>
+                <div class="col-md-6 mb-3">
                     <label for="phone" class="form-label">{{ _('Phone') }} *</label>
                     <input type="text" class="form-control" id="phone" name="phone" value="{{ tenant.phone if tenant else '' }}" required>
                 </div>
@@ -31,8 +39,16 @@
                     <label for="notes" class="form-label">{{ _('Notes') }}</label>
                     <textarea class="form-control" id="notes" name="notes" rows="3">{{ tenant.notes if tenant else '' }}</textarea>
                 </div>
+                <div class="col-md-6 mb-3">
+                    <label for="notes_en" class="form-label">{{ _('Notes in English') }}</label>
+                    <textarea class="form-control" id="notes_en" name="notes_en" rows="2" placeholder="{{ _('Optional') }}">{{ tenant.notes_en if tenant else '' }}</textarea>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="notes_ar" class="form-label">{{ _('Notes in Arabic') }}</label>
+                    <textarea class="form-control" id="notes_ar" name="notes_ar" rows="2" placeholder="{{ _('Optional') }}" dir="rtl">{{ tenant.notes_ar if tenant else '' }}</textarea>
+                </div>
             </div>
-            <div class="d-flex gap-2">
+            <div class="form-actions">
                 <button type="submit" class="btn btn-primary">{{ _('Save') }}</button>
                 <a href="{{ url_for('tenants.index') }}" class="btn btn-outline-secondary">{{ _('Cancel') }}</a>
             </div>

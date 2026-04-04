@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Subscriptions') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ _('Subscription Plans') }}</h1>
+        <p class="subtitle">{{ _('Manage subscription plans for property owners') }}</p>
+    </div>
+    {% if owners_list and not owner %}
+    <div class="report-toolbar" style="margin:0;display:flex;gap:10px">
+        <select id="ownerSelect" onchange="if(this.value) window.location='?owner_id='+this.value" style="padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-family:inherit">
+            <option value="">{{ _('Select Owner') }}</option>
+            {% for o in owners_list %}
+            <option value="{{ o.id }}">{{ o|localized('name') }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+</div>
+
+{% if owner %}
+<h3 style="color:var(--text-primary);margin-bottom:20px">{{ owner|localized('name') }}</h3>
+{% endif %}
+
+<!-- Plans Grid -->
+<div class="plans-grid anim-stagger">
+    <!-- Basic -->
+    <div class="plan-card {% if subscription and subscription.plan == 'basic' %}current{% endif %}">
+        <div class="plan-name">Basic</div>
+        <div class="plan-price">199 <span>{{ _('SAR') }} / {{ _('month') }}</span></div>
+        <ul class="plan-features">
+            <li>{{ _('Up to 10 units') }}</li>
+            <li>{{ _('Dashboard & reports') }}</li>
+            <li>{{ _('Contract management') }}</li>
+            <li>{{ _('Payment tracking') }}</li>
+        </ul>
+        {% if owner %}
+        <button class="plan-btn plan-btn--outline" onclick="subscribe({{ owner.id }}, 'basic')"
+            {% if subscription and subscription.plan == 'basic' and subscription.status == 'active' %}disabled{% endif %}>
+            {% if subscription and subscription.plan == 'basic' %}{{ _('Current Plan') }}{% else %}{{ _('Select Plan') }}{% endif %}
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Pro (Recommended) -->
+    <div class="plan-card recommended {% if subscription and subscription.plan == 'pro' %}current{% endif %}" data-recommend-label="{{ _('Recommended') }}">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">499 <span>{{ _('SAR') }} / {{ _('month') }}</span></div>
+        <ul class="plan-features">
+            <li>{{ _('Up to 50 units') }}</li>
+            <li>{{ _('Everything in Basic') }}</li>
+            <li>{{ _('Financial PDF reports') }}</li>
+            <li>{{ _('SMS & email alerts') }}</li>
+            <li>{{ _('Ejar integration') }}</li>
+        </ul>
+        {% if owner %}
+        <button class="plan-btn" onclick="subscribe({{ owner.id }}, 'pro')"
+            {% if subscription and subscription.plan == 'pro' and subscription.status == 'active' %}disabled{% endif %}>
+            {% if subscription and subscription.plan == 'pro' %}{{ _('Current Plan') }}{% else %}{{ _('Select Plan') }}{% endif %}
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Enterprise -->
+    <div class="plan-card {% if subscription and subscription.plan == 'enterprise' %}current{% endif %}">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-price">999 <span>{{ _('SAR') }} / {{ _('month') }}</span></div>
+        <ul class="plan-features">
+            <li>{{ _('Unlimited units') }}</li>
+            <li>{{ _('Everything in Pro') }}</li>
+            <li>{{ _('API access') }}</li>
+            <li>{{ _('Multi-branch support') }}</li>
+            <li>{{ _('White-label reports') }}</li>
+            <li>{{ _('Priority support') }}</li>
+        </ul>
+        {% if owner %}
+        <button class="plan-btn" onclick="subscribe({{ owner.id }}, 'enterprise')"
+            {% if subscription and subscription.plan == 'enterprise' and subscription.status == 'active' %}disabled{% endif %}>
+            {% if subscription and subscription.plan == 'enterprise' %}{{ _('Current Plan') }}{% else %}{{ _('Select Plan') }}{% endif %}
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+{% if owner and subscription %}
+<!-- Subscription Status -->
+<div class="card mb-4">
+    <div class="card-header" style="flex-wrap:wrap;gap:10px">
+        <h5 class="mb-0">{{ _('Subscription Status') }}</h5>
+        {% if subscription.status == 'active' %}
+        <button class="btn-sm danger" onclick="cancelSub({{ subscription.id }})">{{ _('Cancel Subscription') }}</button>
+        {% endif %}
+    </div>
+    <div class="card-body" style="padding:20px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+            <div class="info-item"><div class="info-label">{{ _('Plan') }}</div><div class="info-value">{{ subscription.plan|title }}</div></div>
+            <div class="info-item"><div class="info-label">{{ _('Status') }}</div><div class="info-value"><span class="badge badge-{{ subscription.status }}">{{ subscription.status }}</span></div></div>
+            <div class="info-item"><div class="info-label">{{ _('Price') }}</div><div class="info-value mono">{{ '{:,.0f}'.format(subscription.price_monthly) }} {{ _('SAR') }}/{{ _('month') }}</div></div>
+            <div class="info-item"><div class="info-label">{{ _('Max Units') }}</div><div class="info-value">{{ subscription.max_units }}</div></div>
+            <div class="info-item"><div class="info-label">{{ _('Start Date') }}</div><div class="info-value">{{ subscription.start_date }}</div></div>
+            <div class="info-item"><div class="info-label">{{ _('Auto Renew') }}</div><div class="info-value">{{ _('Yes') if subscription.auto_renew else _('No') }}</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- Subscription Invoices -->
+<div class="card invoices-section">
+    <div class="card-header"><h5 class="mb-0">{{ _('Subscription Invoices') }}</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="data-tbl">
+                <thead>
+                    <tr>
+                        <th>{{ _('Invoice #') }}</th>
+                        <th>{{ _('Period') }}</th>
+                        <th>{{ _('Amount') }}</th>
+                        <th>{{ _('Status') }}</th>
+                        <th>{{ _('Paid Date') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in subscription.invoices|sort(attribute='period_start', reverse=True) %}
+                    <tr>
+                        <td class="mono">{{ inv.invoice_number }}</td>
+                        <td>{{ inv.period_start }} → {{ inv.period_end }}</td>
+                        <td class="mono">{{ '{:,.2f}'.format(inv.amount) }} {{ _('SAR') }}</td>
+                        <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+                        <td>{{ inv.paid_date or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="empty-state">{{ _('No invoices yet') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if owner and current_user.is_admin and not owner.owner_user %}
+<!-- Create Owner Account -->
+<div class="card mt-4">
+    <div class="card-header"><h5 class="mb-0">{{ _('Create Owner Login') }}</h5></div>
+    <div class="card-body" style="padding:20px">
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px">{{ _('Create a login account so this owner can access their dashboard') }}</p>
+        <div class="row" style="max-width:600px">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{{ _('Username') }}</label>
+                <input type="text" class="form-control" id="ownerUsername" placeholder="owner_{{ (owner|localized('name'))[:10]|lower }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{{ _('Email') }}</label>
+                <input type="email" class="form-control" id="ownerEmail" value="{{ owner.email or '' }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{{ _('Password') }}</label>
+                <input type="password" class="form-control" id="ownerPassword" placeholder="min 6 chars">
+            </div>
+            <div class="col-12">
+                <button class="btn-add" onclick="createOwnerAccount({{ owner.id }})">{{ _('Create Account') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+async function subscribe(ownerId, plan) {
+    if (!confirm('{{ _("Activate this plan?") }}')) return;
+    const res = await fetch('/portal/api/subscription', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify({owner_id: ownerId, plan: plan}),
+    });
+    const data = await res.json();
+    if (data.ok) { location.reload(); } else { alert(data.error); }
+}
+
+async function cancelSub(subId) {
+    if (!confirm('{{ _("Cancel this subscription?") }}')) return;
+    const res = await fetch('/portal/api/subscription/' + subId + '/cancel', {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF},
+    });
+    const data = await res.json();
+    if (data.ok) { location.reload(); } else { alert(data.error); }
+}
+
+async function createOwnerAccount(ownerId) {
+    const username = document.getElementById('ownerUsername').value.trim();
+    const email = document.getElementById('ownerEmail').value.trim();
+    const password = document.getElementById('ownerPassword').value;
+    if (!username || !email || !password) { alert('{{ _("All fields required") }}'); return; }
+    const res = await fetch('/portal/api/create-owner-account', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify({owner_id: ownerId, username, email, password}),
+    });
+    const data = await res.json();
+    if (data.ok) { alert('{{ _("Account created successfully") }}'); location.reload(); }
+    else { alert(data.error); }
+}
+</script>
+{% endblock %}

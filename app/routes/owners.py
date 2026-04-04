@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app
 from flask_login import login_required, current_user
 from flask_babel import _
 from app import db
 from app.models import Owner
+from app.i18n_data import optional_form_str
 
 owners_bp = Blueprint('owners', __name__)
 
@@ -17,21 +18,30 @@ def index():
 @owners_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
+    if request.method == 'GET':
+        return redirect(url_for('owners.index', new=1))
+
     if request.method == 'POST':
         owner = Owner(
             name=request.form['name'],
+            name_en=optional_form_str(request.form, 'name_en'),
+            name_ar=optional_form_str(request.form, 'name_ar'),
             phone=request.form.get('phone'),
             email=request.form.get('email'),
             national_id=request.form.get('national_id'),
             bank_name=request.form.get('bank_name'),
             iban=request.form.get('iban'),
             notes=request.form.get('notes'),
+            notes_en=optional_form_str(request.form, 'notes_en'),
+            notes_ar=optional_form_str(request.form, 'notes_ar'),
         )
         db.session.add(owner)
         db.session.commit()
+        current_app.logger.info('owners.create: owner_id=%s', owner.id)
         flash(_('Owner created successfully'), 'success')
         return redirect(url_for('owners.index'))
-    return render_template('owners/form.html', owner=None)
+
+    abort(405)
 
 
 @owners_bp.route('/<int:owner_id>')
@@ -45,18 +55,22 @@ def detail(owner_id):
 @login_required
 def edit(owner_id):
     owner = db.session.get(Owner, owner_id) or abort(404)
-    if request.method == 'POST':
-        owner.name = request.form['name']
-        owner.phone = request.form.get('phone')
-        owner.email = request.form.get('email')
-        owner.national_id = request.form.get('national_id')
-        owner.bank_name = request.form.get('bank_name')
-        owner.iban = request.form.get('iban')
-        owner.notes = request.form.get('notes')
-        db.session.commit()
-        flash(_('Owner updated successfully'), 'success')
-        return redirect(url_for('owners.detail', owner_id=owner.id))
-    return render_template('owners/form.html', owner=owner)
+    if request.method == 'GET':
+        return redirect(url_for('owners.detail', owner_id=owner.id, edit=1))
+    owner.name = request.form['name']
+    owner.name_en = optional_form_str(request.form, 'name_en')
+    owner.name_ar = optional_form_str(request.form, 'name_ar')
+    owner.phone = request.form.get('phone')
+    owner.email = request.form.get('email')
+    owner.national_id = request.form.get('national_id')
+    owner.bank_name = request.form.get('bank_name')
+    owner.iban = request.form.get('iban')
+    owner.notes = request.form.get('notes')
+    owner.notes_en = optional_form_str(request.form, 'notes_en')
+    owner.notes_ar = optional_form_str(request.form, 'notes_ar')
+    db.session.commit()
+    flash(_('Owner updated successfully'), 'success')
+    return redirect(url_for('owners.detail', owner_id=owner.id))
 
 
 @owners_bp.route('/<int:owner_id>/delete', methods=['POST'])
@@ -68,7 +82,3 @@ def delete(owner_id):
     flash(_('Owner deleted'), 'success')
     return redirect(url_for('owners.index'))
 
-
-def abort(code):
-    from flask import abort as flask_abort
-    flask_abort(code)

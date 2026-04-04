@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Muktasabat">
+  <!-- Roof: maroon angular shape matching the company logo -->
+  <path fill="#541414" d="M32 6L8 24h6l18-14 18 14h6L32 6z"/>
+  <path fill="#6E1F1F" d="M14 24l18-14 18 14v4H14v-4z"/>
+  <!-- Left pillar: maroon rounded -->
+  <rect fill="#541414" x="18" y="28" width="10" height="28" rx="3"/>
+  <!-- Right pillar: grey -->
+  <rect fill="#9E9E9E" x="36" y="28" width="10" height="28" rx="3"/>
+  <!-- Door cutout in left pillar -->
+  <rect fill="#3A0A0A" x="20" y="38" width="6" height="18" rx="2"/>
+</svg>

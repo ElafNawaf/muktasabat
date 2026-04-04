@@ -1,0 +1,33 @@
+<div class="modal fade" id="paymentEditModal" tabindex="-1" aria-labelledby="paymentEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentEditModalLabel">{{ _('Edit Payment') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+            </div>
+            <form method="POST" action="{{ url_for('payments.edit', payment_id=payment.id) }}">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Amount') }} ({{ _('SAR') }}) *</label>
+                            <input type="number" step="0.01" class="form-control" name="amount" value="{{ payment.amount }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('Due Date') }} *</label>
+                            <input type="date" class="form-control" name="due_date" value="{{ payment.due_date.isoformat() }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">{{ _('Notes') }}</label>
+                            <textarea class="form-control" name="notes" rows="3">{{ payment.notes or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> {{ _('Save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

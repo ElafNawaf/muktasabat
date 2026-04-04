@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required
 from flask_babel import _
 from app import db
@@ -13,12 +13,25 @@ contracts_bp = Blueprint('contracts', __name__)
 @login_required
 def index():
     contracts = Contract.query.order_by(Contract.created_at.desc()).all()
-    return render_template('contracts/index.html', contracts=contracts)
+    units = Unit.query.filter_by(is_available=True).order_by(Unit.number).all()
+    tenants = Tenant.query.order_by(Tenant.name).all()
+    return render_template(
+        'contracts/index.html',
+        contracts=contracts,
+        units=units,
+        tenants=tenants,
+    )
 
 
 @contracts_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
+    if request.method == 'GET':
+        args = {'new': 1}
+        if request.args.get('unit_id'):
+            args['unit_id'] = request.args.get('unit_id')
+        return redirect(url_for('contracts.index', **args))
+
     if request.method == 'POST':
         unit_id = int(request.form['unit_id'])
         tenant_id = int(request.form['tenant_id'])
@@ -53,9 +66,7 @@ def create():
         flash(_('Contract created successfully'), 'success')
         return redirect(url_for('contracts.index'))
 
-    units = Unit.query.filter_by(is_available=True).order_by(Unit.number).all()
-    tenants = Tenant.query.order_by(Tenant.name).all()
-    return render_template('contracts/form.html', contract=None, units=units, tenants=tenants)
+    abort(405)
 
 
 @contracts_bp.route('/<int:contract_id>')
@@ -69,20 +80,18 @@ def detail(contract_id):
 @login_required
 def edit(contract_id):
     contract = db.session.get(Contract, contract_id) or _abort(404)
-    if request.method == 'POST':
-        contract.contract_number = request.form['contract_number']
-        contract.start_date = date.fromisoformat(request.form['start_date'])
-        contract.end_date = date.fromisoformat(request.form['end_date'])
-        contract.rent_amount = float(request.form['rent_amount'])
-        contract.payment_cycle = int(request.form['payment_cycle'])
-        contract.status = request.form.get('status', 'active')
-        contract.notes = request.form.get('notes')
-        db.session.commit()
-        flash(_('Contract updated successfully'), 'success')
-        return redirect(url_for('contracts.detail', contract_id=contract.id))
-    units = Unit.query.order_by(Unit.number).all()
-    tenants = Tenant.query.order_by(Tenant.name).all()
-    return render_template('contracts/form.html', contract=contract, units=units, tenants=tenants)
+    if request.method == 'GET':
+        return redirect(url_for('contracts.detail', contract_id=contract.id, edit=1))
+    contract.contract_number = request.form['contract_number']
+    contract.start_date = date.fromisoformat(request.form['start_date'])
+    contract.end_date = date.fromisoformat(request.form['end_date'])
+    contract.rent_amount = float(request.form['rent_amount'])
+    contract.payment_cycle = int(request.form['payment_cycle'])
+    contract.status = request.form.get('status', 'active')
+    contract.notes = request.form.get('notes')
+    db.session.commit()
+    flash(_('Contract updated successfully'), 'success')
+    return redirect(url_for('contracts.detail', contract_id=contract.id))
 
 
 @contracts_bp.route('/<int:contract_id>/terminate', methods=['POST'])

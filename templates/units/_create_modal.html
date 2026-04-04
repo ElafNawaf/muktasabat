@@ -1,0 +1,104 @@
+<div class="modal fade" id="unitCreateModal" tabindex="-1" aria-labelledby="unitCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unitCreateModalLabel">{{ _('Add Unit') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ _('Close') }}"></button>
+            </div>
+            <form method="POST" action="{{ url_for('units.create') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="create_unit_building" class="form-label">{{ _('Building') }} *</label>
+                            <select class="form-select" id="create_unit_building" name="building_id" required>
+                                <option value="">{{ _('Select Building') }}</option>
+                                {% for building in buildings %}
+                                <option value="{{ building.id }}" {% if request.args.get('building_id') and request.args.get('building_id')|int == building.id %}selected{% endif %}>{{ building|localized('name') }} ({{ building.owner|localized('name') }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="create_unit_number" class="form-label">{{ _('Unit Number') }} *</label>
+                            <input type="text" class="form-control" id="create_unit_number" name="number" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="create_unit_name" class="form-label">{{ _('Unit Name') }} *</label>
+                            <input type="text" class="form-control" id="create_unit_name" name="name" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="create_unit_name_en" class="form-label">{{ _('Name in English') }}</label>
+                            <input type="text" class="form-control" id="create_unit_name_en" name="name_en" placeholder="{{ _('Optional') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="create_unit_name_ar" class="form-label">{{ _('Name in Arabic') }}</label>
+                            <input type="text" class="form-control" id="create_unit_name_ar" name="name_ar" placeholder="{{ _('Optional') }}" dir="rtl">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="create_unit_type" class="form-label">{{ _('Type') }}</label>
+                            <select class="form-select" id="create_unit_type" name="unit_type">
+                                <option value="">-</option>
+                                {% for t in ['apartment', 'shop', 'office', 'warehouse', 'villa', 'other'] %}
+                                <option value="{{ t }}">{{ _(t) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="create_unit_area" class="form-label">{{ _('Area (sqm)') }}</label>
+                            <input type="number" step="0.01" class="form-control" id="create_unit_area" name="area_sqm">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="create_unit_rent" class="form-label">{{ _('Monthly Rent (SAR)') }}</label>
+                            <input type="number" step="0.01" class="form-control" id="create_unit_rent" name="rent_amount" value="0">
+                        </div>
+
+                        <div class="col-12"><hr class="my-1"><h6 class="mb-0 mt-1">{{ _('Fees & Commissions') }}</h6></div>
+                        <div class="col-md-4">
+                            <label for="create_unit_mgmt" class="form-label">{{ _('Property Management') }} %</label>
+                            <input type="number" step="0.01" class="form-control" id="create_unit_mgmt" name="management_percentage" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="create_unit_agent_name" class="form-label">{{ _('Agent Name') }}</label>
+                            <input type="text" class="form-control" id="create_unit_agent_name" name="agent_name">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="create_unit_agent_pct" class="form-label">{{ _('Agent') }} %</label>
+                            <input type="number" step="0.01" class="form-control" id="create_unit_agent_pct" name="agent_percentage" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="create_unit_ejar" class="form-label">{{ _('Ejar Fee (SAR)') }}</label>
+                            <input type="number" step="0.01" class="form-control" id="create_unit_ejar" name="ejar_fee" value="0">
+                        </div>
+
+                        <div class="col-12"><hr class="my-1"><h6 class="mb-0 mt-1">{{ _('Utility Accounts') }}</h6></div>
+                        <div class="col-md-6">
+                            <label for="create_unit_elec" class="form-label">{{ _('Electricity Account #') }}</label>
+                            <input type="text" class="form-control" id="create_unit_elec" name="electric_invoice">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_unit_water" class="form-label">{{ _('Water Account #') }}</label>
+                            <input type="text" class="form-control" id="create_unit_water" name="water_invoice">
+                        </div>
+
+                        <div class="col-12">
+                            <label for="create_unit_notes" class="form-label">{{ _('Notes') }}</label>
+                            <textarea class="form-control" id="create_unit_notes" name="notes" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_unit_notes_en" class="form-label">{{ _('Notes in English') }}</label>
+                            <textarea class="form-control" id="create_unit_notes_en" name="notes_en" rows="2" placeholder="{{ _('Optional') }}"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="create_unit_notes_ar" class="form-label">{{ _('Notes in Arabic') }}</label>
+                            <textarea class="form-control" id="create_unit_notes_ar" name="notes_ar" rows="2" placeholder="{{ _('Optional') }}" dir="rtl"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+                    <button type="submit" class="btn btn-primary">{{ _('Save') }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

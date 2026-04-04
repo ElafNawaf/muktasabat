@@ -4,9 +4,11 @@
 {% block content %}
 <div class="page-header">
     <h1>{{ _('Units') }}</h1>
-    <a href="{{ url_for('units.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> {{ _('Add Unit') }}
-    </a>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#unitCreateModal">
+            <i class="bi bi-plus-lg"></i> {{ _('Add Unit') }}
+        </button>
+    </div>
 </div>
 
 <div class="card">
@@ -29,9 +31,9 @@
                     {% for unit in units %}
                     <tr>
                         <td><a href="{{ url_for('units.detail', unit_id=unit.id) }}">{{ unit.number }}</a></td>
-                        <td>{{ unit.name }}</td>
-                        <td><a href="{{ url_for('buildings.detail', building_id=unit.building.id) }}">{{ unit.building.name }}</a></td>
-                        <td>{{ unit.building.owner.name }}</td>
+                        <td>{{ unit|localized('name') }}</td>
+                        <td><a href="{{ url_for('buildings.detail', building_id=unit.building.id) }}">{{ unit.building|localized('name') }}</a></td>
+                        <td>{{ unit.building.owner|localized('name') }}</td>
                         <td>{{ '{:,.2f}'.format(unit.rent_amount) }}</td>
                         <td>{{ unit.management_percentage }}%</td>
                         <td>
@@ -40,15 +42,38 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ url_for('units.edit', unit_id=unit.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('units.detail', unit_id=unit.id, edit=1) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="8" class="text-center text-muted py-4">{{ _('No units yet') }}</td></tr>
+                    <tr><td colspan="8" class="table-empty-message">
+                        <div class="empty-placeholder">
+                            <i class="bi bi-door-open" aria-hidden="true"></i>
+                            <p>{{ _('No units yet') }}</p>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#unitCreateModal">
+                                <i class="bi bi-plus-lg"></i> {{ _('Add Unit') }}
+                            </button>
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+{% include 'units/_create_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('new') %}
+<script>
+(function () {
+    var el = document.getElementById('unitCreateModal');
+    if (!el || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+    bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, keyboard: true, focus: true }).show();
+})();
+</script>
+{% endif %}
 {% endblock %}

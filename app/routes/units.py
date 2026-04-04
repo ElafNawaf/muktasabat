@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from flask_login import login_required
 from flask_babel import _
 from app import db
 from app.models import Unit, Building
+from app.i18n_data import optional_form_str
 
 units_bp = Blueprint('units', __name__)
 
@@ -11,16 +12,25 @@ units_bp = Blueprint('units', __name__)
 @login_required
 def index():
     units = Unit.query.order_by(Unit.building_id, Unit.number).all()
-    return render_template('units/index.html', units=units)
+    buildings = Building.query.order_by(Building.name).all()
+    return render_template('units/index.html', units=units, buildings=buildings)
 
 
 @units_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create():
+    if request.method == 'GET':
+        args = {'new': 1}
+        if request.args.get('building_id'):
+            args['building_id'] = request.args.get('building_id')
+        return redirect(url_for('units.index', **args))
+
     if request.method == 'POST':
         unit = Unit(
             building_id=request.form['building_id'],
             name=request.form['name'],
+            name_en=optional_form_str(request.form, 'name_en'),
+            name_ar=optional_form_str(request.form, 'name_ar'),
             number=request.form['number'],
             unit_type=request.form.get('unit_type'),
             area_sqm=request.form.get('area_sqm', type=float),
@@ -37,8 +47,8 @@ def create():
         db.session.commit()
         flash(_('Unit created successfully'), 'success')
         return redirect(url_for('units.index'))
-    buildings = Building.query.order_by(Building.name).all()
-    return render_template('units/form.html', unit=None, buildings=buildings)
+
+    abort(405)
 
 
 @units_bp.route('/<int:unit_id>')
@@ -52,25 +62,28 @@ def detail(unit_id):
 @login_required
 def edit(unit_id):
     unit = db.session.get(Unit, unit_id) or _abort(404)
-    if request.method == 'POST':
-        unit.building_id = request.form['building_id']
-        unit.name = request.form['name']
-        unit.number = request.form['number']
-        unit.unit_type = request.form.get('unit_type')
-        unit.area_sqm = request.form.get('area_sqm', type=float)
-        unit.rent_amount = request.form.get('rent_amount', 0, type=float)
-        unit.management_percentage = request.form.get('management_percentage', 0, type=float)
-        unit.agent_name = request.form.get('agent_name')
-        unit.agent_percentage = request.form.get('agent_percentage', 0, type=float)
-        unit.electric_invoice = request.form.get('electric_invoice')
-        unit.water_invoice = request.form.get('water_invoice')
-        unit.ejar_fee = request.form.get('ejar_fee', 0, type=float)
-        unit.notes = request.form.get('notes')
-        db.session.commit()
-        flash(_('Unit updated successfully'), 'success')
-        return redirect(url_for('units.detail', unit_id=unit.id))
-    buildings = Building.query.order_by(Building.name).all()
-    return render_template('units/form.html', unit=unit, buildings=buildings)
+    if request.method == 'GET':
+        return redirect(url_for('units.detail', unit_id=unit.id, edit=1))
+    unit.building_id = request.form['building_id']
+    unit.name = request.form['name']
+    unit.name_en = optional_form_str(request.form, 'name_en')
+    unit.name_ar = optional_form_str(request.form, 'name_ar')
+    unit.number = request.form['number']
+    unit.unit_type = request.form.get('unit_type')
+    unit.area_sqm = request.form.get('area_sqm', type=float)
+    unit.rent_amount = request.form.get('rent_amount', 0, type=float)
+    unit.management_percentage = request.form.get('management_percentage', 0, type=float)
+    unit.agent_name = request.form.get('agent_name')
+    unit.agent_percentage = request.form.get('agent_percentage', 0, type=float)
+    unit.electric_invoice = request.form.get('electric_invoice')
+    unit.water_invoice = request.form.get('water_invoice')
+    unit.ejar_fee = request.form.get('ejar_fee', 0, type=float)
+    unit.notes = request.form.get('notes')
+    unit.notes_en = optional_form_str(request.form, 'notes_en')
+    unit.notes_ar = optional_form_str(request.form, 'notes_ar')
+    db.session.commit()
+    flash(_('Unit updated successfully'), 'success')
+    return redirect(url_for('units.detail', unit_id=unit.id))
 
 
 @units_bp.route('/<int:unit_id>/delete', methods=['POST'])

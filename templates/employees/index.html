@@ -5,9 +5,11 @@
 <div class="page-header">
     <h1>{{ _('Employees') }}</h1>
     {% if current_user.is_admin %}
-    <a href="{{ url_for('employees.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> {{ _('Add Employee') }}
-    </a>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#employeeCreateModal">
+            <i class="bi bi-plus-lg"></i> {{ _('Add Employee') }}
+        </button>
+    </div>
     {% endif %}
 </div>
 
@@ -27,22 +29,47 @@
                 <tbody>
                     {% for emp in employees %}
                     <tr>
-                        <td><a href="{{ url_for('employees.detail', employee_id=emp.id) }}">{{ emp.name }}</a></td>
+                        <td><a href="{{ url_for('employees.detail', employee_id=emp.id) }}">{{ emp|localized('name') }}</a></td>
                         <td>{{ emp.phone or '-' }}</td>
                         <td>{{ emp.user.username }}</td>
                         <td><span class="badge bg-info">{{ emp.owners|length }}</span></td>
                         <td>
                             {% if current_user.is_admin %}
-                            <a href="{{ url_for('employees.edit', employee_id=emp.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ url_for('employees.detail', employee_id=emp.id, edit=1) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                             {% endif %}
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="5" class="text-center text-muted py-4">{{ _('No employees yet') }}</td></tr>
+                    <tr><td colspan="5" class="table-empty-message">
+                        <div class="empty-placeholder">
+                            <i class="bi bi-person-badge" aria-hidden="true"></i>
+                            <p>{{ _('No employees yet') }}</p>
+                            {% if current_user.is_admin %}
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#employeeCreateModal">
+                                <i class="bi bi-plus-lg"></i> {{ _('Add Employee') }}
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+{% include 'employees/_create_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if request.args.get('new') and current_user.is_admin %}
+<script>
+(function () {
+    var el = document.getElementById('employeeCreateModal');
+    if (!el || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+    bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, keyboard: true, focus: true }).show();
+})();
+</script>
+{% endif %}
 {% endblock %}
