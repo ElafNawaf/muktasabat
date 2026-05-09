@@ -29,5 +29,34 @@ services:
       db:
         condition: service_healthy
 
+  api:
+    build: .
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://muktasbat:${DB_PASSWORD:-muktasbat_secret}@db:5432/muktasbat
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+    depends_on:
+      db:
+        condition: service_healthy
+        # Wait for app service so it runs Alembic migrations first
+      app:
+        condition: service_started
+
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      # Server-side calls go to FastAPI inside the docker network
+      API_URL: http://api:8000
+      # Client-side fetches use the relative /api/auth/* route handlers, so no
+      # public API URL is needed unless you want to expose FastAPI directly
+      NODE_ENV: production
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   pgdata:
