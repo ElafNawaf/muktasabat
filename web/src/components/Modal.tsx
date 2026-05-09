@@ -2,6 +2,18 @@
 
 import { useEffect } from "react";
 
+/**
+ * Right-side drawer dialog used for every form in the app (Owner, Tenant,
+ * Building, Unit, Contract, Expense, InviteUser, ImageGalleryEditor, …).
+ *
+ * The component is still named `Modal` to avoid touching every call site,
+ * but the visual is a drawer per the prototype: slides in from the end edge
+ * (right under LTR, left under RTL), full-height, with a sticky header and
+ * footer.
+ *
+ * The `size` prop maps to a max-width so smaller dialogs (confirmations) take
+ * less screen real estate. Mobile rules in globals.css override to full-width.
+ */
 export function Modal({
   open,
   onClose,
@@ -30,18 +42,21 @@ export function Modal({
 
   if (!open) return null;
 
-  const widths: Record<typeof size, number> = { sm: 420, md: 560, lg: 760 };
+  // Drawer widths (CSS default is 540px; sm shrinks for confirmations,
+  // lg widens for big multi-section forms).
+  const widths: Record<typeof size, number> = { sm: 420, md: 540, lg: 720 };
 
   return (
-    <div className="modal-overlay open" onClick={onClose}>
+    <>
+      <div className="modal-overlay open" onClick={onClose} />
       <div
         className="modal"
-        style={{ width: "100%", maxWidth: widths[size] }}
-        onClick={(e) => e.stopPropagation()}
+        style={{ width: widths[size] }}
         role="dialog"
         aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-hd" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div className="modal-hd">
           <div>
             <h2>{title}</h2>
             {subtitle && <div className="sub">{subtitle}</div>}
@@ -51,7 +66,6 @@ export function Modal({
             className="icon-btn"
             onClick={onClose}
             aria-label="Close"
-            style={{ marginInlineStart: "auto" }}
           >
             <span className="ms ms-sm">close</span>
           </button>
@@ -59,7 +73,7 @@ export function Modal({
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
-    </div>
+    </>
   );
 }
 
