@@ -136,6 +136,25 @@ class Building(Base):
     notes_ar: Mapped[Optional[str]] = mapped_column(Text)
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Mogod-style fields (added by migrations/add_building_mogod_fields.sql)
+    contract_type: Mapped[Optional[str]] = mapped_column(String(50))
+    building_code: Mapped[Optional[str]] = mapped_column(String(50), index=True)
+    water_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
+    electricity_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
+    lease_contract_number: Mapped[Optional[str]] = mapped_column(String(50))
+    branch: Mapped[Optional[str]] = mapped_column(String(100))
+    street: Mapped[Optional[str]] = mapped_column(String(200))
+    deed_number: Mapped[Optional[str]] = mapped_column(String(50))
+    deed_document_type: Mapped[Optional[str]] = mapped_column(String(50))
+    deed_date: Mapped[Optional[date]] = mapped_column(Date)
+    deed_document_number: Mapped[Optional[str]] = mapped_column(String(50))
+    property_type: Mapped[Optional[str]] = mapped_column(String(50))
+    residence_type: Mapped[Optional[str]] = mapped_column(String(50))
+    offices_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    commercial_shops_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    apartments_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     owner: Mapped["Owner"] = relationship(back_populates="buildings")
@@ -144,6 +163,11 @@ class Building(Base):
     expenses: Mapped[list["Expense"]] = relationship(back_populates="building")
     images: Mapped[list["BuildingImage"]] = relationship(
         back_populates="building", cascade="all, delete-orphan", order_by="BuildingImage.sort_order"
+    )
+    documents: Mapped[list["BuildingDocument"]] = relationship(
+        back_populates="building",
+        cascade="all, delete-orphan",
+        order_by="BuildingDocument.sort_order",
     )
 
 
@@ -338,6 +362,30 @@ class BuildingImage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     building: Mapped["Building"] = relationship(back_populates="images")
+
+
+class BuildingDocument(Base):
+    """Non-image attachments (deed PDFs, lease contracts, …) for a building.
+
+    Created by migrations/add_building_mogod_fields.sql. Image gallery uses
+    `BuildingImage` (above) — keep these distinct so list views can render
+    them differently.
+    """
+
+    __tablename__ = "building_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    building_id: Mapped[int] = mapped_column(
+        ForeignKey("buildings.id", ondelete="CASCADE"), nullable=False
+    )
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    object_key: Mapped[Optional[str]] = mapped_column(String(500))
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[Optional[str]] = mapped_column(String(100))
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    building: Mapped["Building"] = relationship(back_populates="documents")
 
 
 class UnitImage(Base):

@@ -160,6 +160,23 @@ export type BuildingInput = {
   notes_ar?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  // ── Mogod fields — all optional, counts default to 0 ──
+  contract_type?: string | null;
+  building_code?: string | null;
+  water_meter_number?: string | null;
+  electricity_meter_number?: string | null;
+  lease_contract_number?: string | null;
+  branch?: string | null;
+  street?: string | null;
+  deed_number?: string | null;
+  deed_document_type?: string | null;
+  deed_date?: string | null;
+  deed_document_number?: string | null;
+  property_type?: string | null;
+  residence_type?: string | null;
+  offices_count?: number;
+  commercial_shops_count?: number;
+  apartments_count?: number;
 };
 
 export async function createBuilding(input: BuildingInput): Promise<ActionResult<Building>> {

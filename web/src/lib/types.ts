@@ -26,6 +26,17 @@ export type EntityImage = {
   sort_order: number;
 };
 
+export type BuildingDocument = {
+  id: number;
+  building_id: number;
+  url: string;
+  object_key: string | null;
+  filename: string;
+  file_type: string | null;
+  sort_order: number;
+  created_at: string;
+};
+
 export type Building = {
   id: number;
   owner_id: number;
@@ -47,6 +58,24 @@ export type Building = {
   notes_ar: string | null;
   latitude: number | null;
   longitude: number | null;
+  // Mogod fields
+  contract_type: string | null;
+  building_code: string | null;
+  water_meter_number: string | null;
+  electricity_meter_number: string | null;
+  lease_contract_number: string | null;
+  branch: string | null;
+  street: string | null;
+  deed_number: string | null;
+  deed_document_type: string | null;
+  deed_date: string | null;
+  deed_document_number: string | null;
+  property_type: string | null;
+  residence_type: string | null;
+  offices_count: number;
+  commercial_shops_count: number;
+  apartments_count: number;
+  documents?: BuildingDocument[];
   created_at: string;
   images: EntityImage[];
 };

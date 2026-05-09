@@ -11,6 +11,37 @@ import type { Building, Owner } from "@/lib/types";
 
 import type { UserPick } from "./page";
 
+const PROPERTY_TYPES = ["residential", "commercial", "mixed", "industrial"] as const;
+const RESIDENCE_TYPES = ["apartment_building", "villa", "compound", "tower"] as const;
+const CONTRACT_TYPES = ["owned", "rented", "managed"] as const;
+const DEED_DOC_TYPES = ["sakk", "title_deed", "other"] as const;
+
+const PT_LABELS: Record<(typeof PROPERTY_TYPES)[number], string> = {
+  residential: "ptResidential", commercial: "ptCommercial",
+  mixed: "ptMixed", industrial: "ptIndustrial",
+};
+const RT_LABELS: Record<(typeof RESIDENCE_TYPES)[number], string> = {
+  apartment_building: "rtApartmentBuilding", villa: "rtVilla",
+  compound: "rtCompound", tower: "rtTower",
+};
+const CT_LABELS: Record<(typeof CONTRACT_TYPES)[number], string> = {
+  owned: "ctOwned", rented: "ctRented", managed: "ctManaged",
+};
+const DD_LABELS: Record<(typeof DEED_DOC_TYPES)[number], string> = {
+  sakk: "ddSakk", title_deed: "ddTitleDeed", other: "ddOther",
+};
+
+const sectionStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: "var(--color-primary)",
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  marginTop: 8,
+  paddingBottom: 4,
+  borderBottom: "1px solid var(--color-border)",
+};
+
 export function BuildingFormModal({
   open,
   onClose,
@@ -50,6 +81,23 @@ export function BuildingFormModal({
     notes_ar: building?.notes_ar ?? "",
     latitude: building?.latitude ?? null,
     longitude: building?.longitude ?? null,
+    // Mogod fields
+    contract_type: building?.contract_type ?? "",
+    building_code: building?.building_code ?? "",
+    water_meter_number: building?.water_meter_number ?? "",
+    electricity_meter_number: building?.electricity_meter_number ?? "",
+    lease_contract_number: building?.lease_contract_number ?? "",
+    branch: building?.branch ?? "",
+    street: building?.street ?? "",
+    deed_number: building?.deed_number ?? "",
+    deed_document_type: building?.deed_document_type ?? "",
+    deed_date: building?.deed_date ?? "",
+    deed_document_number: building?.deed_document_number ?? "",
+    property_type: building?.property_type ?? "",
+    residence_type: building?.residence_type ?? "",
+    offices_count: building?.offices_count ?? 0,
+    commercial_shops_count: building?.commercial_shops_count ?? 0,
+    apartments_count: building?.apartments_count ?? 0,
   }));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -57,14 +105,21 @@ export function BuildingFormModal({
   const set = <K extends keyof BuildingInput>(k: K, v: BuildingInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  const cleanString = (v: unknown): string | null =>
+    typeof v === "string" && v.trim() ? v.trim() : null;
+  const cleanCount = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!form.owner_id) return setError(t("ownerRequired"));
     const pick = (en?: string | null, ar?: string | null) => {
-      const e = en?.toString().trim() ?? "";
-      const a = ar?.toString().trim() ?? "";
-      return { en: e || null, ar: a || null, primary: e || a || null };
+      const en1 = en?.toString().trim() ?? "";
+      const ar1 = ar?.toString().trim() ?? "";
+      return { en: en1 || null, ar: ar1 || null, primary: en1 || ar1 || null };
     };
     const name = pick(form.name_en, form.name_ar);
     if (!name.primary) return setError(t("nameRequired"));
@@ -92,6 +147,23 @@ export function BuildingFormModal({
       notes_ar: notes.ar,
       latitude: form.latitude ?? null,
       longitude: form.longitude ?? null,
+      // Mogod fields
+      contract_type: cleanString(form.contract_type),
+      building_code: cleanString(form.building_code),
+      water_meter_number: cleanString(form.water_meter_number),
+      electricity_meter_number: cleanString(form.electricity_meter_number),
+      lease_contract_number: cleanString(form.lease_contract_number),
+      branch: cleanString(form.branch),
+      street: cleanString(form.street),
+      deed_number: cleanString(form.deed_number),
+      deed_document_type: cleanString(form.deed_document_type),
+      deed_date: cleanString(form.deed_date),
+      deed_document_number: cleanString(form.deed_document_number),
+      property_type: cleanString(form.property_type),
+      residence_type: cleanString(form.residence_type),
+      offices_count: cleanCount(form.offices_count),
+      commercial_shops_count: cleanCount(form.commercial_shops_count),
+      apartments_count: cleanCount(form.apartments_count),
     };
     start(async () => {
       const res = isEdit && building
@@ -111,7 +183,7 @@ export function BuildingFormModal({
       onClose={onClose}
       title={isEdit ? t("editTitle") : t("createTitle")}
       subtitle={isEdit ? t("editSubtitle") : t("createSubtitle")}
-      size="md"
+      size="lg"
       footer={
         <>
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={pending}>
@@ -129,23 +201,20 @@ export function BuildingFormModal({
             {error}
           </div>
         )}
+
+        {/* ── General information ────────────────────────── */}
+        <div style={sectionStyle}>{t("sectionGeneral")}</div>
+
         <div className="field">
-          <label>
-            {t("owner")} <span className="req">*</span>
-          </label>
+          <label>{t("owner")} <span className="req">*</span></label>
           <select
-            className="select"
+            className="select" required
             value={form.owner_id || ""}
             onChange={(e) => set("owner_id", Number(e.target.value))}
-            required
           >
-            <option value="" disabled>
-              {t("selectOwner")}
-            </option>
+            <option value="" disabled>{t("selectOwner")}</option>
             {owners.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
+              <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
         </div>
@@ -175,6 +244,57 @@ export function BuildingFormModal({
           onChangeEn={(v) => set("name_en", v)}
           onChangeAr={(v) => set("name_ar", v)}
         />
+
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("buildingCode")}</label>
+            <input className="input input-mono" maxLength={50}
+              value={form.building_code ?? ""}
+              onChange={(e) => set("building_code", e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("contractType")}</label>
+            <select className="select"
+              value={form.contract_type ?? ""}
+              onChange={(e) => set("contract_type", e.target.value)}>
+              <option value="">—</option>
+              {CONTRACT_TYPES.map((v) => (
+                <option key={v} value={v}>{t(CT_LABELS[v])}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("branch")}</label>
+            <input className="input" maxLength={100}
+              value={form.branch ?? ""}
+              onChange={(e) => set("branch", e.target.value)} />
+          </div>
+        </div>
+
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("waterMeter")}</label>
+            <input className="input input-mono" maxLength={50}
+              value={form.water_meter_number ?? ""}
+              onChange={(e) => set("water_meter_number", e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("electricityMeter")}</label>
+            <input className="input input-mono" maxLength={50}
+              value={form.electricity_meter_number ?? ""}
+              onChange={(e) => set("electricity_meter_number", e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("leaseContractNumber")}</label>
+            <input className="input input-mono" maxLength={50}
+              value={form.lease_contract_number ?? ""}
+              onChange={(e) => set("lease_contract_number", e.target.value)} />
+          </div>
+        </div>
+
+        {/* ── Location ────────────────────────── */}
+        <div style={sectionStyle}>{t("sectionLocation")}</div>
+
         <BilingualField
           label={t("city")}
           maxLength={100}
@@ -191,6 +311,12 @@ export function BuildingFormModal({
           onChangeEn={(v) => set("district_en", v)}
           onChangeAr={(v) => set("district_ar", v)}
         />
+        <div className="field">
+          <label>{t("street")}</label>
+          <input className="input" maxLength={200}
+            value={form.street ?? ""}
+            onChange={(e) => set("street", e.target.value)} />
+        </div>
         <BilingualField
           label={t("address")}
           maxLength={300}
@@ -207,6 +333,92 @@ export function BuildingFormModal({
             set("longitude", ln);
           }}
         />
+
+        {/* ── Deed information ────────────────────────── */}
+        <div style={sectionStyle}>{t("sectionDeed")}</div>
+
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("deedNumber")}</label>
+            <input className="input input-mono" maxLength={50}
+              value={form.deed_number ?? ""}
+              onChange={(e) => set("deed_number", e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("deedDocumentType")}</label>
+            <select className="select"
+              value={form.deed_document_type ?? ""}
+              onChange={(e) => set("deed_document_type", e.target.value)}>
+              <option value="">—</option>
+              {DEED_DOC_TYPES.map((v) => (
+                <option key={v} value={v}>{t(DD_LABELS[v])}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("deedDate")}</label>
+            <input className="input" type="date"
+              value={form.deed_date ?? ""}
+              onChange={(e) => set("deed_date", e.target.value)} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("deedDocumentNumber")}</label>
+            <input className="input input-mono" maxLength={50}
+              value={form.deed_document_number ?? ""}
+              onChange={(e) => set("deed_document_number", e.target.value)} />
+          </div>
+        </div>
+
+        {/* ── Property data ────────────────────────── */}
+        <div style={sectionStyle}>{t("sectionProperty")}</div>
+
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("propertyType")}</label>
+            <select className="select"
+              value={form.property_type ?? ""}
+              onChange={(e) => set("property_type", e.target.value)}>
+              <option value="">—</option>
+              {PROPERTY_TYPES.map((v) => (
+                <option key={v} value={v}>{t(PT_LABELS[v])}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("residenceType")}</label>
+            <select className="select"
+              value={form.residence_type ?? ""}
+              onChange={(e) => set("residence_type", e.target.value)}>
+              <option value="">—</option>
+              {RESIDENCE_TYPES.map((v) => (
+                <option key={v} value={v}>{t(RT_LABELS[v])}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("apartmentsCount")}</label>
+            <input className="input input-mono" type="number" min={0} step={1}
+              value={String(form.apartments_count ?? 0)}
+              onChange={(e) => set("apartments_count", Number(e.target.value))} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("officesCount")}</label>
+            <input className="input input-mono" type="number" min={0} step={1}
+              value={String(form.offices_count ?? 0)}
+              onChange={(e) => set("offices_count", Number(e.target.value))} />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("commercialShopsCount")}</label>
+            <input className="input input-mono" type="number" min={0} step={1}
+              value={String(form.commercial_shops_count ?? 0)}
+              onChange={(e) => set("commercial_shops_count", Number(e.target.value))} />
+          </div>
+        </div>
+
         <BilingualField
           label={t("notes")}
           multiline
