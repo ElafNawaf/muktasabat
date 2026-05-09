@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
 import { requireAuth } from "@/lib/auth";
 
 export default async function AppLayout({
@@ -11,10 +11,5 @@ export default async function AppLayout({
   const { locale } = await params;
   const user = await requireAuth(locale);
 
-  return (
-    <div className="app">
-      <Sidebar user={{ username: user.username, role: user.role }} />
-      <div className="main">{children}</div>
-    </div>
-  );
+  return <AppShell user={{ username: user.username, role: user.role }}>{children}</AppShell>;
 }

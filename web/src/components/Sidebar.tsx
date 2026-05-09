@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { BrandLogo } from "./BrandLogo";
+import { useMobileNav } from "./MobileNavProvider";
 
 type NavItem = { id: string; href: string; icon: string; label: string; badge?: number };
 
@@ -23,6 +24,7 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
   const locale = useLocale();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { open: mobileOpen, close: closeMobile } = useMobileNav();
 
   const roleLabel = useTranslations("roles");
 
@@ -67,7 +69,7 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
     : "—";
 
   return (
-    <aside className={"sidebar" + (collapsed ? " collapsed" : "")}>
+    <aside className={"sidebar" + (collapsed ? " collapsed" : "") + (mobileOpen ? " mobile-open" : "")}>
       <div className="sidebar-hd">
         <div className="brand">
           <div className="brand-mark">
@@ -101,6 +103,7 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
                   href={it.href}
                   className={"nav-item" + (isActive ? " active" : "")}
                   title={collapsed ? it.label : undefined}
+                  onClick={closeMobile}
                 >
                   <span className="ms">{it.icon}</span>
                   <span className="label">{it.label}</span>

@@ -1594,3 +1594,172 @@ body {
 .user-card-meta { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px dashed var(--color-border); font-size: 12px; color: var(--color-text-secondary); }
 .user-card-status { display: inline-flex; align-items: center; gap: 6px; }
 .user-card-status .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+
+/* ───────────────── Responsive ─────────────────
+   Breakpoints: phone <=640, tablet 641-1024, desktop >=1025.
+   Default styles target desktop; rules below progressively shrink the layout. */
+
+/* Hamburger button hidden on desktop, visible on phone */
+.topbar-menu-btn { display: none; }
+
+/* Backdrop for mobile drawer */
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  z-index: 80;
+  animation: fade-in 0.18s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Tablet — 1024px and below */
+@media (max-width: 1024px) {
+  :root { --sidebar-w: 220px; }
+  .page { padding: 16px; }
+  .page-title { font-size: 20px; }
+  .topbar-search { max-width: 220px; }
+  .topbar-search input { width: 200px; }
+  .owner-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .filter-bar { flex-wrap: wrap; gap: 8px; }
+  .roles-layout { grid-template-columns: 220px 1fr !important; }
+}
+
+/* Phone — 640px and below */
+@media (max-width: 640px) {
+  /* Single-column shell; sidebar slides in as a drawer overlay */
+  .app, .app.collapsed { grid-template-columns: 1fr !important; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    inset-inline-start: 0;
+    width: 280px;
+    max-width: 86vw;
+    height: 100%;
+    z-index: 90;
+    transform: translateX(-100%);
+    transition: transform 0.24s var(--ease);
+    box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.35);
+  }
+  [dir="rtl"] .sidebar { transform: translateX(100%); }
+  .sidebar.mobile-open { transform: translateX(0); }
+  /* On phone, never collapse-to-icons mode — drawer is always full-width when open */
+  .sidebar.collapsed { width: 280px; max-width: 86vw; }
+  .sidebar.collapsed .nav-item { justify-content: flex-start; padding: 9px 12px; }
+  .sidebar.collapsed .nav-item .label,
+  .sidebar.collapsed .nav-item .badge,
+  .sidebar.collapsed .brand-text,
+  .sidebar.collapsed .nav-section { display: revert; }
+  .sidebar.collapsed .user-info { display: flex; }
+  .sidebar-collapse-btn { display: none; }
+
+  /* Hamburger appears */
+  .topbar-menu-btn { display: inline-flex; }
+
+  /* Topbar: hide search & user-name text on phone, keep icons */
+  .topbar { padding-inline: 12px; gap: 6px; }
+  .topbar h1 { font-size: 15px; }
+  .topbar-search { display: none; }
+  .topbar-user-text, .topbar-avatar .role-pill { display: none; }
+  .topbar-avatar { padding: 4px; }
+
+  /* Body lock when drawer open */
+  body.mobile-nav-open { overflow: hidden; }
+
+  /* Main scrolls independently */
+  .main { min-width: 0; }
+
+  .page { padding: 12px; gap: 12px; }
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .page-header > div:last-child {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .page-title { font-size: 18px; }
+  .page-subtitle { font-size: 12.5px; }
+
+  /* KPI grid stacks 2-up then 1-up on tiny phones */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  .kpi { padding: 12px; }
+  .kpi-value { font-size: 18px; }
+
+  /* Filter bar wraps; search becomes full-width */
+  .filter-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .filter-bar .search-input { width: 100%; }
+  .filter-bar .search-input input { width: 100%; }
+  .filter-bar .select { width: 100%; max-width: none !important; }
+  .view-toggle { align-self: flex-end; }
+
+  /* Cards (owner/tenant/user grid) — single column */
+  .owner-grid { grid-template-columns: 1fr; gap: 12px; }
+  .unit-grid { grid-template-columns: 1fr !important; gap: 10px; }
+
+  /* Properties: building accordion header */
+  .drill-hd.prop-hd {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .prop-hd .prop-thumb { width: 48px; height: 48px; }
+  .prop-hd .stats { width: 100%; justify-content: space-around; order: 3; }
+  .prop-hd .actions { order: 4; margin-inline-start: auto; }
+  .prop-detail-grid { grid-template-columns: 1fr !important; gap: 12px; }
+  .prop-thumbs { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .prop-hero-actions { flex-wrap: wrap; gap: 6px; }
+
+  /* Modals: full-screen on phone */
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
+  .modal-overlay {
+    align-items: stretch;
+    padding: 0;
+  }
+  .modal-body { padding: 14px 16px; }
+  .modal-hd { padding: 14px 16px 0; }
+  .modal-foot { padding: 12px 16px 14px; }
+  .field-row { flex-direction: column; gap: 12px; }
+
+  /* Tables get horizontal scroll already via .tbl-wrap; trim cell padding */
+  .tbl th, .tbl td { padding: 8px 10px; font-size: 12.5px; }
+  .tbl .actions { flex-wrap: nowrap; }
+
+  /* Tabs: horizontal scroll */
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab { white-space: nowrap; }
+
+  /* Roles layout: stack the role list above the matrix */
+  .roles-layout { grid-template-columns: 1fr !important; gap: 12px; }
+
+  /* Login / register / verify cards — keep readable inside small viewport */
+  .login-page { padding: 16px; }
+  .login-card { width: 100%; max-width: 100%; padding: 24px 18px; }
+  .login-lang { top: 12px; inset-inline-end: 12px; }
+
+  /* Lightbox: shrink padding so the photo gets the room */
+  .lightbox { padding: 12px; }
+  .lightbox-card { max-width: 100%; }
+
+  /* Map preview / picker — keep usable but not huge */
+  .prop-map-card { grid-template-columns: 1fr; }
+  .prop-map-img { height: 140px; }
+}
+
+/* Tiny phones — 380px and below */
+@media (max-width: 380px) {
+  .kpi-grid { grid-template-columns: 1fr !important; }
+}
+
