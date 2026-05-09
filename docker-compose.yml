@@ -13,21 +13,28 @@ services:
       timeout: 3s
       retries: 5
 
-  app:
+  api:
     build: .
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
-      # Host 5000 is often taken by macOS AirPlay Receiver; map a free host port
-      - "8080:5000"
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql://muktasbat:${DB_PASSWORD:-muktasbat_secret}@db:5432/muktasbat
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
-      FLASK_ENV: production
-      # Gunicorn serves HTTP; disable HTTPS redirects (set true behind TLS termination)
-      USE_HTTPS: "false"
-      BABEL_DEFAULT_LOCALE: ar
     depends_on:
       db:
         condition: service_healthy
+
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      API_URL: http://api:8000
+      NODE_ENV: production
+    depends_on:
+      api:
+        condition: service_started
 
 volumes:
   pgdata:
