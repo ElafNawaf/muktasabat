@@ -24,3 +24,13 @@ htmlcov/
 .pytest_cache/
 messages.pot
 vendor_polib/
+
+# Claude Code harness state (worktrees, sessions)
+.claude/
+
+# Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts

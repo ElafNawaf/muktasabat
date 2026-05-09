@@ -18,7 +18,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 8
     refresh_token_expire_days: int = 30
 
-    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8080"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+    ]
 
 
 @lru_cache

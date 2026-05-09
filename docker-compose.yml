@@ -30,6 +30,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Server-side calls go to FastAPI inside the docker network
       API_URL: http://api:8000
       NODE_ENV: production
     depends_on:
