@@ -51,6 +51,21 @@ class Settings(BaseSettings):
     # Override when using CloudFront in front of the bucket.
     s3_public_base_url: str = os.environ.get("S3_PUBLIC_BASE_URL", "")
 
+    # --- Ejar Integration (منصة إيجار) ---
+    # Credentials issued by REGA after approval. Leave empty to run in STUB mode
+    # (all Ejar API calls are simulated — safe for dev/staging).
+    #
+    # EJAR_CLIENT_ID=<your-client-id>
+    # EJAR_CLIENT_SECRET=<your-client-secret>
+    # EJAR_BASE_URL=https://api.ejar.sa  (production)
+    #            or https://staging.api.ejar.sa  (sandbox)
+    ejar_client_id: str = os.environ.get("EJAR_CLIENT_ID", "")
+    ejar_client_secret: str = os.environ.get("EJAR_CLIENT_SECRET", "")
+    ejar_base_url: str = os.environ.get("EJAR_BASE_URL", "https://api.ejar.sa")
+    # When True, Ejar API calls are simulated (stub mode). Auto-enabled when
+    # ejar_client_id is empty.
+    ejar_stub_mode: bool = os.environ.get("EJAR_STUB_MODE", "true").lower() == "true"
+
 
 @lru_cache
 def get_settings() -> Settings:

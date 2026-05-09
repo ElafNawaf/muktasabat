@@ -1,15 +1,19 @@
+from datetime import datetime
+
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from api.deps import CurrentUser, DbSession
-from api.models import Contract, ContractAttachment, Payment, Tenant, Unit
+from api.models import Contract, ContractAttachment, Owner, Payment, Tenant, Unit
 from api.schemas.contract import (
     ContractAttachmentRead,
     ContractCreateRequest,
     ContractRead,
     ContractUpdateRequest,
 )
+from api.services.ejar import EjarContractPayload, get_ejar_service
 from api.storage import StorageNotConfigured, delete_object, upload_document
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -216,3 +220,157 @@ def _generate_payments(db, contract: Contract) -> None:
             )
         )
         current_date += relativedelta(months=cycle_months)
+
+
+# ---------- Ejar Integration (تكامل منصة إيجار) ----------
+
+
+class EjarStatusResponse(BaseModel):
+    ejar_status: str | None
+    ejar_contract_number: str | None
+    ejar_registered_at: datetime | None
+    is_stub_mode: bool
+
+
+@router.post("/{contract_id}/ejar/register", response_model=ContractRead)
+async def ejar_register_contract(
+    contract_id: int,
+    db: DbSession,
+    _user: CurrentUser,
+):
+    """
+    Register this contract on the Ejar platform.
+
+    In STUB mode (no EJAR_CLIENT_ID set), a simulated Ejar reference is
+    returned immediately — useful for development and testing.
+
+    In LIVE mode the request is forwarded to the Ejar API and the returned
+    contract number is stored back on the contract record.
+    """
+    contract = db.get(Contract, contract_id)
+    if contract is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+
+    if contract.ejar_status == "registered":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Contract already registered on Ejar (ref: {contract.ejar_contract_number})",
+        )
+
+    # Gather required data from related records
+    unit = db.get(Unit, contract.unit_id)
+    tenant = db.get(Tenant, contract.tenant_id)
+    if unit is None or tenant is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unit or tenant record missing")
+
+    building = unit.building if unit else None
+    owner: Owner | None = building.owner if building else None
+
+    if owner is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Building owner record missing")
+
+    payload = EjarContractPayload(
+        landlord_national_id=owner.national_id or "",
+        landlord_name=owner.name,
+        tenant_national_id=tenant.national_id,
+        tenant_name=tenant.name,
+        tenant_phone=tenant.phone,
+        property_type=building.property_type or "residential",
+        building_deed_number=building.deed_number or "",
+        unit_number=unit.number,
+        city=building.city or "",
+        district=building.district or "",
+        contract_type=contract.contract_type,
+        start_date=contract.start_date.isoformat(),
+        end_date=contract.end_date.isoformat(),
+        total_rent_amount=contract.total_rent_amount or contract.rent_amount,
+        payment_cycle=contract.payment_cycle,
+        ejar_contract_number=contract.ejar_contract_number,
+        notes=contract.notes,
+    )
+
+    ejar = get_ejar_service()
+    result = await ejar.register_contract(payload)
+
+    if not result.success:
+        contract.ejar_status = "failed"
+        contract.ejar_response_data = result.raw
+        db.commit()
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Ejar registration failed: {result.error_message}",
+        )
+
+    contract.ejar_status = "registered"
+    contract.ejar_contract_number = result.ejar_contract_number
+    contract.ejar_registered_at = result.registered_at
+    contract.ejar_response_data = result.raw
+    db.commit()
+    db.refresh(contract)
+    return contract
+
+
+@router.post("/{contract_id}/ejar/cancel", response_model=ContractRead)
+async def ejar_cancel_contract(
+    contract_id: int,
+    db: DbSession,
+    _user: CurrentUser,
+):
+    """Cancel this contract's registration on the Ejar platform."""
+    contract = db.get(Contract, contract_id)
+    if contract is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+
+    if contract.ejar_status != "registered":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Contract is not registered on Ejar — cannot cancel",
+        )
+
+    ejar_ref = (contract.ejar_response_data or {}).get("reference", contract.ejar_contract_number)
+    ejar = get_ejar_service()
+    ok = await ejar.cancel_contract(ejar_reference=ejar_ref or "")
+
+    if not ok:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Ejar cancellation request failed")
+
+    contract.ejar_status = "cancelled"
+    db.commit()
+    db.refresh(contract)
+    return contract
+
+
+@router.get("/{contract_id}/ejar/status", response_model=EjarStatusResponse)
+async def ejar_get_status(
+    contract_id: int,
+    db: DbSession,
+    _user: CurrentUser,
+):
+    """Fetch the live status of this contract from the Ejar platform."""
+    contract = db.get(Contract, contract_id)
+    if contract is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+
+    ejar = get_ejar_service()
+
+    if contract.ejar_status in (None, "failed"):
+        return EjarStatusResponse(
+            ejar_status=contract.ejar_status,
+            ejar_contract_number=contract.ejar_contract_number,
+            ejar_registered_at=contract.ejar_registered_at,
+            is_stub_mode=ejar.is_stub,
+        )
+
+    ejar_ref = (contract.ejar_response_data or {}).get("reference", contract.ejar_contract_number)
+    result = await ejar.get_status(ejar_reference=ejar_ref or "")
+
+    # Sync status back to our DB
+    contract.ejar_status = result.status
+    db.commit()
+
+    return EjarStatusResponse(
+        ejar_status=result.status,
+        ejar_contract_number=contract.ejar_contract_number,
+        ejar_registered_at=contract.ejar_registered_at,
+        is_stub_mode=ejar.is_stub,
+    )

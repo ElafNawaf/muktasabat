@@ -57,6 +57,13 @@ class ContractRead(BaseModel):
 
     status: ContractStatus
     notes: Optional[str] = None
+
+    # ── Ejar integration ─────────────────────────────────────────────────────
+    ejar_status: Optional[str] = None
+    ejar_registered_at: Optional[datetime] = None
+    # not exposed in list/detail responses for security — only shown in audit log
+    # ejar_response_data intentionally omitted from public schema
+
     created_at: datetime
     attachments: list[ContractAttachmentRead] = []
 

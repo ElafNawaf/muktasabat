@@ -293,6 +293,15 @@ class Contract(Base):
 
     status: Mapped[str] = mapped_column(String(20), default="active")
     notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # ── Ejar integration (تكامل منصة إيجار) ─────────────────────────────────
+    # "pending" | "registered" | "cancelled" | "failed" | None (not submitted yet)
+    ejar_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # timestamp when contract was successfully registered on Ejar
+    ejar_registered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # full JSON response from Ejar API stored for audit / debugging
+    ejar_response_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     unit: Mapped["Unit"] = relationship(back_populates="contracts")
