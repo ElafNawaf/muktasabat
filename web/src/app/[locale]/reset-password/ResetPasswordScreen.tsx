@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 export function ResetPasswordScreen() {
   const t = useTranslations("resetPage");
@@ -62,6 +63,7 @@ export function ResetPasswordScreen() {
   return (
     <div className="login-page">
       <div className="login-pattern" />
+      <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={`/${otherLocale}/reset-password${token ? `?token=${encodeURIComponent(token)}` : ""}`}>
         {locale === "en" ? "العربية" : "English"}
       </Link>

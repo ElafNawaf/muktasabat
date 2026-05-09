@@ -7,7 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select, update
 
 from api.config import get_settings
-from api.database import Base, SessionLocal, engine, ensure_user_password_reset_columns
+from api.database import (
+    Base,
+    SessionLocal,
+    engine,
+    ensure_building_assignee_column,
+    ensure_building_location_columns,
+    ensure_user_email_verification_columns,
+    ensure_user_password_reset_columns,
+)
 from api.routers import (
     analytics,
     auth,
@@ -17,9 +25,12 @@ from api.routers import (
     expenses,
     owners,
     payments,
+    roles,
     tenants,
+    translate,
     units,
 )
+from api.bootstrap_roles import seed_default_roles
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +44,12 @@ async def lifespan(app: FastAPI):
 
     Base.metadata.create_all(bind=engine)
     ensure_user_password_reset_columns(engine)
+    ensure_user_email_verification_columns(engine)
+    ensure_building_assignee_column(engine)
+    ensure_building_location_columns(engine)
+
+    with SessionLocal() as db:
+        seed_default_roles(db)
 
     # Pydantic EmailStr rejects .local; fix legacy bootstrap row so /auth/login can return UserRead.
     with SessionLocal() as db:
@@ -126,3 +143,5 @@ app.include_router(payments.router, prefix=API_V1)
 app.include_router(employees.router, prefix=API_V1)
 app.include_router(expenses.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
+app.include_router(roles.router, prefix=API_V1)
+app.include_router(translate.router, prefix=API_V1)

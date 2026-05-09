@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 export function LoginScreen() {
   const t = useTranslations("login");
@@ -47,6 +48,7 @@ export function LoginScreen() {
   return (
     <div className="login-page">
       <div className="login-pattern" />
+      <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={`/${otherLocale}/login`}>
         {locale === "en" ? "العربية" : "English"}
       </Link>

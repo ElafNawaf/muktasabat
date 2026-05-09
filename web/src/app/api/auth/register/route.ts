@@ -1,7 +1,6 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { API_BASE, REFRESH_COOKIE, TOKEN_COOKIE } from "@/lib/api";
+import { API_BASE } from "@/lib/api";
 
 export async function POST(req: Request) {
   const body = (await req.json()) as {
@@ -34,49 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Registration failed" }, { status: 500 });
   }
 
-  const form = new URLSearchParams();
-  form.set("username", body.username);
-  form.set("password", body.password);
-
-  const loginRes = await fetch(`${API_BASE}/api/v1/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form.toString(),
-    cache: "no-store",
-  });
-
-  if (!loginRes.ok) {
-    return NextResponse.json(
-      {
-        registered: true,
-        error: "Account created but auto sign-in failed; please sign in manually.",
-      },
-      { status: 200 },
-    );
-  }
-
-  const data = (await loginRes.json()) as {
-    access_token: string;
-    refresh_token: string;
-    user: { id: number; username: string; role: string; email: string };
-  };
-
-  const cookieStore = await cookies();
-  const isProd = process.env.NODE_ENV === "production";
-  cookieStore.set(TOKEN_COOKIE, data.access_token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProd,
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
-  cookieStore.set(REFRESH_COOKIE, data.refresh_token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProd,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
-
-  return NextResponse.json({ user: data.user });
+  // Email verification gate: do not auto-login. Frontend shows "check your email"
+  // and the user activates by clicking the SES link → /verify-email?token=…
+  return NextResponse.json({ registered: true, email: body.email });
 }

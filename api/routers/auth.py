@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from api.config import get_settings
 from api.deps import AdminUser, CurrentUser, DbSession
+from api.email import send_email_verification, send_password_reset_email
 from api.models import AuditLog, User
 from api.schemas.auth import (
     AccessTokenResponse,
@@ -19,9 +20,13 @@ from api.schemas.auth import (
     LoginResponse,
     RefreshRequest,
     RegisterRequest,
+    ResendVerificationRequest,
+    ResendVerificationResponse,
     ResetPasswordRequest,
     RoleUpdateRequest,
     UserRead,
+    VerifyEmailRequest,
+    VerifyEmailResponse,
 )
 from api.security import create_token, decode_token
 
@@ -30,6 +35,15 @@ logger = logging.getLogger(__name__)
 
 def _hash_reset_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _hash_verify_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _absolute(path: str) -> str:
+    base = get_settings().web_base_url.rstrip("/")
+    return f"{base}{path}"
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -81,6 +95,11 @@ def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
         db.add(user)
         db.commit()
 
+        # Email link uses the public web base URL; locale is unknown here so
+        # the frontend's /reset-password route handles both locales.
+        reset_url = _absolute(f"/en/reset-password?token={raw}")
+        send_password_reset_email(to=user.email, reset_url=reset_url)
+
         if settings.reset_password_debug:
             debug_url = f"/reset-password?token={raw}"
             logger.warning(
@@ -121,10 +140,54 @@ def register(payload: RegisterRequest, db: DbSession):
 
     user = User(username=payload.username, email=payload.email, role="viewer")
     user.set_password(payload.password)
+
+    raw = secrets.token_urlsafe(32)
+    user.email_verification_token = _hash_verify_token(raw)
+    user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    verify_url = _absolute(f"/en/verify-email?token={raw}")
+    send_email_verification(to=user.email, verify_url=verify_url)
     return user
+
+
+@router.post("/verify-email", response_model=VerifyEmailResponse)
+def verify_email(payload: VerifyEmailRequest, db: DbSession):
+    digest = _hash_verify_token(payload.token)
+    user = db.scalar(select(User).where(User.email_verification_token == digest))
+    now = datetime.now(timezone.utc)
+    if user is None or user.email_verification_expires is None or user.email_verification_expires < now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification link")
+
+    user.email_verified = True
+    user.email_verification_token = None
+    user.email_verification_expires = None
+    db.add(user)
+    db.commit()
+    return VerifyEmailResponse(ok=True, user_id=user.id)
+
+
+@router.post("/resend-verification", response_model=ResendVerificationResponse)
+def resend_verification(payload: ResendVerificationRequest, db: DbSession):
+    settings = get_settings()
+    user = db.scalar(select(User).where(User.email == str(payload.email)))
+    debug_url: str | None = None
+
+    if user is not None and not user.email_verified:
+        raw = secrets.token_urlsafe(32)
+        user.email_verification_token = _hash_verify_token(raw)
+        user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        db.add(user)
+        db.commit()
+        verify_url = _absolute(f"/en/verify-email?token={raw}")
+        send_email_verification(to=user.email, verify_url=verify_url)
+        if settings.reset_password_debug:
+            debug_url = f"/verify-email?token={raw}"
+
+    return ResendVerificationResponse(debug_verify_url=debug_url)
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
@@ -147,6 +210,12 @@ def refresh(payload: RefreshRequest, db: DbSession):
 @router.get("/me", response_model=UserRead)
 def me(user: CurrentUser):
     return user
+
+
+@router.get("/users", response_model=list[UserRead])
+def list_users_for_picker(db: DbSession, _user: CurrentUser):
+    """Lightweight user list for assignee/owner pickers (any authenticated user)."""
+    return db.scalars(select(User).where(User.is_active_user.is_(True)).order_by(User.username)).all()
 
 
 # ---------- Admin: User Management ----------

@@ -47,6 +47,10 @@ class User(Base):
     password_reset_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     password_reset_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    email_verification_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    email_verification_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     employee: Mapped[Optional["Employee"]] = relationship(back_populates="user", uselist=False)
     owner_link: Mapped[Optional["OwnerUser"]] = relationship(back_populates="user", uselist=False)
 
@@ -114,6 +118,7 @@ class Building(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id"), nullable=False)
+    assignee_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     name_en: Mapped[Optional[str]] = mapped_column(String(150))
     name_ar: Mapped[Optional[str]] = mapped_column(String(150))
@@ -129,11 +134,17 @@ class Building(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text)
     notes_en: Mapped[Optional[str]] = mapped_column(Text)
     notes_ar: Mapped[Optional[str]] = mapped_column(Text)
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     owner: Mapped["Owner"] = relationship(back_populates="buildings")
+    assignee: Mapped[Optional["User"]] = relationship(foreign_keys=[assignee_id])
     units: Mapped[list["Unit"]] = relationship(back_populates="building", cascade="all, delete-orphan")
     expenses: Mapped[list["Expense"]] = relationship(back_populates="building")
+    images: Mapped[list["BuildingImage"]] = relationship(
+        back_populates="building", cascade="all, delete-orphan", order_by="BuildingImage.sort_order"
+    )
 
 
 class Unit(Base):
@@ -165,6 +176,9 @@ class Unit(Base):
         back_populates="unit", cascade="all, delete-orphan"
     )
     expenses: Mapped[list["Expense"]] = relationship(back_populates="unit")
+    images: Mapped[list["UnitImage"]] = relationship(
+        back_populates="unit", cascade="all, delete-orphan", order_by="UnitImage.sort_order"
+    )
 
 
 class Tenant(Base):
@@ -308,6 +322,60 @@ class SubscriptionInvoice(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     subscription: Mapped["Subscription"] = relationship(back_populates="invoices")
+
+
+class BuildingImage(Base):
+    """Photo attached to a building, stored in S3 (or compatible)."""
+
+    __tablename__ = "building_images"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    building_id: Mapped[int] = mapped_column(ForeignKey("buildings.id"), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    caption: Mapped[Optional[str]] = mapped_column(String(200))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    building: Mapped["Building"] = relationship(back_populates="images")
+
+
+class UnitImage(Base):
+    """Photo attached to a unit."""
+
+    __tablename__ = "unit_images"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    caption: Mapped[Optional[str]] = mapped_column(String(200))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    unit: Mapped["Unit"] = relationship(back_populates="images")
+
+
+class Role(Base):
+    """RBAC role with a per-module permission matrix.
+
+    `code` matches the string stored in `User.role`. `permissions` is a JSON
+    object: { module_id: { view: 0|1, create: 0|1, edit: 0|1, delete: 0|1, approve: 0|1 } }.
+    `system` roles (admin, owner) are seeded read-only — UI prevents edits but the
+    backend also rejects mutation attempts on them.
+    """
+
+    __tablename__ = "roles"
+
+    code: Mapped[str] = mapped_column(String(40), primary_key=True)
+    label_en: Mapped[str] = mapped_column(String(100), nullable=False)
+    label_ar: Mapped[str] = mapped_column(String(100), nullable=False)
+    description_en: Mapped[Optional[str]] = mapped_column(Text)
+    description_ar: Mapped[Optional[str]] = mapped_column(Text)
+    color: Mapped[str] = mapped_column(String(20), default="#6B7280")
+    system: Mapped[bool] = mapped_column(Boolean, default=False)
+    permissions: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class AuditLog(Base):

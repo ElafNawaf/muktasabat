@@ -3,9 +3,12 @@
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
+import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
-import { createExpense, type ExpenseInput } from "@/lib/actions";
+import { createExpense, updateExpense, type ExpenseInput } from "@/lib/actions";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
+
+import type { ExpenseRow } from "./ExpensesClient";
 
 const CATEGORIES: ExpenseInput["category"][] = [
   "maintenance",
@@ -28,6 +31,7 @@ export function ExpenseFormModal({
   buildings,
   units,
   locale,
+  editing,
 }: {
   open: boolean;
   onClose: () => void;
@@ -35,23 +39,45 @@ export function ExpenseFormModal({
   buildings: Building[];
   units: Unit[];
   locale: string;
+  editing?: ExpenseRow | null;
 }) {
   const t = useTranslations("expensesPage");
   const tCommon = useTranslations("common");
+  const isEdit = Boolean(editing);
 
-  const [form, setForm] = useState<ExpenseInput>(() => ({
-    owner_id: null,
-    building_id: null,
-    unit_id: null,
-    category: "maintenance",
-    description: "",
-    amount: 0,
-    expense_date: new Date().toISOString().slice(0, 10),
-    paid_by: "company",
-    vendor_name: "",
-    receipt_number: "",
-    notes: "",
-  }));
+  const [form, setForm] = useState<ExpenseInput>(() =>
+    editing
+      ? {
+          owner_id: editing.owner_id,
+          building_id: editing.building_id,
+          unit_id: editing.unit_id,
+          category: editing.category as ExpenseInput["category"],
+          description: editing.description,
+          description_en: editing.description_en ?? "",
+          description_ar: editing.description_ar ?? "",
+          amount: editing.amount,
+          expense_date: editing.expense_date,
+          paid_by: editing.paid_by,
+          vendor_name: editing.vendor_name ?? "",
+          receipt_number: editing.receipt_number ?? "",
+          notes: editing.notes ?? "",
+        }
+      : {
+          owner_id: null,
+          building_id: null,
+          unit_id: null,
+          category: "maintenance",
+          description: "",
+          description_en: "",
+          description_ar: "",
+          amount: 0,
+          expense_date: new Date().toISOString().slice(0, 10),
+          paid_by: "company",
+          vendor_name: "",
+          receipt_number: "",
+          notes: "",
+        },
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -68,18 +94,25 @@ export function ExpenseFormModal({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!form.description.trim()) return setError(t("descriptionRequired"));
+    const descEn = form.description_en?.toString().trim() ?? "";
+    const descAr = form.description_ar?.toString().trim() ?? "";
+    const description = descEn || descAr;
+    if (!description) return setError(t("descriptionRequired"));
     if (!form.amount || form.amount <= 0) return setError(t("amountRequired"));
     const payload: ExpenseInput = {
       ...form,
-      description: form.description.trim(),
+      description,
+      description_en: descEn || null,
+      description_ar: descAr || null,
       vendor_name: form.vendor_name?.toString().trim() || null,
       receipt_number: form.receipt_number?.toString().trim() || null,
       notes: form.notes?.toString().trim() || null,
       amount: Number(form.amount),
     };
     start(async () => {
-      const res = await createExpense(payload);
+      const res = isEdit && editing
+        ? await updateExpense(editing.id, payload)
+        : await createExpense(payload);
       if (!res.ok) {
         setError(res.error);
         return;
@@ -92,8 +125,8 @@ export function ExpenseFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={t("createTitle")}
-      subtitle={t("createSubtitle")}
+      title={isEdit ? t("editTitle") : t("createTitle")}
+      subtitle={isEdit ? t("editSubtitle") : t("createSubtitle")}
       size="md"
       footer={
         <>
@@ -138,18 +171,15 @@ export function ExpenseFormModal({
             />
           </div>
         </div>
-        <div className="field">
-          <label>
-            {t("description")} <span className="req">*</span>
-          </label>
-          <input
-            className="input"
-            value={form.description}
-            onChange={(e) => set("description", e.target.value)}
-            required
-            maxLength={300}
-          />
-        </div>
+        <BilingualField
+          label={t("description")}
+          required
+          maxLength={300}
+          valueEn={form.description_en ?? ""}
+          valueAr={form.description_ar ?? ""}
+          onChangeEn={(v) => set("description_en", v)}
+          onChangeAr={(v) => set("description_ar", v)}
+        />
         <div className="field-row">
           <div className="field" style={{ flex: 1 }}>
             <label>

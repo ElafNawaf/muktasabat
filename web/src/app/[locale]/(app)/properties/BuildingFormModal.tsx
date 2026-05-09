@@ -3,21 +3,27 @@
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
+import { BilingualField } from "@/components/BilingualField";
+import { MapPicker } from "@/components/MapPicker";
 import { Modal } from "@/components/Modal";
 import { createBuilding, updateBuilding, type BuildingInput } from "@/lib/actions";
 import type { Building, Owner } from "@/lib/types";
+
+import type { UserPick } from "./page";
 
 export function BuildingFormModal({
   open,
   onClose,
   building,
   owners,
+  users,
   defaultOwnerId,
 }: {
   open: boolean;
   onClose: () => void;
   building?: Building | null;
   owners: Owner[];
+  users: UserPick[];
   defaultOwnerId?: number;
 }) {
   const t = useTranslations("buildingForm");
@@ -26,13 +32,24 @@ export function BuildingFormModal({
 
   const [form, setForm] = useState<BuildingInput>(() => ({
     owner_id: building?.owner_id ?? defaultOwnerId ?? owners[0]?.id ?? 0,
+    assignee_id: building?.assignee_id ?? null,
     name: building?.name ?? "",
     name_en: building?.name_en ?? "",
     name_ar: building?.name_ar ?? "",
     address: building?.address ?? "",
+    address_en: building?.address_en ?? "",
+    address_ar: building?.address_ar ?? "",
     city: building?.city ?? "",
+    city_en: building?.city_en ?? "",
+    city_ar: building?.city_ar ?? "",
     district: building?.district ?? "",
+    district_en: building?.district_en ?? "",
+    district_ar: building?.district_ar ?? "",
     notes: building?.notes ?? "",
+    notes_en: building?.notes_en ?? "",
+    notes_ar: building?.notes_ar ?? "",
+    latitude: building?.latitude ?? null,
+    longitude: building?.longitude ?? null,
   }));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -43,17 +60,38 @@ export function BuildingFormModal({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!form.name.trim()) return setError(t("nameRequired"));
     if (!form.owner_id) return setError(t("ownerRequired"));
+    const pick = (en?: string | null, ar?: string | null) => {
+      const e = en?.toString().trim() ?? "";
+      const a = ar?.toString().trim() ?? "";
+      return { en: e || null, ar: a || null, primary: e || a || null };
+    };
+    const name = pick(form.name_en, form.name_ar);
+    if (!name.primary) return setError(t("nameRequired"));
+    const city = pick(form.city_en, form.city_ar);
+    const district = pick(form.district_en, form.district_ar);
+    const address = pick(form.address_en, form.address_ar);
+    const notes = pick(form.notes_en, form.notes_ar);
     const payload: BuildingInput = {
       owner_id: form.owner_id,
-      name: form.name.trim(),
-      name_en: form.name_en?.toString().trim() || null,
-      name_ar: form.name_ar?.toString().trim() || null,
-      address: form.address?.toString().trim() || null,
-      city: form.city?.toString().trim() || null,
-      district: form.district?.toString().trim() || null,
-      notes: form.notes?.toString().trim() || null,
+      assignee_id: form.assignee_id ?? null,
+      name: name.primary,
+      name_en: name.en,
+      name_ar: name.ar,
+      address: address.primary,
+      address_en: address.en,
+      address_ar: address.ar,
+      city: city.primary,
+      city_en: city.en,
+      city_ar: city.ar,
+      district: district.primary,
+      district_en: district.en,
+      district_ar: district.ar,
+      notes: notes.primary,
+      notes_en: notes.en,
+      notes_ar: notes.ar,
+      latitude: form.latitude ?? null,
+      longitude: form.longitude ?? null,
     };
     start(async () => {
       const res = isEdit && building
@@ -112,77 +150,72 @@ export function BuildingFormModal({
           </select>
         </div>
         <div className="field">
-          <label>
-            {t("name")} <span className="req">*</span>
-          </label>
-          <input
-            className="input"
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            required
-            maxLength={150}
-          />
+          <label>{t("assignee")}</label>
+          <select
+            className="select"
+            value={form.assignee_id ?? ""}
+            onChange={(e) => set("assignee_id", e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">{t("noAssignee")}</option>
+            {users
+              .filter((u) => u.role === "admin" || u.role === "manager" || u.role === "agent")
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.username} · {u.role}
+                </option>
+              ))}
+          </select>
         </div>
-        <div className="field-row">
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("nameEn")}</label>
-            <input
-              className="input"
-              value={form.name_en ?? ""}
-              onChange={(e) => set("name_en", e.target.value)}
-              maxLength={150}
-              dir="ltr"
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("nameAr")}</label>
-            <input
-              className="input"
-              value={form.name_ar ?? ""}
-              onChange={(e) => set("name_ar", e.target.value)}
-              maxLength={150}
-              dir="rtl"
-            />
-          </div>
-        </div>
-        <div className="field-row">
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("city")}</label>
-            <input
-              className="input"
-              value={form.city ?? ""}
-              onChange={(e) => set("city", e.target.value)}
-              maxLength={100}
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("district")}</label>
-            <input
-              className="input"
-              value={form.district ?? ""}
-              onChange={(e) => set("district", e.target.value)}
-              maxLength={100}
-            />
-          </div>
-        </div>
-        <div className="field">
-          <label>{t("address")}</label>
-          <input
-            className="input"
-            value={form.address ?? ""}
-            onChange={(e) => set("address", e.target.value)}
-            maxLength={300}
-          />
-        </div>
-        <div className="field">
-          <label>{t("notes")}</label>
-          <textarea
-            className="textarea"
-            rows={2}
-            value={form.notes ?? ""}
-            onChange={(e) => set("notes", e.target.value)}
-          />
-        </div>
+        <BilingualField
+          label={t("name")}
+          required
+          maxLength={150}
+          valueEn={form.name_en ?? ""}
+          valueAr={form.name_ar ?? ""}
+          onChangeEn={(v) => set("name_en", v)}
+          onChangeAr={(v) => set("name_ar", v)}
+        />
+        <BilingualField
+          label={t("city")}
+          maxLength={100}
+          valueEn={form.city_en ?? ""}
+          valueAr={form.city_ar ?? ""}
+          onChangeEn={(v) => set("city_en", v)}
+          onChangeAr={(v) => set("city_ar", v)}
+        />
+        <BilingualField
+          label={t("district")}
+          maxLength={100}
+          valueEn={form.district_en ?? ""}
+          valueAr={form.district_ar ?? ""}
+          onChangeEn={(v) => set("district_en", v)}
+          onChangeAr={(v) => set("district_ar", v)}
+        />
+        <BilingualField
+          label={t("address")}
+          maxLength={300}
+          valueEn={form.address_en ?? ""}
+          valueAr={form.address_ar ?? ""}
+          onChangeEn={(v) => set("address_en", v)}
+          onChangeAr={(v) => set("address_ar", v)}
+        />
+        <MapPicker
+          lat={form.latitude ?? null}
+          lng={form.longitude ?? null}
+          onChange={(la, ln) => {
+            set("latitude", la);
+            set("longitude", ln);
+          }}
+        />
+        <BilingualField
+          label={t("notes")}
+          multiline
+          rows={2}
+          valueEn={form.notes_en ?? ""}
+          valueAr={form.notes_ar ?? ""}
+          onChangeEn={(v) => set("notes_en", v)}
+          onChangeAr={(v) => set("notes_ar", v)}
+        />
       </form>
     </Modal>
   );

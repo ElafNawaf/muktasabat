@@ -62,7 +62,7 @@ Set `DISABLE_BOOTSTRAP_ADMIN=1` once you manage admins yourself, and **change th
 docker compose up --build
 ```
 
-- Next.js: **http://localhost:3000**
+- Next.js: **http://localhost:3001** (compose default; inside the container it is still port 3000). Set `WEB_PORT=3000` in `.env` if you want the UI on port 3000.
 - FastAPI docs: **http://localhost:8000/api/docs**
 
 ## Key paths

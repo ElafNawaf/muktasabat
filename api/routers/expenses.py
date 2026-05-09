@@ -37,6 +37,23 @@ def create_expense(payload: ExpenseCreate, db: DbSession, _user: CurrentUser):
     return expense
 
 
+@router.put("/{expense_id}", response_model=ExpenseRead)
+def update_expense(
+    expense_id: int,
+    payload: ExpenseCreate,
+    db: DbSession,
+    _user: CurrentUser,
+):
+    expense = db.get(Expense, expense_id)
+    if expense is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Expense not found")
+    for field, value in payload.model_dump().items():
+        setattr(expense, field, value)
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_expense(expense_id: int, db: DbSession, _user: CurrentUser):
     expense = db.get(Expense, expense_id)

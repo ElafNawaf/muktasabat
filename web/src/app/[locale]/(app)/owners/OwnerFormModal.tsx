@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
+import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
 import { createOwner, updateOwner, type OwnerInput } from "@/lib/actions";
 import type { Owner } from "@/lib/types";
@@ -30,6 +31,8 @@ export function OwnerFormModal({
     bank_name: owner?.bank_name ?? "",
     iban: owner?.iban ?? "",
     notes: owner?.notes ?? "",
+    notes_en: owner?.notes_en ?? "",
+    notes_ar: owner?.notes_ar ?? "",
   }));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -40,16 +43,23 @@ export function OwnerFormModal({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const nameEn = form.name_en?.toString().trim() ?? "";
+    const nameAr = form.name_ar?.toString().trim() ?? "";
+    const notesEn = form.notes_en?.toString().trim() ?? "";
+    const notesAr = form.notes_ar?.toString().trim() ?? "";
     const payload: OwnerInput = {
-      name: form.name.trim(),
-      name_en: form.name_en?.toString().trim() || null,
-      name_ar: form.name_ar?.toString().trim() || null,
+      // Primary `name` mirrors whichever language was filled first.
+      name: nameEn || nameAr,
+      name_en: nameEn || null,
+      name_ar: nameAr || null,
       phone: form.phone?.toString().trim() || null,
       email: form.email?.toString().trim() || null,
       national_id: form.national_id?.toString().trim() || null,
       bank_name: form.bank_name?.toString().trim() || null,
       iban: form.iban?.toString().trim() || null,
-      notes: form.notes?.toString().trim() || null,
+      notes: notesEn || notesAr || null,
+      notes_en: notesEn || null,
+      notes_ar: notesAr || null,
     };
     if (!payload.name) {
       setError(t("nameRequired"));
@@ -91,40 +101,15 @@ export function OwnerFormModal({
             {error}
           </div>
         )}
-        <div className="field">
-          <label>
-            {t("name")} <span className="req">*</span>
-          </label>
-          <input
-            className="input"
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            required
-            maxLength={150}
-          />
-        </div>
-        <div className="field-row">
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("nameEn")}</label>
-            <input
-              className="input"
-              value={form.name_en ?? ""}
-              onChange={(e) => set("name_en", e.target.value)}
-              maxLength={150}
-              dir="ltr"
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("nameAr")}</label>
-            <input
-              className="input"
-              value={form.name_ar ?? ""}
-              onChange={(e) => set("name_ar", e.target.value)}
-              maxLength={150}
-              dir="rtl"
-            />
-          </div>
-        </div>
+        <BilingualField
+          label={t("name")}
+          required
+          maxLength={150}
+          valueEn={form.name_en ?? ""}
+          valueAr={form.name_ar ?? ""}
+          onChangeEn={(v) => set("name_en", v)}
+          onChangeAr={(v) => set("name_ar", v)}
+        />
         <div className="field-row">
           <div className="field" style={{ flex: 1 }}>
             <label>{tCommon("phone")}</label>
@@ -180,15 +165,15 @@ export function OwnerFormModal({
             />
           </div>
         </div>
-        <div className="field">
-          <label>{t("notes")}</label>
-          <textarea
-            className="textarea"
-            rows={3}
-            value={form.notes ?? ""}
-            onChange={(e) => set("notes", e.target.value)}
-          />
-        </div>
+        <BilingualField
+          label={t("notes")}
+          multiline
+          rows={3}
+          valueEn={form.notes_en ?? ""}
+          valueAr={form.notes_ar ?? ""}
+          onChangeEn={(v) => set("notes_en", v)}
+          onChangeAr={(v) => set("notes_ar", v)}
+        />
       </form>
     </Modal>
   );
