@@ -249,118 +249,117 @@ export function UsersClient({
             </div>
           </div>
 
-          <div className="card card-tight">
-            <div className="tbl-wrap">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>{t("username")}</th>
-                    <th>{tCommon("email")}</th>
-                    <th>{t("role")}</th>
-                    <th>{tCommon("status")}</th>
-                    <th>{t("createdAt")}</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((u) => {
-                    const isMe = u.id === meId;
-                    const isBusy = busyId === u.id;
-                    const role = rolesState.find((r) => r.code === u.role);
-                    const color = role?.color ?? "#6B7280";
-                    return (
-                      <tr key={u.id}>
-                        <td>
-                          <div style={{ fontWeight: 500 }}>
-                            {u.username}
-                            {isMe && (
-                              <span
-                                className="badge"
-                                style={{
-                                  marginInlineStart: 8,
-                                  fontSize: 10,
-                                  padding: "2px 6px",
-                                }}
-                              >
-                                {t("you")}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="text-sec">{u.email}</td>
-                        <td>
-                          <select
-                            className="select"
-                            value={u.role}
-                            onChange={(e) => onChangeRole(u, e.target.value)}
-                            disabled={isBusy || isMe}
-                            style={{
-                              height: 32,
-                              fontSize: 12,
-                              background: color + "1A",
-                              color,
-                              borderColor: color + "55",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {userRoles.map((r) => (
-                              <option key={r.code} value={r.code}>
-                                {r.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          {u.is_active_user ? (
-                            <span className="badge badge-success">
-                              <span className="dot" /> {t("active")}
-                            </span>
-                          ) : (
-                            <span className="badge badge-danger">
-                              <span className="dot" /> {t("inactive")}
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-sec" style={{ fontSize: 12 }}>
-                          {fmtDate(u.created_at)}
-                        </td>
-                        <td>
-                          <button
-                            className={
-                              "btn btn-sm " +
-                              (u.is_active_user ? "btn-secondary" : "btn-primary")
-                            }
-                            onClick={() => onToggle(u)}
-                            disabled={isBusy || isMe}
-                            title={u.is_active_user ? t("deactivate") : t("activate")}
-                          >
-                            <span className="ms ms-sm">
-                              {u.is_active_user ? "block" : "check"}
-                            </span>
-                            {u.is_active_user ? t("deactivate") : t("activate")}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
+          {filtered.length === 0 ? (
+            <div
+              className="card text-sec"
+              style={{ padding: 40, textAlign: "center", fontSize: 13 }}
+            >
+              {tCommon("noResults")}
+            </div>
+          ) : (
+            <div className="owner-grid">
+              {filtered.map((u) => {
+                const isMe = u.id === meId;
+                const isBusy = busyId === u.id;
+                const role = rolesState.find((r) => r.code === u.role);
+                const color = role?.color ?? "#6B7280";
+                const initials = u.username.slice(0, 2).toUpperCase();
+                return (
+                  <div className="user-card" key={u.id}>
+                    <div className="user-card-hd">
+                      <div
+                        className="user-card-avatar"
                         style={{
-                          textAlign: "center",
-                          padding: 32,
-                          color: "var(--color-text-secondary)",
+                          background: `linear-gradient(135deg, ${color}, ${color}cc)`,
                         }}
                       >
-                        {tCommon("noResults")}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                        {initials}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="user-card-name">
+                          {u.username}
+                          {isMe && (
+                            <span
+                              className="badge"
+                              style={{
+                                marginInlineStart: 8,
+                                fontSize: 10,
+                                padding: "2px 6px",
+                              }}
+                            >
+                              {t("you")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="user-card-email mono">{u.email}</div>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <select
+                        className="select"
+                        value={u.role}
+                        onChange={(e) => onChangeRole(u, e.target.value)}
+                        disabled={isBusy || isMe}
+                        style={{
+                          height: 30,
+                          fontSize: 12,
+                          width: "auto",
+                          padding: "4px 28px 4px 10px",
+                          background: color + "1A",
+                          color,
+                          borderColor: color + "55",
+                          fontWeight: 600,
+                          borderRadius: 999,
+                        }}
+                      >
+                        {userRoles.map((r) => (
+                          <option key={r.code} value={r.code}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className={
+                          "btn btn-sm " +
+                          (u.is_active_user ? "btn-secondary" : "btn-primary")
+                        }
+                        onClick={() => onToggle(u)}
+                        disabled={isBusy || isMe}
+                      >
+                        <span className="ms ms-sm">
+                          {u.is_active_user ? "block" : "check"}
+                        </span>
+                        {u.is_active_user ? t("deactivate") : t("activate")}
+                      </button>
+                    </div>
+                    <div className="user-card-meta">
+                      <span className="user-card-status">
+                        <span
+                          className="dot"
+                          style={{
+                            background: u.is_active_user
+                              ? "var(--color-success)"
+                              : "var(--color-text-secondary)",
+                          }}
+                        />
+                        {u.is_active_user ? t("active") : t("inactive")}
+                      </span>
+                      <span>
+                        {t("createdAt")}: {fmtDate(u.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
         </>
       )}
 
