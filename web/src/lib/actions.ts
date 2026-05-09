@@ -146,6 +146,15 @@ export type BuildingInput = {
   name: string;
   name_en?: string | null;
   name_ar?: string | null;
+  // General info
+  contract_type?: string | null;
+  building_code?: string | null;
+  water_meter_number?: string | null;
+  electricity_meter_number?: string | null;
+  lease_contract_number?: string | null;
+  branch?: string | null;
+  // Location
+  street?: string | null;
   address?: string | null;
   address_en?: string | null;
   address_ar?: string | null;
@@ -155,28 +164,23 @@ export type BuildingInput = {
   district?: string | null;
   district_en?: string | null;
   district_ar?: string | null;
-  notes?: string | null;
-  notes_en?: string | null;
-  notes_ar?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  // ── Mogod fields — all optional, counts default to 0 ──
-  contract_type?: string | null;
-  building_code?: string | null;
-  water_meter_number?: string | null;
-  electricity_meter_number?: string | null;
-  lease_contract_number?: string | null;
-  branch?: string | null;
-  street?: string | null;
+  // Deed
   deed_number?: string | null;
   deed_document_type?: string | null;
   deed_date?: string | null;
   deed_document_number?: string | null;
+  // Property data
   property_type?: string | null;
   residence_type?: string | null;
   offices_count?: number;
   commercial_shops_count?: number;
   apartments_count?: number;
+  // Notes
+  notes?: string | null;
+  notes_en?: string | null;
+  notes_ar?: string | null;
 };
 
 export async function createBuilding(input: BuildingInput): Promise<ActionResult<Building>> {
@@ -223,6 +227,8 @@ export type UnitInput = {
   management_percentage: number;
   agent_name?: string | null;
   agent_percentage: number;
+  electric_invoice?: string | null;
+  water_invoice?: string | null;
   ejar_fee: number;
   notes?: string | null;
   notes_en?: string | null;
@@ -261,14 +267,34 @@ export async function deleteUnit(id: number): Promise<ActionResult<null>> {
 
 // -------- Contracts --------
 
+export type PaymentCycle = 1 | 3 | 6 | 12;
+
 export type ContractInput = {
   unit_id: number;
   tenant_id: number;
   contract_number: string;
+  // Basic
+  branch?: string | null;
+  contract_type?: "residential" | "commercial";
+  validity_type?: "fixed" | "open" | null;
   start_date: string; // YYYY-MM-DD
   end_date: string;
+  duration_years?: number;
+  duration_months?: number;
+  duration_days?: number;
+  total_rent_amount?: number;
   rent_amount: number;
-  payment_cycle: 3 | 6 | 12;
+  ejar_contract_number?: string | null;
+  // Billing
+  payment_type?: "monthly" | "quarterly" | "semi-annual" | "annual" | "full" | null;
+  payment_count?: number;
+  payment_cycle: PaymentCycle;
+  electricity_on_tenant?: boolean;
+  electricity_split_percentage?: number | null;
+  water_on_tenant?: boolean;
+  water_split_percentage?: number | null;
+  services_amount?: number;
+  insurance_amount?: number;
   notes?: string | null;
 };
 
@@ -294,10 +320,26 @@ export async function terminateContract(id: number): Promise<ActionResult<Contra
 
 export type ContractUpdateInput = {
   contract_number: string;
+  branch?: string | null;
+  contract_type?: "residential" | "commercial";
+  validity_type?: "fixed" | "open" | null;
   start_date: string;
   end_date: string;
+  duration_years?: number;
+  duration_months?: number;
+  duration_days?: number;
+  total_rent_amount?: number;
   rent_amount: number;
-  payment_cycle: 3 | 6 | 12;
+  ejar_contract_number?: string | null;
+  payment_type?: "monthly" | "quarterly" | "semi-annual" | "annual" | "full" | null;
+  payment_count?: number;
+  payment_cycle: PaymentCycle;
+  electricity_on_tenant?: boolean;
+  electricity_split_percentage?: number | null;
+  water_on_tenant?: boolean;
+  water_split_percentage?: number | null;
+  services_amount?: number;
+  insurance_amount?: number;
   status: "active" | "expired" | "terminated";
   notes?: string | null;
 };
@@ -420,6 +462,30 @@ export async function toggleUserActive(id: number): Promise<ActionResult<unknown
   }
 }
 
+export type InviteUserInput = {
+  username: string;
+  email: string;
+  role: AdminUserUpdate["role"];
+};
+
+export type InviteUserResult = {
+  user: { id: number; username: string; email: string; role: string };
+  debug_invite_url: string | null;
+};
+
+export async function inviteUser(input: InviteUserInput): Promise<ActionResult<InviteUserResult>> {
+  try {
+    const data = await api.post<InviteUserResult>(
+      "/api/v1/auth/admin/users/invite",
+      input,
+    );
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
 // -------- Roles & permissions --------
 
 export type RolePermissions = Partial<
@@ -443,18 +509,31 @@ export async function updateRolePermissions(
 
 export type Lang = "en" | "ar" | "auto";
 
+export type TranslateResult = {
+  translated: string;
+  configured: boolean;
+  /** True if the backend echoed the input unchanged (no-op or identical). */
+  unchanged: boolean;
+};
+
 export async function translateText(
   text: string,
   source: Lang,
   target: Lang,
-): Promise<ActionResult<string>> {
+): Promise<ActionResult<TranslateResult>> {
   try {
-    const data = await api.post<{ translated_text: string }>("/api/v1/translate", {
-      text,
-      source,
-      target,
-    });
-    return { ok: true, data: data.translated_text };
+    const data = await api.post<{ translated_text: string; configured: boolean }>(
+      "/api/v1/translate",
+      { text, source, target },
+    );
+    return {
+      ok: true,
+      data: {
+        translated: data.translated_text,
+        configured: Boolean(data.configured),
+        unchanged: data.translated_text.trim() === text.trim(),
+      },
+    };
   } catch (e) {
     return err(e);
   }

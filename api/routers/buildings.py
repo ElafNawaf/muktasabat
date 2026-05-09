@@ -2,14 +2,15 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from api.deps import CurrentUser, DbSession
-from api.models import Building, BuildingImage, Owner, User
+from api.models import Building, BuildingDocument, BuildingImage, Owner, User
 from api.schemas.building import (
     BuildingCreate,
+    BuildingDocumentRead,
     BuildingImageRead,
     BuildingRead,
     BuildingUpdate,
 )
-from api.storage import StorageNotConfigured, delete_object, upload_image
+from api.storage import StorageNotConfigured, delete_object, upload_document, upload_image
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
 
@@ -72,6 +73,7 @@ def delete_building(building_id: int, db: DbSession, _user: CurrentUser):
     if building is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Building not found")
     keys = [img.object_key for img in building.images if img.object_key]
+    keys.extend(d.object_key for d in building.documents if d.object_key)
     db.delete(building)
     db.commit()
     for k in keys:
@@ -136,5 +138,69 @@ def delete_building_image(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
     object_key = image.object_key
     db.delete(image)
+    db.commit()
+    delete_object(object_key)
+
+
+# ---------- Document gallery (ملفات العقار) ----------
+
+
+@router.post(
+    "/{building_id}/documents",
+    response_model=BuildingDocumentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_building_document(
+    building_id: int,
+    db: DbSession,
+    _user: CurrentUser,
+    file: UploadFile = File(...),
+):
+    building = db.get(Building, building_id)
+    if building is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Building not found")
+
+    try:
+        stored = upload_document(
+            file.file,
+            content_type=file.content_type or "application/octet-stream",
+            prefix=f"buildings/{building_id}/documents",
+            original_filename=file.filename,
+        )
+    except StorageNotConfigured as e:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+
+    next_order = (max((doc.sort_order for doc in building.documents), default=-1)) + 1
+    document = BuildingDocument(
+        building_id=building.id,
+        url=stored.public_url,
+        object_key=stored.object_key,
+        filename=file.filename or "document",
+        file_type=file.content_type,
+        sort_order=next_order,
+    )
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+@router.delete(
+    "/{building_id}/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_building_document(
+    building_id: int,
+    document_id: int,
+    db: DbSession,
+    _user: CurrentUser,
+):
+    document = db.get(BuildingDocument, document_id)
+    if document is None or document.building_id != building_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
+    object_key = document.object_key
+    db.delete(document)
     db.commit()
     delete_object(object_key)

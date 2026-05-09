@@ -11,12 +11,14 @@ from sqlalchemy import select
 
 from api.config import get_settings
 from api.deps import AdminUser, CurrentUser, DbSession
-from api.email import send_email_verification, send_password_reset_email
+from api.email import send_email_verification, send_password_reset_email, send_user_invite
 from api.models import AuditLog, User
 from api.schemas.auth import (
     AccessTokenResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
+    InviteUserRequest,
+    InviteUserResponse,
     LoginResponse,
     RefreshRequest,
     RegisterRequest,
@@ -251,3 +253,48 @@ def toggle_active(user_id: int, db: DbSession, _admin: AdminUser):
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post(
+    "/admin/users/invite",
+    response_model=InviteUserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def invite_user(payload: InviteUserRequest, db: DbSession, _admin: AdminUser):
+    """Create a user with a random temp password and email them a reset link.
+
+    The invitee never sees the temp password — they're sent the standard
+    reset-password link, which sets their final password and lets them log in.
+    Email-verified is set to True since the invite proves the address.
+    """
+    settings = get_settings()
+    if db.scalar(select(User).where(User.username == payload.username)):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Username already exists")
+    if db.scalar(select(User).where(User.email == str(payload.email))):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already exists")
+
+    user = User(
+        username=payload.username,
+        email=str(payload.email),
+        role=payload.role,
+        is_active_user=True,
+        email_verified=True,
+    )
+    user.set_password(secrets.token_urlsafe(24))
+
+    raw = secrets.token_urlsafe(32)
+    user.password_reset_token = _hash_reset_token(raw)
+    # 24h window matches the email copy.
+    user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    accept_url = _absolute(f"/en/reset-password?token={raw}")
+    send_user_invite(
+        to=user.email, username=user.username, role=user.role, accept_url=accept_url
+    )
+
+    debug_url = f"/reset-password?token={raw}" if settings.reset_password_debug else None
+    return InviteUserResponse(user=UserRead.model_validate(user), debug_invite_url=debug_url)

@@ -49,7 +49,7 @@ export function ImageGalleryEditor({
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await fetch(`/api/uploads/${kind}/${entityId}`, {
+      const res = await fetch(`/api/uploads/${kind}/${entityId}/images`, {
         method: "POST",
         body: fd,
       });
@@ -74,7 +74,7 @@ export function ImageGalleryEditor({
     setBusy(`del-${image.id}`);
     try {
       const res = await fetch(
-        `/api/uploads/${kind}/${entityId}?image_id=${image.id}`,
+        `/api/uploads/${kind}/${entityId}/images?id=${image.id}`,
         { method: "DELETE" },
       );
       if (!res.ok && res.status !== 204) {

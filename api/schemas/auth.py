@@ -76,3 +76,14 @@ class ResendVerificationResponse(BaseModel):
     ok: bool = True
     message: str = "If your account exists and is unverified, a new email has been sent."
     debug_verify_url: str | None = None
+
+
+class InviteUserRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+    email: EmailStr
+    role: Role = "viewer"
+
+
+class InviteUserResponse(BaseModel):
+    user: UserRead
+    debug_invite_url: str | None = None

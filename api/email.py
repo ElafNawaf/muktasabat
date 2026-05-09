@@ -100,3 +100,22 @@ def send_email_verification(to: str, verify_url: str) -> None:
         "<p>This link expires in 24 hours.</p>"
     )
     send_email(EmailMessage(to=to, subject="Verify your Muktasabat email", text_body=text, html_body=html))
+
+
+def send_user_invite(to: str, username: str, role: str, accept_url: str) -> None:
+    """Email an invited user the link to set their initial password."""
+    text = (
+        f"You've been invited to join Muktasabat as {role}.\n\n"
+        f"Username: {username}\n\n"
+        "Set your password to activate your account (link expires in 24 hours):\n"
+        f"{accept_url}"
+    )
+    html = (
+        f"<p>You've been invited to join Muktasabat as <strong>{role}</strong>.</p>"
+        f"<p>Username: <strong>{username}</strong></p>"
+        f'<p><a href="{accept_url}">Set your password</a> to activate your account.</p>'
+        "<p>This link expires in 24 hours.</p>"
+    )
+    send_email(
+        EmailMessage(to=to, subject="You're invited to Muktasabat", text_body=text, html_body=html)
+    )

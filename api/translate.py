@@ -16,6 +16,12 @@ logger = logging.getLogger(__name__)
 Lang = Literal["en", "ar", "auto"]
 
 
+def is_configured() -> bool:
+    """True when AWS Translate has somewhere to send a request (region set)."""
+    settings = get_settings()
+    return bool(settings.translate_region or settings.ses_region)
+
+
 def translate(text: str, source: Lang, target: Lang) -> str:
     """Translate `text` from `source` to `target`. Returns the input on no-op or
     on error (best-effort — the caller is filling a form field, not a billing

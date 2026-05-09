@@ -877,13 +877,16 @@ body {
 
 /* modal */
 .modal-overlay {
-  position: absolute;
+  /* `fixed` so the overlay covers the viewport regardless of where it's
+     mounted in the tree (e.g. inside .main, which is offset by the sidebar). */
+  position: fixed;
   inset: 0;
   background: rgba(15,15,15,0.42);
-  z-index: 60;
+  z-index: 100; /* must sit above the mobile sidebar drawer (z:90) */
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 200ms var(--ease);
@@ -894,17 +897,39 @@ body {
   border-radius: var(--radius-xl);
   width: 460px;
   max-width: calc(100vw - 32px);
+  /* Cap height + lay out as flex column so the body scrolls when content is
+     long (Building/Contract forms have many sections). */
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-lg);
   transform: translateY(8px) scale(0.98);
   opacity: 0;
   transition: transform 200ms var(--ease-out), opacity 200ms var(--ease-out);
+  overflow: hidden;
 }
 .modal-overlay.open .modal { transform: translateY(0) scale(1); opacity: 1; }
-.modal-hd { padding: 18px 22px 0; }
+.modal-hd { padding: 18px 22px 0; flex-shrink: 0; }
 .modal-hd h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
 .modal-hd .sub { font-size: 12.5px; color: var(--color-text-secondary); }
-.modal-body { padding: 16px 22px; display: flex; flex-direction: column; gap: 14px; }
-.modal-foot { padding: 14px 22px 18px; display: flex; justify-content: flex-end; gap: 10px; }
+.modal-body {
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.modal-foot {
+  padding: 14px 22px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
 
 /* toast */
 .toast-stack {

@@ -100,6 +100,48 @@ def upload_image(
     return StoredObject(object_key=object_key, public_url=_public_url(object_key))
 
 
+_DOCUMENT_EXT = {
+    "application/pdf": "pdf",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "text/plain": "txt",
+    "text/csv": "csv",
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+}
+
+
+def upload_document(
+    file_obj: BinaryIO,
+    *,
+    content_type: str,
+    prefix: str,
+    original_filename: str | None = None,
+) -> StoredObject:
+    """Upload a document (pdf/doc/xls/txt/csv/scanned image) to S3."""
+    if content_type not in _DOCUMENT_EXT:
+        raise ValueError(
+            f"Unsupported document type {content_type}. "
+            "Allowed: pdf, doc(x), xls(x), txt, csv, jpeg, png, webp."
+        )
+    client = _client()
+    settings = get_settings()
+    ext = _DOCUMENT_EXT[content_type]
+    object_key = f"{prefix.rstrip('/')}/{uuid.uuid4().hex}.{ext}"
+
+    extra: dict = {"ContentType": content_type, "CacheControl": "private, max-age=3600"}
+    if original_filename:
+        # Browsers honor this header when the user clicks the public URL — pdf opens
+        # inline, others (xls/doc) download with the original name.
+        extra["ContentDisposition"] = f'inline; filename="{original_filename}"'
+    client.upload_fileobj(file_obj, settings.s3_bucket, object_key, ExtraArgs=extra)
+    return StoredObject(object_key=object_key, public_url=_public_url(object_key))
+
+
 def delete_object(object_key: str | None) -> None:
     """Delete an object from S3. Best-effort; logs and swallows errors."""
     if not object_key:

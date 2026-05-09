@@ -9,13 +9,13 @@ import { translateText } from "@/lib/actions";
  * Two side-by-side inputs for English + Arabic data with auto-translation.
  *
  * - On blur of either field, if the *other* field is empty, fills it via
- *   Amazon Translate (best-effort; failures leave the other field empty).
+ *   Amazon Translate.
  * - A small "translate" icon button between the inputs forces translation
  *   from whichever side has content (manual override).
  * - Never overwrites an already-typed value — the user's manual input wins.
- *
- * Backend gracefully no-ops when TRANSLATE_REGION/SES_REGION aren't set, so
- * forms still work in local dev without an AWS account.
+ * - When the backend isn't configured for AWS Translate, surfaces a small
+ *   inline hint instead of silently echoing the source text into the other
+ *   field (which made forms look like translation worked when it didn't).
  */
 export function BilingualField({
   label,
@@ -43,28 +43,54 @@ export function BilingualField({
   placeholderAr?: string;
 }) {
   const t = useTranslations("common");
+  const tField = useTranslations("bilingualField");
   const [busy, setBusy] = useState<"en" | "ar" | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const [, start] = useTransition();
+
+  const apply = (
+    setSide: (v: string) => void,
+    res: Awaited<ReturnType<typeof translateText>>,
+  ) => {
+    if (!res.ok) {
+      setHint(tField("translateFailed"));
+      return;
+    }
+    if (!res.data.configured) {
+      setHint(tField("notConfigured"));
+      return;
+    }
+    if (res.data.unchanged || !res.data.translated.trim()) {
+      // Translate produced the same text (or nothing). Don't pollute the
+      // other side with a duplicate; tell the user instead.
+      setHint(tField("noTranslation"));
+      return;
+    }
+    setHint(null);
+    setSide(res.data.translated);
+  };
 
   const fillEnFromAr = () => {
     const src = valueAr.trim();
     if (!src) return;
+    setHint(null);
     setBusy("en");
     start(async () => {
       const res = await translateText(src, "ar", "en");
       setBusy(null);
-      if (res.ok && res.data) onChangeEn(res.data);
+      apply(onChangeEn, res);
     });
   };
 
   const fillArFromEn = () => {
     const src = valueEn.trim();
     if (!src) return;
+    setHint(null);
     setBusy("ar");
     start(async () => {
       const res = await translateText(src, "en", "ar");
       setBusy(null);
-      if (res.ok && res.data) onChangeAr(res.data);
+      apply(onChangeAr, res);
     });
   };
 
@@ -132,6 +158,18 @@ export function BilingualField({
           />
         </div>
       </div>
+      {hint && (
+        <div
+          className="text-sec"
+          style={{ fontSize: 11.5, marginTop: 4 }}
+          role="status"
+        >
+          <span className="ms ms-sm" style={{ verticalAlign: "middle", marginInlineEnd: 4 }}>
+            info
+          </span>
+          {hint}
+        </div>
+      )}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

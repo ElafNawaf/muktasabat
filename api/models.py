@@ -119,41 +119,63 @@ class Building(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("owners.id"), nullable=False)
     assignee_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    # ── General information (معلومات عامة) ──────────────────────────────────
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     name_en: Mapped[Optional[str]] = mapped_column(String(150))
     name_ar: Mapped[Optional[str]] = mapped_column(String(150))
-    address: Mapped[Optional[str]] = mapped_column(String(300))
-    address_en: Mapped[Optional[str]] = mapped_column(String(300))
-    address_ar: Mapped[Optional[str]] = mapped_column(String(300))
+    # نوع العقد — contract type: residential / commercial / mixed / investment
+    contract_type: Mapped[Optional[str]] = mapped_column(String(50))
+    # كود العقار — internal property code / reference
+    building_code: Mapped[Optional[str]] = mapped_column(String(50), index=True)
+    # رقم عداد المياه — water meter number
+    water_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
+    # رقم العداد — electricity meter number
+    electricity_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
+    # رقم عقد الإيجار — Ejar lease contract number
+    lease_contract_number: Mapped[Optional[str]] = mapped_column(String(50))
+    # الفرع — managing branch / office
+    branch: Mapped[Optional[str]] = mapped_column(String(100))
+
+    # ── Location (الموقع) ────────────────────────────────────────────────────
     city: Mapped[Optional[str]] = mapped_column(String(100))
     city_en: Mapped[Optional[str]] = mapped_column(String(100))
     city_ar: Mapped[Optional[str]] = mapped_column(String(100))
     district: Mapped[Optional[str]] = mapped_column(String(100))
     district_en: Mapped[Optional[str]] = mapped_column(String(100))
     district_ar: Mapped[Optional[str]] = mapped_column(String(100))
-    notes: Mapped[Optional[str]] = mapped_column(Text)
-    notes_en: Mapped[Optional[str]] = mapped_column(Text)
-    notes_ar: Mapped[Optional[str]] = mapped_column(Text)
+    # الشارع — street name
+    street: Mapped[Optional[str]] = mapped_column(String(200))
+    address: Mapped[Optional[str]] = mapped_column(String(300))
+    address_en: Mapped[Optional[str]] = mapped_column(String(300))
+    address_ar: Mapped[Optional[str]] = mapped_column(String(300))
     latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
-    # Mogod-style fields (added by migrations/add_building_mogod_fields.sql)
-    contract_type: Mapped[Optional[str]] = mapped_column(String(50))
-    building_code: Mapped[Optional[str]] = mapped_column(String(50), index=True)
-    water_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
-    electricity_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
-    lease_contract_number: Mapped[Optional[str]] = mapped_column(String(50))
-    branch: Mapped[Optional[str]] = mapped_column(String(100))
-    street: Mapped[Optional[str]] = mapped_column(String(200))
+    # ── Deed information (معلومات الصك) ─────────────────────────────────────
+    # رقم الصك — deed / title deed number
     deed_number: Mapped[Optional[str]] = mapped_column(String(50))
+    # نوع الوثيقة — document type: deed / title / usufruct / …
     deed_document_type: Mapped[Optional[str]] = mapped_column(String(50))
-    deed_date: Mapped[Optional[date]] = mapped_column(Date)
+    # تاريخ الصك — deed issue date
+    deed_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # رقم الوثيقة — document / certificate number
     deed_document_number: Mapped[Optional[str]] = mapped_column(String(50))
+
+    # ── Property data (بيانات العقار) ────────────────────────────────────────
+    # نوع العقار — property type: apartment_building / villa / commercial / warehouse / mixed / land / other
     property_type: Mapped[Optional[str]] = mapped_column(String(50))
+    # نوع السكن — residence type: singles (عزاب) / families (عائلات) / mixed (مختلط)
     residence_type: Mapped[Optional[str]] = mapped_column(String(50))
-    offices_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    commercial_shops_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    apartments_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # unit counts per type
+    offices_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    commercial_shops_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    apartments_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # ── Notes ────────────────────────────────────────────────────────────────
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    notes_en: Mapped[Optional[str]] = mapped_column(Text)
+    notes_ar: Mapped[Optional[str]] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -165,9 +187,7 @@ class Building(Base):
         back_populates="building", cascade="all, delete-orphan", order_by="BuildingImage.sort_order"
     )
     documents: Mapped[list["BuildingDocument"]] = relationship(
-        back_populates="building",
-        cascade="all, delete-orphan",
-        order_by="BuildingDocument.sort_order",
+        back_populates="building", cascade="all, delete-orphan"
     )
 
 
@@ -229,11 +249,48 @@ class Contract(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), nullable=False)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
+
+    # ── Basic contract data (بيانات العقد الأساسية) ──────────────────────────
     contract_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    # الفرع — managing branch / office (mirrors building.branch)
+    branch: Mapped[Optional[str]] = mapped_column(String(100))
+    # نوع العقد — "residential" (سكني) | "commercial" (تجاري)
+    contract_type: Mapped[str] = mapped_column(String(20), default="residential", nullable=False)
+    # صلاحية العقد — contract validity / term type e.g. "fixed" | "open"
+    validity_type: Mapped[Optional[str]] = mapped_column(String(30))
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # مدة العقد — stored separately as entered by user
+    duration_years: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    duration_months: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duration_days: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # اجمالي قيمة الإيجار لكل المدة — total rent for the full contract period
+    total_rent_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    # rent_amount kept for per-payment amount (used when generating Payment rows)
     rent_amount: Mapped[float] = mapped_column(Float, nullable=False)
+    # رقم عقد الإيجار — Ejar lease contract number
+    ejar_contract_number: Mapped[Optional[str]] = mapped_column(String(50))
+
+    # ── Billing (فوترة العقد) ────────────────────────────────────────────────
+    # نوع الدفعة — "monthly" | "quarterly" | "semi-annual" | "annual" | "full"
+    payment_type: Mapped[Optional[str]] = mapped_column(String(30))
+    # عدد الدفعات — number of payment instalments
+    payment_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    # payment_cycle kept for backward compat (interval in months between payments)
     payment_cycle: Mapped[int] = mapped_column(Integer, nullable=False)
+    # الكهرباء — electricity responsibility
+    electricity_on_tenant: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # تقسيم فاتورة الكهرباء — split percentage (0-100) when not fully on tenant
+    electricity_split_percentage: Mapped[Optional[float]] = mapped_column(Float)
+    # الماء — water responsibility
+    water_on_tenant: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # تقسيم فاتورة الماء
+    water_split_percentage: Mapped[Optional[float]] = mapped_column(Float)
+    # خدمات — services fee amount
+    services_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    # التأمين — security deposit / insurance amount
+    insurance_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+
     status: Mapped[str] = mapped_column(String(20), default="active")
     notes: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -241,6 +298,9 @@ class Contract(Base):
     unit: Mapped["Unit"] = relationship(back_populates="contracts")
     tenant: Mapped["Tenant"] = relationship(back_populates="contracts")
     payments: Mapped[list["Payment"]] = relationship(
+        back_populates="contract", cascade="all, delete-orphan"
+    )
+    attachments: Mapped[list["ContractAttachment"]] = relationship(
         back_populates="contract", cascade="all, delete-orphan"
     )
 
@@ -275,6 +335,23 @@ class PaymentSplit(Base):
     description: Mapped[Optional[str]] = mapped_column(String(200))
 
     payment: Mapped["Payment"] = relationship(back_populates="splits")
+
+
+class ContractAttachment(Base):
+    """File attachment for a rent contract (مرفقات العقد), stored in S3 (or compatible)."""
+
+    __tablename__ = "contract_attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    contract_id: Mapped[int] = mapped_column(ForeignKey("contracts.id"), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[Optional[str]] = mapped_column(String(100))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    contract: Mapped["Contract"] = relationship(back_populates="attachments")
 
 
 class Expense(Base):
@@ -365,24 +442,19 @@ class BuildingImage(Base):
 
 
 class BuildingDocument(Base):
-    """Non-image attachments (deed PDFs, lease contracts, …) for a building.
-
-    Created by migrations/add_building_mogod_fields.sql. Image gallery uses
-    `BuildingImage` (above) — keep these distinct so list views can render
-    them differently.
-    """
+    """Internal document / file attached to a building (ملفات العقار), stored in S3 (or compatible)."""
 
     __tablename__ = "building_documents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    building_id: Mapped[int] = mapped_column(
-        ForeignKey("buildings.id", ondelete="CASCADE"), nullable=False
-    )
+    building_id: Mapped[int] = mapped_column(ForeignKey("buildings.id"), nullable=False)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
-    object_key: Mapped[Optional[str]] = mapped_column(String(500))
+    object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # original filename shown to the user
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    # MIME type e.g. application/pdf, image/jpeg
     file_type: Mapped[Optional[str]] = mapped_column(String(100))
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     building: Mapped["Building"] = relationship(back_populates="documents")

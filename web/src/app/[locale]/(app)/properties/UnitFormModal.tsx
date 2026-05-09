@@ -39,6 +39,8 @@ export function UnitFormModal({
     management_percentage: unit?.management_percentage ?? 0,
     agent_name: unit?.agent_name ?? "",
     agent_percentage: unit?.agent_percentage ?? 0,
+    electric_invoice: unit?.electric_invoice ?? "",
+    water_invoice: unit?.water_invoice ?? "",
     ejar_fee: unit?.ejar_fee ?? 0,
     notes: unit?.notes ?? "",
     notes_en: unit?.notes_en ?? "",
@@ -73,6 +75,8 @@ export function UnitFormModal({
       management_percentage: Number(form.management_percentage) || 0,
       agent_name: form.agent_name?.toString().trim() || null,
       agent_percentage: Number(form.agent_percentage) || 0,
+      electric_invoice: form.electric_invoice?.toString().trim() || null,
+      water_invoice: form.water_invoice?.toString().trim() || null,
       ejar_fee: Number(form.ejar_fee) || 0,
       notes: notesEn || notesAr || null,
       notes_en: notesEn || null,
@@ -236,6 +240,28 @@ export function UnitFormModal({
             onChange={(e) => set("agent_name", e.target.value)}
             maxLength={150}
           />
+        </div>
+        <div className="field-row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("electricInvoice")}</label>
+            <input
+              className="input input-mono"
+              value={form.electric_invoice ?? ""}
+              onChange={(e) => set("electric_invoice", e.target.value)}
+              maxLength={50}
+              dir="ltr"
+            />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>{t("waterInvoice")}</label>
+            <input
+              className="input input-mono"
+              value={form.water_invoice ?? ""}
+              onChange={(e) => set("water_invoice", e.target.value)}
+              maxLength={50}
+              dir="ltr"
+            />
+          </div>
         </div>
         <BilingualField
           label={t("notes")}

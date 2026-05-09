@@ -17,6 +17,8 @@ import {
   type Role,
 } from "@/lib/types";
 
+import { InviteUserModal } from "./InviteUserModal";
+
 export type AdminUserRow = {
   id: number;
   username: string;
@@ -54,6 +56,7 @@ export function UsersClient({
   const tPerms = useTranslations("perms");
 
   const [tab, setTab] = useState<Tab>("users");
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -178,6 +181,11 @@ export function UsersClient({
         <div>
           <h2 className="page-title">{t("title")}</h2>
           <div className="page-subtitle">{t("subtitle")}</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-primary" onClick={() => setInviteOpen(true)}>
+            <span className="ms">person_add</span> {t("inviteUser")}
+          </button>
         </div>
       </div>
 
@@ -575,6 +583,15 @@ export function UsersClient({
             </div>
           </section>
         </div>
+      )}
+
+      {inviteOpen && (
+        <InviteUserModal
+          open={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          roles={rolesState}
+          locale={locale}
+        />
       )}
     </div>
   );

@@ -59,6 +59,7 @@ export function PropertiesClient({
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<Lightbox | null>(null);
   const [search, setSearch] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState<"all" | number>("all");
   const [buildingForm, setBuildingForm] = useState<{ open: boolean; editing: Building | null; defaultOwnerId?: number }>({
     open: false,
     editing: null,
@@ -91,7 +92,9 @@ export function PropertiesClient({
       [u.name, u.number, u.unit_type].filter(Boolean).join(" ").toLowerCase().includes(q),
     );
   };
-  const visibleBuildings = buildings.filter(matchesSearch);
+  const matchesOwner = (b: Building): boolean =>
+    ownerFilter === "all" ? true : b.owner_id === ownerFilter;
+  const visibleBuildings = buildings.filter((b) => matchesOwner(b) && matchesSearch(b));
 
   const doDeleteBuilding = () => {
     if (!confirmDelBuilding) return;
@@ -193,7 +196,7 @@ export function PropertiesClient({
           <h2 className="page-title">{t("title")}</h2>
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <div className="search-input">
             <span className="ms">search</span>
             <input
@@ -202,6 +205,23 @@ export function PropertiesClient({
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <select
+            className="select"
+            aria-label={t("filterByOwner")}
+            title={t("filterByOwner")}
+            value={ownerFilter === "all" ? "all" : String(ownerFilter)}
+            onChange={(e) =>
+              setOwnerFilter(e.target.value === "all" ? "all" : Number(e.target.value))
+            }
+            style={{ height: 36, maxWidth: 220 }}
+          >
+            <option value="all">{t("allOwners")}</option>
+            {owners.map((o) => (
+              <option key={o.id} value={o.id}>
+                {localized(o, "name", locale)}
+              </option>
+            ))}
+          </select>
           <button
             className="btn btn-primary"
             onClick={() => setBuildingForm({ open: true, editing: null })}

@@ -26,15 +26,12 @@ export type EntityImage = {
   sort_order: number;
 };
 
-export type BuildingDocument = {
+export type EntityDocument = {
   id: number;
-  building_id: number;
   url: string;
-  object_key: string | null;
   filename: string;
   file_type: string | null;
   sort_order: number;
-  created_at: string;
 };
 
 export type Building = {
@@ -44,6 +41,15 @@ export type Building = {
   name: string;
   name_en: string | null;
   name_ar: string | null;
+  // General info
+  contract_type: string | null;
+  building_code: string | null;
+  water_meter_number: string | null;
+  electricity_meter_number: string | null;
+  lease_contract_number: string | null;
+  branch: string | null;
+  // Location
+  street: string | null;
   address: string | null;
   address_en: string | null;
   address_ar: string | null;
@@ -53,31 +59,26 @@ export type Building = {
   district: string | null;
   district_en: string | null;
   district_ar: string | null;
-  notes: string | null;
-  notes_en: string | null;
-  notes_ar: string | null;
   latitude: number | null;
   longitude: number | null;
-  // Mogod fields
-  contract_type: string | null;
-  building_code: string | null;
-  water_meter_number: string | null;
-  electricity_meter_number: string | null;
-  lease_contract_number: string | null;
-  branch: string | null;
-  street: string | null;
+  // Deed
   deed_number: string | null;
   deed_document_type: string | null;
   deed_date: string | null;
   deed_document_number: string | null;
+  // Property data
   property_type: string | null;
   residence_type: string | null;
   offices_count: number;
   commercial_shops_count: number;
   apartments_count: number;
-  documents?: BuildingDocument[];
+  // Notes
+  notes: string | null;
+  notes_en: string | null;
+  notes_ar: string | null;
   created_at: string;
   images: EntityImage[];
+  documents: EntityDocument[];
 };
 
 export type Unit = {
@@ -123,13 +124,32 @@ export type Contract = {
   unit_id: number;
   tenant_id: number;
   contract_number: string;
+  // Basic
+  branch: string | null;
+  contract_type: string;
+  validity_type: string | null;
   start_date: string;
   end_date: string;
+  duration_years: number;
+  duration_months: number;
+  duration_days: number;
+  total_rent_amount: number;
   rent_amount: number;
+  ejar_contract_number: string | null;
+  // Billing
+  payment_type: string | null;
+  payment_count: number;
   payment_cycle: number;
+  electricity_on_tenant: boolean;
+  electricity_split_percentage: number | null;
+  water_on_tenant: boolean;
+  water_split_percentage: number | null;
+  services_amount: number;
+  insurance_amount: number;
   status: "active" | "expired" | "terminated";
   notes: string | null;
   created_at: string;
+  attachments: EntityDocument[];
 };
 
 export type PermissionAction = "view" | "create" | "edit" | "delete" | "approve";
