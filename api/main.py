@@ -8,6 +8,8 @@ from sqlalchemy import func, select, update
 
 from api.config import get_settings
 from api.database import Base, SessionLocal, engine, ensure_user_password_reset_columns
+from api.logging_config import setup_logging
+from api.request_logging import RequestLoggingMiddleware
 from api.routers import (
     analytics,
     auth,
@@ -22,6 +24,8 @@ from api.routers import (
 )
 
 
+# Configure JSON logging before anything else grabs a handler.
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -108,6 +112,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Outermost middleware runs last on the way in, first on the way out — wrap with
+# request logging AFTER CORS so the JSON log line includes the final status code.
+app.add_middleware(RequestLoggingMiddleware)
 
 
 @app.get("/api/health", tags=["meta"])
