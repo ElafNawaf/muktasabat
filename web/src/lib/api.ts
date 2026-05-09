@@ -3,8 +3,13 @@
  *
  * Reads the JWT from the httpOnly cookie set by /api/auth/login and forwards
  * it to FastAPI as a Bearer token. Returns a typed JSON body or throws.
+ *
+ * Also forwards X-Forwarded-For + User-Agent so the FastAPI request log shows
+ * the real user IP / browser instead of this Next.js container.
  */
 import { cookies } from "next/headers";
+
+import { forwardHeaders } from "./forward";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? "http://localhost:8000";
@@ -24,7 +29,12 @@ async function apiFetch<T>(path: string, opts: FetchOpts = {}): Promise<T> {
   const cookieStore = await cookies();
   const token = cookieStore.get(TOKEN_COOKIE)?.value;
 
-  const headers = new Headers(opts.headers);
+  // Start from the forward headers so the backend sees the real user IP / UA,
+  // then layer caller-supplied headers on top so they can override if needed.
+  const headers = await forwardHeaders();
+  if (opts.headers) {
+    new Headers(opts.headers).forEach((v, k) => headers.set(k, v));
+  }
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (opts.body !== undefined && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");

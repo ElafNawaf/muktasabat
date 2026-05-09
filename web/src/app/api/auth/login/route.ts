@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { API_BASE, REFRESH_COOKIE, TOKEN_COOKIE } from "@/lib/api";
+import { forwardHeaders } from "@/lib/forward";
 
 export async function POST(req: Request) {
   const body = (await req.json()) as { username?: string; password?: string };
@@ -14,9 +15,12 @@ export async function POST(req: Request) {
   form.set("username", body.username);
   form.set("password", body.password);
 
+  const headers = await forwardHeaders(req);
+  headers.set("Content-Type", "application/x-www-form-urlencoded");
+
   const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers,
     body: form.toString(),
     cache: "no-store",
   });

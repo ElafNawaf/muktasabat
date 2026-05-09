@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { API_BASE, REFRESH_COOKIE, TOKEN_COOKIE } from "@/lib/api";
+import { forwardHeaders } from "@/lib/forward";
 
 export async function POST(req: Request) {
   const body = (await req.json()) as {
@@ -13,9 +14,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
+  const fwd = await forwardHeaders(req);
+  const jsonHeaders = new Headers(fwd);
+  jsonHeaders.set("Content-Type", "application/json");
+  const formHeaders = new Headers(fwd);
+  formHeaders.set("Content-Type", "application/x-www-form-urlencoded");
+
   const reg = await fetch(`${API_BASE}/api/v1/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: jsonHeaders,
     body: JSON.stringify({
       username: body.username,
       email: body.email,
@@ -40,7 +47,7 @@ export async function POST(req: Request) {
 
   const loginRes = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: formHeaders,
     body: form.toString(),
     cache: "no-store",
   });
