@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
 import { deleteExpense } from "@/lib/actions";
-import { formatSAR } from "@/lib/format";
+import { formatDate, formatSAR } from "@/lib/format";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
 import { ExpenseFormModal } from "./ExpenseFormModal";
@@ -95,12 +95,7 @@ export function ExpensesClient({
       .reduce((s, e) => s + e.amount, 0),
   };
 
-  const fmtDate = (iso: string) =>
-    new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(iso));
+  const fmtDate = (iso: string) => formatDate(iso, locale);
 
   const doDelete = () => {
     if (!confirmDel) return;

@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
 import { terminateContract } from "@/lib/actions";
-import { formatSAR } from "@/lib/format";
+import { formatDate, formatSAR } from "@/lib/format";
 import {
   localized,
   type Building,
@@ -81,12 +81,7 @@ export function ContractsClient({
       .reduce((s, c) => s + c.rent_amount / c.payment_cycle, 0),
   };
 
-  const fmtDate = (iso: string) =>
-    new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(iso));
+  const fmtDate = (iso: string) => formatDate(iso, locale);
 
   const doTerminate = () => {
     if (!terminating) return;

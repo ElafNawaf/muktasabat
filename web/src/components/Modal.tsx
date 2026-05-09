@@ -46,9 +46,11 @@ export function Modal({
   // lg widens for big multi-section forms).
   const widths: Record<typeof size, number> = { sm: 420, md: 540, lg: 720 };
 
+  // Drawer must be a descendant of .modal-overlay so the
+  // `.modal-overlay.open .modal { transform: translateX(0) }` selector matches —
+  // otherwise the panel stays at translateX(100%) (offscreen) and looks "crashed".
   return (
-    <>
-      <div className="modal-overlay open" onClick={onClose} />
+    <div className="modal-overlay open" onClick={onClose}>
       <div
         className="modal"
         style={{ width: widths[size] }}
@@ -73,7 +75,7 @@ export function Modal({
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
       </div>
-    </>
+    </div>
   );
 }
 

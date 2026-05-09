@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Topbar } from "@/components/Topbar";
 import { api, ApiError } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
-import { formatSAR } from "@/lib/format";
+import { formatDate, formatSAR } from "@/lib/format";
 import { localized, type Building, type Contract, type Unit } from "@/lib/types";
 
 import { MiniSpark } from "./MiniSpark";
@@ -357,13 +357,7 @@ export default async function DashboardPage({
                           {" · "}
                           <span className="mono">{c.contract_number}</span>
                         </div>
-                        <div className="when">
-                          {new Intl.DateTimeFormat(isAr ? "ar-SA" : "en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          }).format(new Date(c.created_at))}
-                        </div>
+                        <div className="when">{formatDate(c.created_at, locale)}</div>
                       </div>
                       <div className="amt pos">
                         +{tCurrency("sar")} {formatSAR(c.rent_amount, locale)}

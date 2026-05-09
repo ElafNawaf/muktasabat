@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { formatSAR } from "@/lib/format";
+import { formatDate, formatSAR } from "@/lib/format";
 import {
   localized,
   type Building,
@@ -105,12 +105,7 @@ export function PaymentsClient({
       .reduce((s, p) => s + p.amount, 0),
   };
 
-  const fmtDate = (iso: string) =>
-    new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(iso));
+  const fmtDate = (iso: string) => formatDate(iso, locale);
 
   return (
     <div className="page screen-enter">

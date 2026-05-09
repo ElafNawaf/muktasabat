@@ -9,6 +9,7 @@ import {
   updateRolePermissions,
   type RolePermissions,
 } from "@/lib/actions";
+import { formatDate } from "@/lib/format";
 import {
   MODULE_IDS,
   PERMISSION_ACTIONS,
@@ -111,12 +112,7 @@ export function UsersClient({
     });
   };
 
-  const fmtDate = (iso: string) =>
-    new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(iso));
+  const fmtDate = (iso: string) => formatDate(iso, locale);
 
   const counts = {
     total: users.length,
