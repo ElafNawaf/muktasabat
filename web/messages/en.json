@@ -17,8 +17,17 @@
   "roles": {
     "admin": "Administrator",
     "manager": "Manager",
+    "accountant": "Accountant",
+    "agent": "Leasing Agent",
     "viewer": "Viewer",
     "owner": "Owner"
+  },
+  "perms": {
+    "view": "View",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "approve": "Approve"
   },
   "common": {
     "search": "Search",
@@ -43,7 +52,17 @@
     "phone": "Phone",
     "email": "Email",
     "nationalId": "National ID",
-    "noResults": "No results"
+    "noResults": "No results",
+    "translate": "Auto-translate",
+    "modules": {
+      "properties": "Properties",
+      "contracts": "Contracts",
+      "payments": "Payments",
+      "owners": "Owners",
+      "tenants": "Tenants",
+      "expenses": "Expenses",
+      "users": "User management"
+    }
   },
   "login": {
     "signIn": "Sign in",
@@ -73,9 +92,24 @@
     "usernameTaken": "Username already taken",
     "emailTaken": "Email already registered",
     "weakPassword": "Password must be at least 6 characters",
-    "success": "Account created. Signing you in…",
+    "success": "Account created. Check your email to verify.",
     "failed": "Registration failed",
-    "manualSignIn": "Account created. Please sign in with your new credentials."
+    "manualSignIn": "Account created. Please sign in with your new credentials.",
+    "checkEmailTitle": "Check your email",
+    "checkEmailHint": "We sent a verification link to {email}. Click it to activate your account, then sign in.",
+    "resend": "Resend verification email",
+    "resentOk": "Sent. If your account exists and is unverified, a new email is on the way."
+  },
+  "verifyEmailPage": {
+    "title": "Verify email",
+    "verifying": "Verifying your email…",
+    "success": "Email verified",
+    "successHint": "You can now sign in to your account.",
+    "invalid": "Verification failed",
+    "invalidHint": "The link is invalid or has expired. Request a new one from the registration screen.",
+    "missingHint": "No verification token found in this link.",
+    "signIn": "Sign in",
+    "backToSignIn": "Back to sign in"
   },
   "forgotPage": {
     "title": "Reset password",
@@ -148,7 +182,31 @@
     "deleteBuildingTitle": "Delete building?",
     "deleteBuildingMessage": "Are you sure you want to delete \"{name}\"? Its units and contracts will be removed too.",
     "deleteUnitTitle": "Delete unit?",
-    "deleteUnitMessage": "Are you sure you want to delete unit #{number}?"
+    "deleteUnitMessage": "Are you sure you want to delete unit #{number}?",
+    "managePhotos": "Manage photos",
+    "photosOf": "Photos of",
+    "setLocation": "Set location",
+    "approxLocation": "approximate"
+  },
+  "mapPicker": {
+    "label": "Location on map",
+    "hint": "Click the map to set a pin, or use \"my location\".",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "useMyLocation": "Use my location",
+    "clear": "Clear"
+  },
+  "imageGallery": {
+    "subtitle": "Drag images here or click to upload. JPG / PNG / WEBP / GIF, up to 8 MB each.",
+    "dropOrClick": "Drop images here or click to choose",
+    "uploading": "Uploading…",
+    "typesHint": "JPG · PNG · WEBP · GIF · max 8 MB",
+    "noImages": "No photos yet.",
+    "badType": "That file type isn't supported. Use JPG, PNG, WEBP or GIF.",
+    "tooLarge": "That image is too large (max 8 MB).",
+    "uploadFailed": "Upload failed. Please try again.",
+    "deleteFailed": "Couldn't delete that image.",
+    "notConfigured": "Image uploads aren't configured yet — set S3_BUCKET on the API."
   },
   "owners": {
     "title": "Owners",
@@ -214,6 +272,8 @@
     "editSubtitle": "Update building details.",
     "owner": "Owner",
     "selectOwner": "Select an owner…",
+    "assignee": "Responsible employee",
+    "noAssignee": "Unassigned",
     "name": "Building name",
     "nameEn": "Name (English)",
     "nameAr": "Name (Arabic)",
@@ -264,7 +324,22 @@
     "createdAt": "Created",
     "you": "You",
     "deactivate": "Deactivate",
-    "activate": "Activate"
+    "activate": "Activate",
+    "usersTab": "Users",
+    "rolesTab": "Roles & permissions",
+    "roles": "Roles",
+    "users": "Users",
+    "system": "System",
+    "oneUser": "user",
+    "manyUsers": "users",
+    "matrixTitle": "Permission matrix",
+    "matrixHint": "Click a cell to toggle access.",
+    "matrixHintSystem": "System role — read only.",
+    "readOnly": "Read only",
+    "saving": "Saving…",
+    "module": "Module",
+    "all": "All",
+    "granted": "granted"
   },
   "contractsPage": {
     "title": "Contracts",
@@ -287,6 +362,8 @@
     "terminateMessage": "Are you sure you want to terminate contract {number}? The unit will become available.",
     "createTitle": "New contract",
     "createSubtitle": "Generate a contract and its payment schedule.",
+    "editTitle": "Edit contract",
+    "editSubtitle": "Update terms; tenant and unit are locked once signed.",
     "selectUnit": "Select a unit…",
     "selectTenant": "Select a tenant…",
     "noAvailableUnits": "All units are currently leased.",
@@ -347,6 +424,8 @@
     "notes": "Notes",
     "createTitle": "Add expense",
     "createSubtitle": "Record an operational cost.",
+    "editTitle": "Edit expense",
+    "editSubtitle": "Update the recorded operational cost.",
     "deleteTitle": "Delete expense?",
     "deleteMessage": "Delete \"{description}\"? This cannot be undone.",
     "descriptionRequired": "Description is required",

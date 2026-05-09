@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
+import { ImageGalleryEditor } from "@/components/ImageGalleryEditor";
 import { ConfirmDialog } from "@/components/Modal";
 import { BuildingArt, MapPreview, UnitArt } from "@/components/PropertyArt";
 import { deleteBuilding, deleteUnit } from "@/lib/actions";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/types";
 
 import { BuildingFormModal } from "./BuildingFormModal";
+import type { UserPick } from "./page";
 import { UnitFormModal } from "./UnitFormModal";
 
 const UNIT_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
@@ -38,6 +40,7 @@ export function PropertiesClient({
   units,
   contracts,
   tenants,
+  users,
   locale,
 }: {
   owners: Owner[];
@@ -45,16 +48,14 @@ export function PropertiesClient({
   units: Unit[];
   contracts: Contract[];
   tenants: Tenant[];
+  users: UserPick[];
   locale: string;
 }) {
   const t = useTranslations("properties");
   const tCommon = useTranslations("common");
   const tCurrency = useTranslations("currency");
 
-  // Open the first building by default for instant orientation
-  const [openBuildings, setOpenBuildings] = useState<Set<number>>(
-    () => new Set(buildings[0] ? [buildings[0].id] : []),
-  );
+  const [openBuildings, setOpenBuildings] = useState<Set<number>>(() => new Set());
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<Lightbox | null>(null);
   const [search, setSearch] = useState("");
@@ -70,6 +71,11 @@ export function PropertiesClient({
   const [confirmDelUnit, setConfirmDelUnit] = useState<Unit | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [gallery, setGallery] = useState<
+    | { kind: "buildings"; building: Building }
+    | { kind: "units"; unit: Unit; building: Building }
+    | null
+  >(null);
 
   const matchesSearch = (b: Building): boolean => {
     if (!search) return true;
@@ -125,6 +131,8 @@ export function PropertiesClient({
   };
 
   const ownerOf = (id: number) => owners.find((o) => o.id === id);
+  const userOf = (id: number | null | undefined) =>
+    id == null ? null : users.find((u) => u.id === id) ?? null;
   const unitsOf = (bid: number) => units.filter((u) => u.building_id === bid);
   const activeContractFor = (uid: number) =>
     contracts.find((c) => c.unit_id === uid && c.status === "active");
@@ -221,7 +229,19 @@ export function PropertiesClient({
 
           return (
             <div key={b.id} className={"drill-row prop-row" + (isOpen ? " open" : "")}>
-              <div className="drill-hd prop-hd" onClick={() => toggleBuilding(b.id)}>
+              <div
+                className="drill-hd prop-hd"
+                role="button"
+                tabIndex={0}
+                aria-expanded={isOpen}
+                onClick={() => toggleBuilding(b.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleBuilding(b.id);
+                  }
+                }}
+              >
                 <span className="ms chev">chevron_right</span>
                 <div
                   className="prop-thumb"
@@ -260,6 +280,24 @@ export function PropertiesClient({
                         </span>
                       </>
                     )}
+                    {(() => {
+                      const a = userOf(b.assignee_id);
+                      if (!a) return null;
+                      return (
+                        <>
+                          <span style={{ margin: "0 6px", opacity: 0.5 }}>·</span>
+                          <span
+                            className="ms ms-sm"
+                            style={{ verticalAlign: "middle", marginInlineEnd: 2 }}
+                          >
+                            badge
+                          </span>
+                          <span>
+                            {t("assigned")}: {a.username}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="stats">
@@ -281,6 +319,13 @@ export function PropertiesClient({
                   onClick={(e) => e.stopPropagation()}
                   style={{ display: "flex", gap: 4 }}
                 >
+                  <button
+                    className="icon-btn"
+                    title={t("managePhotos")}
+                    onClick={() => setGallery({ kind: "buildings", building: b })}
+                  >
+                    <span className="ms ms-sm">photo_library</span>
+                  </button>
                   <button
                     className="icon-btn"
                     title={tCommon("edit")}
@@ -305,7 +350,16 @@ export function PropertiesClient({
                       className="prop-hero"
                       onClick={() => setLightbox({ kind: "building", building: b, meta })}
                     >
-                      <BuildingArt buildingId={b.id} meta={meta} cityLabel={cityLabel ?? ""} big />
+                      {b.images.length > 0 ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={b.images[0].url}
+                          alt={localized(b, "name", locale)}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      ) : (
+                        <BuildingArt buildingId={b.id} meta={meta} cityLabel={cityLabel ?? ""} big />
+                      )}
                       <div className="prop-hero-shade" />
                       <div className="prop-hero-actions">
                         <button
@@ -316,26 +370,54 @@ export function PropertiesClient({
                           }}
                         >
                           <span className="ms ms-sm">photo_library</span> {t("viewPhotos")}
-                          <span style={{ opacity: 0.7, marginInlineStart: 4 }}>· 6</span>
+                          <span style={{ opacity: 0.7, marginInlineStart: 4 }}>
+                            · {b.images.length || 0}
+                          </span>
+                        </button>
+                        <button
+                          className="prop-pill"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGallery({ kind: "buildings", building: b });
+                          }}
+                        >
+                          <span className="ms ms-sm">add_a_photo</span> {t("managePhotos")}
                         </button>
                       </div>
                     </div>
                     <div className="prop-thumbs">
-                      {[0, 1, 2, 3].map((i) => (
+                      {b.images.length > 0
+                        ? b.images.slice(0, 4).map((img) => (
+                            <div
+                              key={img.id}
+                              className="prop-thumb-sm"
+                              onClick={() => setLightbox({ kind: "building", building: b, meta })}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={img.url}
+                                alt=""
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            </div>
+                          ))
+                        : [0, 1, 2, 3].map((i) => (
+                            <div
+                              key={i}
+                              className="prop-thumb-sm"
+                              onClick={() => setLightbox({ kind: "building", building: b, meta })}
+                            >
+                              <BuildingArt buildingId={b.id} meta={meta} />
+                            </div>
+                          ))}
+                      {b.images.length > 4 && (
                         <div
-                          key={i}
-                          className="prop-thumb-sm"
+                          className="prop-thumb-sm prop-thumb-more"
                           onClick={() => setLightbox({ kind: "building", building: b, meta })}
                         >
-                          <BuildingArt buildingId={b.id} meta={meta} />
+                          <span>+{b.images.length - 4}</span>
                         </div>
-                      ))}
-                      <div
-                        className="prop-thumb-sm prop-thumb-more"
-                        onClick={() => setLightbox({ kind: "building", building: b, meta })}
-                      >
-                        <span>+2</span>
-                      </div>
+                      )}
                     </div>
                   </div>
                   <div className="prop-side">
@@ -355,29 +437,45 @@ export function PropertiesClient({
                               {cityLabel}
                             </div>
                             <div className="text-sec mono" style={{ fontSize: 11 }}>
-                              {meta.lat.toFixed(4)}°N · {meta.lng.toFixed(4)}°E
+                              {(b.latitude ?? meta.lat).toFixed(4)}°N · {(b.longitude ?? meta.lng).toFixed(4)}°E
+                              {b.latitude == null && (
+                                <span style={{ marginInlineStart: 6, opacity: 0.7 }}>· {t("approxLocation")}</span>
+                              )}
                             </div>
                           </div>
                         </div>
                         <div className="prop-map-actions">
-                          <a
-                            className="btn btn-secondary btn-sm"
-                            style={{ flex: 1 }}
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${meta.lat},${meta.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <span className="ms ms-sm">directions</span> {t("directions")}
-                          </a>
-                          <a
-                            className="btn btn-secondary btn-sm"
-                            style={{ flex: 1 }}
-                            href={`https://www.openstreetmap.org/?mlat=${meta.lat}&mlon=${meta.lng}#map=17/${meta.lat}/${meta.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <span className="ms ms-sm">open_in_new</span> {t("openMap")}
-                          </a>
+                          {b.latitude != null && b.longitude != null ? (
+                            <>
+                              <a
+                                className="btn btn-secondary btn-sm"
+                                style={{ flex: 1 }}
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <span className="ms ms-sm">directions</span> {t("directions")}
+                              </a>
+                              <a
+                                className="btn btn-secondary btn-sm"
+                                style={{ flex: 1 }}
+                                href={`https://www.openstreetmap.org/?mlat=${b.latitude}&mlon=${b.longitude}#map=17/${b.latitude}/${b.longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <span className="ms ms-sm">open_in_new</span> {t("openMap")}
+                              </a>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              style={{ flex: 1 }}
+                              onClick={() => setBuildingForm({ open: true, editing: b })}
+                            >
+                              <span className="ms ms-sm">edit_location</span> {t("setLocation")}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -424,12 +522,21 @@ export function PropertiesClient({
                             setLightbox({ kind: "unit", unit: u, building: b, meta });
                           }}
                         >
-                          <UnitArt
-                            unitId={u.id}
-                            unitType={u.unit_type}
-                            meta={meta}
-                            typeLabel={typeLabel(u.unit_type)}
-                          />
+                          {u.images.length > 0 ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={u.images[0].url}
+                              alt={localized(u, "name", locale)}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <UnitArt
+                              unitId={u.id}
+                              unitType={u.unit_type}
+                              meta={meta}
+                              typeLabel={typeLabel(u.unit_type)}
+                            />
+                          )}
                           <span
                             className={
                               "badge unit-img-badge " +
@@ -465,6 +572,13 @@ export function PropertiesClient({
                             style={{ display: "flex", gap: 4, marginTop: 6 }}
                             onClick={(e) => e.stopPropagation()}
                           >
+                            <button
+                              className="icon-btn"
+                              title={t("managePhotos")}
+                              onClick={() => setGallery({ kind: "units", unit: u, building: b })}
+                            >
+                              <span className="ms ms-sm">photo_library</span>
+                            </button>
                             <button
                               className="icon-btn"
                               title={tCommon("edit")}
@@ -544,6 +658,7 @@ export function PropertiesClient({
           onClose={() => setBuildingForm({ open: false, editing: null })}
           building={buildingForm.editing}
           owners={owners}
+          users={users}
           defaultOwnerId={buildingForm.defaultOwnerId}
         />
       )}
@@ -585,38 +700,52 @@ export function PropertiesClient({
         destructive
         loading={pending}
       />
+      {gallery && (
+        <ImageGalleryEditor
+          key={gallery.kind === "buildings" ? `b-${gallery.building.id}` : `u-${gallery.unit.id}`}
+          open
+          onClose={() => setGallery(null)}
+          kind={gallery.kind}
+          entityId={gallery.kind === "buildings" ? gallery.building.id : gallery.unit.id}
+          title={
+            gallery.kind === "buildings"
+              ? `${t("photosOf")} ${localized(gallery.building, "name", locale)}`
+              : `${t("photosOf")} ${localized(gallery.building, "name", locale)} · #${gallery.unit.number}`
+          }
+          images={
+            gallery.kind === "buildings"
+              ? gallery.building.images ?? []
+              : gallery.unit.images ?? []
+          }
+        />
+      )}
 
-      {lightbox && (
-        <div className="lightbox" onClick={() => setLightbox(null)}>
-          <div className="lightbox-card" onClick={(e) => e.stopPropagation()}>
-            <div className="lightbox-img">
-              {lightbox.kind === "building" ? (
-                <BuildingArt
-                  buildingId={lightbox.building.id}
-                  meta={lightbox.meta}
-                  cityLabel={
-                    locale === "ar"
-                      ? lightbox.building.city_ar ?? lightbox.building.city ?? ""
-                      : lightbox.building.city_en ?? lightbox.building.city ?? ""
-                  }
-                  big
-                />
-              ) : (
-                <UnitArt
-                  unitId={lightbox.unit.id}
-                  unitType={lightbox.unit.unit_type}
-                  meta={lightbox.meta}
-                  typeLabel={typeLabel(lightbox.unit.unit_type)}
-                />
-              )}
-            </div>
-            <div className="lightbox-strip">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="lightbox-thumb">
-                  {lightbox.kind === "building" ? (
+      {lightbox &&
+        (() => {
+          const imgs =
+            lightbox.kind === "building" ? lightbox.building.images : lightbox.unit.images;
+          const [activeImage, ...rest] = imgs;
+          return (
+            <div className="lightbox" onClick={() => setLightbox(null)}>
+              <div className="lightbox-card" onClick={(e) => e.stopPropagation()}>
+                <div className="lightbox-img">
+                  {activeImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={activeImage.url}
+                      alt=""
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : lightbox.kind === "building" ? (
                     <BuildingArt
                       buildingId={lightbox.building.id}
                       meta={lightbox.meta}
+                      cityLabel={
+                        locale === "ar"
+                          ? lightbox.building.city_ar ?? lightbox.building.city ?? ""
+                          : lightbox.building.city_en ?? lightbox.building.city ?? ""
+                      }
+                      big
                     />
                   ) : (
                     <UnitArt
@@ -627,18 +756,31 @@ export function PropertiesClient({
                     />
                   )}
                 </div>
-              ))}
+                {imgs.length > 0 && (
+                  <div className="lightbox-strip">
+                    {[activeImage, ...rest].slice(0, 6).map((img) => (
+                      <div key={img.id} className="lightbox-thumb">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img.url}
+                          alt=""
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  className="lightbox-close"
+                  onClick={() => setLightbox(null)}
+                  aria-label="Close"
+                >
+                  <span className="ms">close</span>
+                </button>
+              </div>
             </div>
-            <button
-              className="lightbox-close"
-              onClick={() => setLightbox(null)}
-              aria-label="Close"
-            >
-              <span className="ms">close</span>
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })()}
     </div>
   );
 }

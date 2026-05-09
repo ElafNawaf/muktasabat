@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 export function ForgotPasswordScreen() {
   const t = useTranslations("forgotPage");
@@ -47,6 +48,7 @@ export function ForgotPasswordScreen() {
   return (
     <div className="login-page">
       <div className="login-pattern" />
+      <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={`/${otherLocale}/forgot-password`}>
         {locale === "en" ? "العربية" : "English"}
       </Link>

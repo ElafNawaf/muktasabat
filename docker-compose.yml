@@ -28,7 +28,8 @@ services:
   web:
     build: ./web
     ports:
-      - "3000:3000"
+      # Default 3001 avoids clashing with local `npm run dev` on 3000. Use WEB_PORT=3000 when host 3000 is free.
+      - "${WEB_PORT:-3001}:3000"
     environment:
       # Server-side calls go to FastAPI inside the docker network
       API_URL: http://api:8000

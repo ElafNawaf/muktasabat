@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-Role = Literal["admin", "manager", "viewer", "owner"]
+Role = Literal["admin", "manager", "accountant", "agent", "viewer", "owner"]
 
 
 class UserRead(BaseModel):
@@ -14,6 +14,7 @@ class UserRead(BaseModel):
     email: EmailStr
     role: Role
     is_active_user: bool
+    email_verified: bool = False
     created_at: datetime
 
 
@@ -56,3 +57,22 @@ class ForgotPasswordResponse(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=10, max_length=256)
     new_password: str = Field(min_length=6, max_length=128)
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=256)
+
+
+class VerifyEmailResponse(BaseModel):
+    ok: bool = True
+    user_id: int | None = None
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class ResendVerificationResponse(BaseModel):
+    ok: bool = True
+    message: str = "If your account exists and is unverified, a new email has been sent."
+    debug_verify_url: str | None = None

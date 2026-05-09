@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
+import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
 import { createUnit, updateUnit, type UnitInput } from "@/lib/actions";
 import type { Building, Unit } from "@/lib/types";
@@ -29,6 +30,8 @@ export function UnitFormModal({
   const [form, setForm] = useState<UnitInput>(() => ({
     building_id: unit?.building_id ?? defaultBuildingId ?? buildings[0]?.id ?? 0,
     name: unit?.name ?? "",
+    name_en: unit?.name_en ?? "",
+    name_ar: unit?.name_ar ?? "",
     number: unit?.number ?? "",
     unit_type: unit?.unit_type ?? "apartment",
     area_sqm: unit?.area_sqm ?? null,
@@ -38,6 +41,8 @@ export function UnitFormModal({
     agent_percentage: unit?.agent_percentage ?? 0,
     ejar_fee: unit?.ejar_fee ?? 0,
     notes: unit?.notes ?? "",
+    notes_en: unit?.notes_en ?? "",
+    notes_ar: unit?.notes_ar ?? "",
   }));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -48,12 +53,19 @@ export function UnitFormModal({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!form.name.trim()) return setError(t("nameRequired"));
     if (!form.number.trim()) return setError(t("numberRequired"));
     if (!form.building_id) return setError(t("buildingRequired"));
+    const nameEn = form.name_en?.toString().trim() ?? "";
+    const nameAr = form.name_ar?.toString().trim() ?? "";
+    const notesEn = form.notes_en?.toString().trim() ?? "";
+    const notesAr = form.notes_ar?.toString().trim() ?? "";
+    const primaryName = nameEn || nameAr;
+    if (!primaryName) return setError(t("nameRequired"));
     const payload: UnitInput = {
       building_id: form.building_id,
-      name: form.name.trim(),
+      name: primaryName,
+      name_en: nameEn || null,
+      name_ar: nameAr || null,
       number: form.number.trim(),
       unit_type: form.unit_type || "apartment",
       area_sqm: form.area_sqm ? Number(form.area_sqm) : null,
@@ -62,7 +74,9 @@ export function UnitFormModal({
       agent_name: form.agent_name?.toString().trim() || null,
       agent_percentage: Number(form.agent_percentage) || 0,
       ejar_fee: Number(form.ejar_fee) || 0,
-      notes: form.notes?.toString().trim() || null,
+      notes: notesEn || notesAr || null,
+      notes_en: notesEn || null,
+      notes_ar: notesAr || null,
     };
     start(async () => {
       const res = isEdit && unit ? await updateUnit(unit.id, payload) : await createUnit(payload);
@@ -118,32 +132,27 @@ export function UnitFormModal({
             ))}
           </select>
         </div>
-        <div className="field-row">
-          <div className="field" style={{ flex: 2 }}>
-            <label>
-              {t("name")} <span className="req">*</span>
-            </label>
-            <input
-              className="input"
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              required
-              maxLength={100}
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>
-              {t("number")} <span className="req">*</span>
-            </label>
-            <input
-              className="input input-mono"
-              value={form.number}
-              onChange={(e) => set("number", e.target.value)}
-              required
-              maxLength={50}
-              dir="ltr"
-            />
-          </div>
+        <BilingualField
+          label={t("name")}
+          required
+          maxLength={100}
+          valueEn={form.name_en ?? ""}
+          valueAr={form.name_ar ?? ""}
+          onChangeEn={(v) => set("name_en", v)}
+          onChangeAr={(v) => set("name_ar", v)}
+        />
+        <div className="field">
+          <label>
+            {t("number")} <span className="req">*</span>
+          </label>
+          <input
+            className="input input-mono"
+            value={form.number}
+            onChange={(e) => set("number", e.target.value)}
+            required
+            maxLength={50}
+            dir="ltr"
+          />
         </div>
         <div className="field-row">
           <div className="field" style={{ flex: 1 }}>
@@ -228,15 +237,15 @@ export function UnitFormModal({
             maxLength={150}
           />
         </div>
-        <div className="field">
-          <label>{t("notes")}</label>
-          <textarea
-            className="textarea"
-            rows={2}
-            value={form.notes ?? ""}
-            onChange={(e) => set("notes", e.target.value)}
-          />
-        </div>
+        <BilingualField
+          label={t("notes")}
+          multiline
+          rows={2}
+          valueEn={form.notes_en ?? ""}
+          valueAr={form.notes_ar ?? ""}
+          onChangeEn={(v) => set("notes_en", v)}
+          onChangeAr={(v) => set("notes_ar", v)}
+        />
       </form>
     </Modal>
   );

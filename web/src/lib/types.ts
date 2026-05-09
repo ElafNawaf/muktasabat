@@ -19,9 +19,17 @@ export type Owner = {
   created_at: string;
 };
 
+export type EntityImage = {
+  id: number;
+  url: string;
+  caption: string | null;
+  sort_order: number;
+};
+
 export type Building = {
   id: number;
   owner_id: number;
+  assignee_id: number | null;
   name: string;
   name_en: string | null;
   name_ar: string | null;
@@ -37,7 +45,10 @@ export type Building = {
   notes: string | null;
   notes_en: string | null;
   notes_ar: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
+  images: EntityImage[];
 };
 
 export type Unit = {
@@ -61,6 +72,7 @@ export type Unit = {
   notes_en: string | null;
   notes_ar: string | null;
   created_at: string;
+  images: EntityImage[];
 };
 
 export type Tenant = {
@@ -90,6 +102,45 @@ export type Contract = {
   notes: string | null;
   created_at: string;
 };
+
+export type PermissionAction = "view" | "create" | "edit" | "delete" | "approve";
+export type ModuleId =
+  | "properties"
+  | "contracts"
+  | "payments"
+  | "owners"
+  | "tenants"
+  | "expenses"
+  | "users";
+
+export type Role = {
+  code: string;
+  label_en: string;
+  label_ar: string;
+  description_en: string | null;
+  description_ar: string | null;
+  color: string;
+  system: boolean;
+  permissions: Partial<Record<ModuleId, Partial<Record<PermissionAction, 0 | 1>>>>;
+};
+
+export const MODULE_IDS: ModuleId[] = [
+  "properties",
+  "contracts",
+  "payments",
+  "owners",
+  "tenants",
+  "expenses",
+  "users",
+];
+
+export const PERMISSION_ACTIONS: PermissionAction[] = [
+  "view",
+  "create",
+  "edit",
+  "delete",
+  "approve",
+];
 
 /** Pick the right localized string for a record with `name`/`name_en`/`name_ar`. */
 export function localized<T extends Record<string, unknown>>(

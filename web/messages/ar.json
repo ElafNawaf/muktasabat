@@ -16,9 +16,18 @@
   },
   "roles": {
     "admin": "مسؤول النظام",
-    "manager": "مدير",
-    "viewer": "مشاهد",
+    "manager": "مدير عقارات",
+    "accountant": "محاسب",
+    "agent": "وكيل تأجير",
+    "viewer": "مُطّلع",
     "owner": "مالك"
+  },
+  "perms": {
+    "view": "عرض",
+    "create": "إنشاء",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "approve": "اعتماد"
   },
   "common": {
     "search": "بحث",
@@ -43,7 +52,17 @@
     "phone": "الجوال",
     "email": "البريد الإلكتروني",
     "nationalId": "الهوية الوطنية",
-    "noResults": "لا توجد نتائج"
+    "noResults": "لا توجد نتائج",
+    "translate": "ترجمة تلقائية",
+    "modules": {
+      "properties": "العقارات",
+      "contracts": "العقود",
+      "payments": "المدفوعات",
+      "owners": "المُلّاك",
+      "tenants": "المستأجرون",
+      "expenses": "المصروفات",
+      "users": "إدارة المستخدمين"
+    }
   },
   "login": {
     "signIn": "تسجيل الدخول",
@@ -73,9 +92,24 @@
     "usernameTaken": "اسم المستخدم مستخدم مسبقاً",
     "emailTaken": "البريد مسجل مسبقاً",
     "weakPassword": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
-    "success": "تم إنشاء الحساب. جارٍ تسجيل الدخول…",
+    "success": "تم إنشاء الحساب. تحقق من بريدك لتفعيل الحساب.",
     "failed": "فشل إنشاء الحساب",
-    "manualSignIn": "تم إنشاء الحساب. سجّل الدخول ببياناتك الجديدة."
+    "manualSignIn": "تم إنشاء الحساب. سجّل الدخول ببياناتك الجديدة.",
+    "checkEmailTitle": "تحقّق من بريدك",
+    "checkEmailHint": "أرسلنا رابط التحقق إلى {email}. اضغط الرابط لتفعيل الحساب ثم سجّل الدخول.",
+    "resend": "إعادة إرسال رابط التحقق",
+    "resentOk": "تم الإرسال. إن وُجد حساب غير مُفعّل لهذا البريد، فالرسالة في الطريق."
+  },
+  "verifyEmailPage": {
+    "title": "تأكيد البريد",
+    "verifying": "جارٍ التحقق من بريدك…",
+    "success": "تم تأكيد البريد",
+    "successHint": "يمكنك الآن تسجيل الدخول إلى حسابك.",
+    "invalid": "فشل التحقق",
+    "invalidHint": "الرابط غير صالح أو منتهٍ. اطلب رابطاً جديداً من شاشة التسجيل.",
+    "missingHint": "لا يوجد رمز تحقق في هذا الرابط.",
+    "signIn": "تسجيل الدخول",
+    "backToSignIn": "العودة لتسجيل الدخول"
   },
   "forgotPage": {
     "title": "استعادة كلمة المرور",
@@ -148,7 +182,31 @@
     "deleteBuildingTitle": "حذف المبنى؟",
     "deleteBuildingMessage": "هل تريد حذف \"{name}\"؟ سيتم حذف وحداته وعقوده أيضاً.",
     "deleteUnitTitle": "حذف الوحدة؟",
-    "deleteUnitMessage": "هل تريد حذف الوحدة رقم {number}؟"
+    "deleteUnitMessage": "هل تريد حذف الوحدة رقم {number}؟",
+    "managePhotos": "إدارة الصور",
+    "photosOf": "صور",
+    "setLocation": "تحديد الموقع",
+    "approxLocation": "تقريبي"
+  },
+  "mapPicker": {
+    "label": "الموقع على الخريطة",
+    "hint": "اضغط على الخريطة لتحديد موقع المبنى، أو استخدم \"موقعي\".",
+    "latitude": "خط العرض",
+    "longitude": "خط الطول",
+    "useMyLocation": "استخدم موقعي",
+    "clear": "مسح"
+  },
+  "imageGallery": {
+    "subtitle": "اسحب الصور هنا أو اضغط للرفع. JPG / PNG / WEBP / GIF، حتى 8 ميجابايت.",
+    "dropOrClick": "اسحب الصور هنا أو اضغط للاختيار",
+    "uploading": "جارٍ الرفع…",
+    "typesHint": "JPG · PNG · WEBP · GIF · بحدّ أقصى 8 ميجا",
+    "noImages": "لا توجد صور بعد.",
+    "badType": "نوع الملف غير مدعوم. استخدم JPG أو PNG أو WEBP أو GIF.",
+    "tooLarge": "الصورة كبيرة جداً (الحد الأقصى 8 ميجا).",
+    "uploadFailed": "فشل الرفع. حاول مرة أخرى.",
+    "deleteFailed": "تعذّر حذف الصورة.",
+    "notConfigured": "رفع الصور غير مُعدّ — اضبط S3_BUCKET على واجهة API."
   },
   "owners": {
     "title": "المُلّاك",
@@ -214,6 +272,8 @@
     "editSubtitle": "تحديث بيانات المبنى.",
     "owner": "المالك",
     "selectOwner": "اختر مالكاً…",
+    "assignee": "الموظف المسؤول",
+    "noAssignee": "بلا تعيين",
     "name": "اسم المبنى",
     "nameEn": "الاسم (إنجليزي)",
     "nameAr": "الاسم (عربي)",
@@ -264,7 +324,22 @@
     "createdAt": "تاريخ الإنشاء",
     "you": "أنت",
     "deactivate": "إيقاف",
-    "activate": "تفعيل"
+    "activate": "تفعيل",
+    "usersTab": "المستخدمون",
+    "rolesTab": "الأدوار والصلاحيات",
+    "roles": "الأدوار",
+    "users": "المستخدمون",
+    "system": "نظام",
+    "oneUser": "مستخدم",
+    "manyUsers": "مستخدمون",
+    "matrixTitle": "مصفوفة الصلاحيات",
+    "matrixHint": "اضغط على الخلية لتفعيل/تعطيل الصلاحية.",
+    "matrixHintSystem": "دور نظام — للعرض فقط.",
+    "readOnly": "للعرض فقط",
+    "saving": "جارٍ الحفظ…",
+    "module": "الوحدة",
+    "all": "الكل",
+    "granted": "ممنوحة"
   },
   "contractsPage": {
     "title": "العقود",
@@ -287,6 +362,8 @@
     "terminateMessage": "هل تريد إنهاء العقد {number}؟ ستصبح الوحدة شاغرة.",
     "createTitle": "عقد جديد",
     "createSubtitle": "أنشئ عقداً وجدول دفعاته.",
+    "editTitle": "تعديل العقد",
+    "editSubtitle": "تحديث الشروط؛ المستأجر والوحدة لا يتغيران بعد التوقيع.",
     "selectUnit": "اختر وحدة…",
     "selectTenant": "اختر مستأجراً…",
     "noAvailableUnits": "جميع الوحدات مؤجرة حالياً.",
@@ -347,6 +424,8 @@
     "notes": "ملاحظات",
     "createTitle": "إضافة مصروف",
     "createSubtitle": "تسجيل تكلفة تشغيلية.",
+    "editTitle": "تعديل المصروف",
+    "editSubtitle": "تحديث التكلفة التشغيلية المسجّلة.",
     "deleteTitle": "حذف المصروف؟",
     "deleteMessage": "حذف \"{description}\"؟ لا يمكن التراجع.",
     "descriptionRequired": "الوصف مطلوب",

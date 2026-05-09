@@ -14,3 +14,5 @@ email-validator>=2.0
 werkzeug>=3.0
 pytest>=8.0
 openpyxl>=3.1
+# AWS SES for transactional email (optional in dev — module imports lazily)
+boto3>=1.34

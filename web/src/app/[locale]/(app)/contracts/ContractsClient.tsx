@@ -38,6 +38,7 @@ export function ContractsClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Contract | null>(null);
   const [terminating, setTerminating] = useState<Contract | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -229,16 +230,28 @@ export function ContractsClient({
                       )}
                     </td>
                     <td>
-                      {c.status === "active" && (
+                      <div className="actions" style={{ display: "flex", gap: 4 }}>
                         <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => setTerminating(c)}
-                          title={t("terminate")}
+                          className="icon-btn"
+                          title={tCommon("edit")}
+                          onClick={() => {
+                            setEditing(c);
+                            setFormOpen(true);
+                          }}
                         >
-                          <span className="ms ms-sm">cancel</span>
-                          {t("terminate")}
+                          <span className="ms ms-sm">edit</span>
                         </button>
-                      )}
+                        {c.status === "active" && (
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => setTerminating(c)}
+                            title={t("terminate")}
+                          >
+                            <span className="ms ms-sm">cancel</span>
+                            {t("terminate")}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -257,13 +270,18 @@ export function ContractsClient({
 
       {formOpen && (
         <ContractFormModal
+          key={editing?.id ?? "new"}
           open={formOpen}
-          onClose={() => setFormOpen(false)}
+          onClose={() => {
+            setFormOpen(false);
+            setEditing(null);
+          }}
           units={units}
           tenants={tenants}
           buildings={buildings}
           contracts={contracts}
           locale={locale}
+          editing={editing}
         />
       )}
       <ConfirmDialog

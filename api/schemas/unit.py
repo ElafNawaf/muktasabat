@@ -32,9 +32,19 @@ class UnitUpdate(UnitBase):
     pass
 
 
+class UnitImageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    url: str
+    caption: Optional[str] = None
+    sort_order: int
+
+
 class UnitRead(UnitBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     is_available: bool
     created_at: datetime
+    images: list[UnitImageRead] = []

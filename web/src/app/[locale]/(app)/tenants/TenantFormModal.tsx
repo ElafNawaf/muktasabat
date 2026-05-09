@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
+import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
 import { createTenant, updateTenant, type TenantInput } from "@/lib/actions";
 import type { Tenant } from "@/lib/types";
@@ -28,6 +29,8 @@ export function TenantFormModal({
     national_id: tenant?.national_id ?? "",
     email: tenant?.email ?? "",
     notes: tenant?.notes ?? "",
+    notes_en: tenant?.notes_en ?? "",
+    notes_ar: tenant?.notes_ar ?? "",
   }));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -38,14 +41,20 @@ export function TenantFormModal({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const nameEn = form.name_en?.toString().trim() ?? "";
+    const nameAr = form.name_ar?.toString().trim() ?? "";
+    const notesEn = form.notes_en?.toString().trim() ?? "";
+    const notesAr = form.notes_ar?.toString().trim() ?? "";
     const payload: TenantInput = {
-      name: form.name.trim(),
-      name_en: form.name_en?.toString().trim() || null,
-      name_ar: form.name_ar?.toString().trim() || null,
+      name: nameEn || nameAr,
+      name_en: nameEn || null,
+      name_ar: nameAr || null,
       phone: form.phone.trim(),
       national_id: form.national_id.trim(),
       email: form.email?.toString().trim() || null,
-      notes: form.notes?.toString().trim() || null,
+      notes: notesEn || notesAr || null,
+      notes_en: notesEn || null,
+      notes_ar: notesAr || null,
     };
     if (!payload.name) return setError(t("nameRequired"));
     if (!payload.phone) return setError(t("phoneRequired"));
@@ -86,40 +95,15 @@ export function TenantFormModal({
             {error}
           </div>
         )}
-        <div className="field">
-          <label>
-            {t("name")} <span className="req">*</span>
-          </label>
-          <input
-            className="input"
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            required
-            maxLength={150}
-          />
-        </div>
-        <div className="field-row">
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("nameEn")}</label>
-            <input
-              className="input"
-              value={form.name_en ?? ""}
-              onChange={(e) => set("name_en", e.target.value)}
-              maxLength={150}
-              dir="ltr"
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("nameAr")}</label>
-            <input
-              className="input"
-              value={form.name_ar ?? ""}
-              onChange={(e) => set("name_ar", e.target.value)}
-              maxLength={150}
-              dir="rtl"
-            />
-          </div>
-        </div>
+        <BilingualField
+          label={t("name")}
+          required
+          maxLength={150}
+          valueEn={form.name_en ?? ""}
+          valueAr={form.name_ar ?? ""}
+          onChangeEn={(v) => set("name_en", v)}
+          onChangeAr={(v) => set("name_ar", v)}
+        />
         <div className="field-row">
           <div className="field" style={{ flex: 1 }}>
             <label>
@@ -158,15 +142,15 @@ export function TenantFormModal({
             dir="ltr"
           />
         </div>
-        <div className="field">
-          <label>{t("notes")}</label>
-          <textarea
-            className="textarea"
-            rows={3}
-            value={form.notes ?? ""}
-            onChange={(e) => set("notes", e.target.value)}
-          />
-        </div>
+        <BilingualField
+          label={t("notes")}
+          multiline
+          rows={3}
+          valueEn={form.notes_en ?? ""}
+          valueAr={form.notes_ar ?? ""}
+          onChangeEn={(v) => set("notes_en", v)}
+          onChangeAr={(v) => set("notes_ar", v)}
+        />
       </form>
     </Modal>
   );

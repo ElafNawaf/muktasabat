@@ -4,7 +4,11 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { Modal } from "@/components/Modal";
-import { createContract, type ContractInput } from "@/lib/actions";
+import {
+  createContract,
+  updateContract,
+  type ContractInput,
+} from "@/lib/actions";
 import { localized, type Building, type Contract, type Tenant, type Unit } from "@/lib/types";
 
 const CYCLES = [3, 6, 12] as const;
@@ -17,6 +21,7 @@ export function ContractFormModal({
   buildings,
   contracts,
   locale,
+  editing,
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,30 +30,47 @@ export function ContractFormModal({
   buildings: Building[];
   contracts: Contract[];
   locale: string;
+  editing?: Contract | null;
 }) {
+  const isEdit = Boolean(editing);
   const t = useTranslations("contractsPage");
   const tCommon = useTranslations("common");
 
   const occupiedUnitIds = new Set(
     contracts.filter((c) => c.status === "active").map((c) => c.unit_id),
   );
-  const availableUnits = units.filter((u) => !occupiedUnitIds.has(u.id));
+  const availableUnits = units.filter(
+    (u) => !occupiedUnitIds.has(u.id) || u.id === editing?.unit_id,
+  );
 
   const today = new Date().toISOString().slice(0, 10);
   const oneYear = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
 
-  const [form, setForm] = useState<ContractInput>(() => ({
-    unit_id: availableUnits[0]?.id ?? 0,
-    tenant_id: tenants[0]?.id ?? 0,
-    contract_number: `CT-${Date.now().toString().slice(-8)}`,
-    start_date: today,
-    end_date: oneYear,
-    rent_amount: availableUnits[0]?.rent_amount ?? 0,
-    payment_cycle: 12,
-    notes: "",
-  }));
+  const [form, setForm] = useState<ContractInput>(() =>
+    editing
+      ? {
+          unit_id: editing.unit_id,
+          tenant_id: editing.tenant_id,
+          contract_number: editing.contract_number,
+          start_date: editing.start_date,
+          end_date: editing.end_date,
+          rent_amount: editing.rent_amount,
+          payment_cycle: editing.payment_cycle as 3 | 6 | 12,
+          notes: editing.notes ?? "",
+        }
+      : {
+          unit_id: availableUnits[0]?.id ?? 0,
+          tenant_id: tenants[0]?.id ?? 0,
+          contract_number: `CT-${Date.now().toString().slice(-8)}`,
+          start_date: today,
+          end_date: oneYear,
+          rent_amount: availableUnits[0]?.rent_amount ?? 0,
+          payment_cycle: 12,
+          notes: "",
+        },
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -74,7 +96,17 @@ export function ContractFormModal({
       notes: form.notes?.toString().trim() || null,
     };
     start(async () => {
-      const res = await createContract(payload);
+      const res = isEdit && editing
+        ? await updateContract(editing.id, {
+            contract_number: payload.contract_number,
+            start_date: payload.start_date,
+            end_date: payload.end_date,
+            rent_amount: payload.rent_amount,
+            payment_cycle: payload.payment_cycle,
+            status: editing.status,
+            notes: payload.notes ?? null,
+          })
+        : await createContract(payload);
       if (!res.ok) {
         setError(res.error);
         return;
@@ -92,8 +124,8 @@ export function ContractFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={t("createTitle")}
-      subtitle={t("createSubtitle")}
+      title={isEdit ? t("editTitle") : t("createTitle")}
+      subtitle={isEdit ? t("editSubtitle") : t("createSubtitle")}
       size="md"
       footer={
         <>
@@ -126,6 +158,7 @@ export function ContractFormModal({
             value={form.unit_id || ""}
             onChange={(e) => onUnitChange(Number(e.target.value))}
             required
+            disabled={isEdit}
           >
             <option value="" disabled>
               {t("selectUnit")}
@@ -149,6 +182,7 @@ export function ContractFormModal({
             value={form.tenant_id || ""}
             onChange={(e) => set("tenant_id", Number(e.target.value))}
             required
+            disabled={isEdit}
           >
             <option value="" disabled>
               {t("selectTenant")}

@@ -6,7 +6,10 @@ import { api, ApiError } from "./api";
 import type {
   Building,
   Contract,
+  ModuleId,
   Owner,
+  PermissionAction,
+  Role,
   Tenant,
   Unit,
 } from "./types";
@@ -57,6 +60,8 @@ export type OwnerInput = {
   bank_name?: string | null;
   iban?: string | null;
   notes?: string | null;
+  notes_en?: string | null;
+  notes_ar?: string | null;
 };
 
 export async function createOwner(input: OwnerInput): Promise<ActionResult<Owner>> {
@@ -99,6 +104,8 @@ export type TenantInput = {
   national_id: string;
   email?: string | null;
   notes?: string | null;
+  notes_en?: string | null;
+  notes_ar?: string | null;
 };
 
 export async function createTenant(input: TenantInput): Promise<ActionResult<Tenant>> {
@@ -135,13 +142,24 @@ export async function deleteTenant(id: number): Promise<ActionResult<null>> {
 
 export type BuildingInput = {
   owner_id: number;
+  assignee_id?: number | null;
   name: string;
   name_en?: string | null;
   name_ar?: string | null;
   address?: string | null;
+  address_en?: string | null;
+  address_ar?: string | null;
   city?: string | null;
+  city_en?: string | null;
+  city_ar?: string | null;
   district?: string | null;
+  district_en?: string | null;
+  district_ar?: string | null;
   notes?: string | null;
+  notes_en?: string | null;
+  notes_ar?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export async function createBuilding(input: BuildingInput): Promise<ActionResult<Building>> {
@@ -179,6 +197,8 @@ export async function deleteBuilding(id: number): Promise<ActionResult<null>> {
 export type UnitInput = {
   building_id: number;
   name: string;
+  name_en?: string | null;
+  name_ar?: string | null;
   number: string;
   unit_type?: string | null;
   area_sqm?: number | null;
@@ -188,6 +208,8 @@ export type UnitInput = {
   agent_percentage: number;
   ejar_fee: number;
   notes?: string | null;
+  notes_en?: string | null;
+  notes_ar?: string | null;
 };
 
 export async function createUnit(input: UnitInput): Promise<ActionResult<Unit>> {
@@ -253,6 +275,29 @@ export async function terminateContract(id: number): Promise<ActionResult<Contra
   }
 }
 
+export type ContractUpdateInput = {
+  contract_number: string;
+  start_date: string;
+  end_date: string;
+  rent_amount: number;
+  payment_cycle: 3 | 6 | 12;
+  status: "active" | "expired" | "terminated";
+  notes?: string | null;
+};
+
+export async function updateContract(
+  id: number,
+  input: ContractUpdateInput,
+): Promise<ActionResult<Contract>> {
+  try {
+    const data = await api.put<Contract>(`/api/v1/contracts/${id}`, input);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
 // -------- Payments --------
 
 export type PayInput = {
@@ -289,6 +334,8 @@ export type ExpenseInput = {
     | "government_fees"
     | "other";
   description: string;
+  description_en?: string | null;
+  description_ar?: string | null;
   amount: number;
   expense_date: string;
   paid_by: "company" | "owner" | "tenant";
@@ -300,6 +347,19 @@ export type ExpenseInput = {
 export async function createExpense(input: ExpenseInput): Promise<ActionResult<unknown>> {
   try {
     const data = await api.post("/api/v1/expenses", input);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function updateExpense(
+  id: number,
+  input: ExpenseInput,
+): Promise<ActionResult<unknown>> {
+  try {
+    const data = await api.put(`/api/v1/expenses/${id}`, input);
     refreshAll();
     return { ok: true, data };
   } catch (e) {
@@ -338,6 +398,46 @@ export async function toggleUserActive(id: number): Promise<ActionResult<unknown
     const data = await api.put(`/api/v1/auth/admin/users/${id}/toggle-active`);
     refreshAll();
     return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+// -------- Roles & permissions --------
+
+export type RolePermissions = Partial<
+  Record<ModuleId, Partial<Record<PermissionAction, 0 | 1>>>
+>;
+
+export async function updateRolePermissions(
+  code: string,
+  permissions: RolePermissions,
+): Promise<ActionResult<Role>> {
+  try {
+    const data = await api.put<Role>(`/api/v1/roles/${code}/permissions`, { permissions });
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+// -------- Translate --------
+
+export type Lang = "en" | "ar" | "auto";
+
+export async function translateText(
+  text: string,
+  source: Lang,
+  target: Lang,
+): Promise<ActionResult<string>> {
+  try {
+    const data = await api.post<{ translated_text: string }>("/api/v1/translate", {
+      text,
+      source,
+      target,
+    });
+    return { ok: true, data: data.translated_text };
   } catch (e) {
     return err(e);
   }

@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 
 export function RegisterScreen() {
   const t = useTranslations("registerPage");
   const locale = useLocale();
-  const router = useRouter();
   const otherLocale = locale === "en" ? "ar" : "en";
 
   const [username, setUsername] = useState("");
@@ -20,12 +19,13 @@ export function RegisterScreen() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  const [resentMsg, setResentMsg] = useState<string | null>(null);
+  const [debugVerifyUrl, setDebugVerifyUrl] = useState<string | null>(null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setInfo(null);
     if (password.length < 6) {
       setError(t("weakPassword"));
       return;
@@ -43,8 +43,8 @@ export function RegisterScreen() {
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
-        user?: unknown;
         registered?: boolean;
+        email?: string;
       };
       if (res.status === 409) {
         const msg = data.error || "";
@@ -61,12 +61,7 @@ export function RegisterScreen() {
         setError(data.error || t("failed"));
         return;
       }
-      if (data.registered && data.error) {
-        setInfo(t("manualSignIn"));
-        return;
-      }
-      router.push(`/${locale}/dashboard`);
-      router.refresh();
+      setSubmittedEmail(data.email ?? email);
     } catch {
       setError(t("failed"));
     } finally {
@@ -74,9 +69,81 @@ export function RegisterScreen() {
     }
   }
 
+  async function resend() {
+    if (!submittedEmail) return;
+    setResentMsg(null);
+    setDebugVerifyUrl(null);
+    const res = await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: submittedEmail }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      message?: string;
+      debug_verify_url?: string | null;
+    };
+    setResentMsg(data.message ?? t("resentOk"));
+    if (data.debug_verify_url) {
+      setDebugVerifyUrl(`/${locale}${data.debug_verify_url}`);
+    }
+  }
+
+  if (submittedEmail) {
+    return (
+      <div className="login-page">
+        <div className="login-pattern" />
+        <ThemeToggleButton />
+        <Link className="lang-toggle login-lang" href={`/${otherLocale}/register`}>
+          {locale === "en" ? "العربية" : "English"}
+        </Link>
+        <div className="login-card screen-enter" style={{ textAlign: "center" }}>
+          <div className="brand-block">
+            <div className="brand-mark" style={{ width: 56, height: 56, borderRadius: 14 }}>
+              <BrandLogo size={42} />
+            </div>
+            <h1>شركة مكتسبات العقارية</h1>
+            <div className="en-name">Muktasabat Real Estate</div>
+          </div>
+          <span className="ms" style={{ fontSize: 48, color: "var(--color-success)" }}>
+            mark_email_read
+          </span>
+          <h2 style={{ margin: "8px 0 0", fontSize: "1.25rem" }}>{t("checkEmailTitle")}</h2>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: 14 }}>
+            {t("checkEmailHint", { email: submittedEmail })}
+          </p>
+          {debugVerifyUrl && (
+            <div className="badge" style={{ marginTop: 8, padding: "8px 12px" }}>
+              <span className="ms ms-sm">link</span>
+              <a className="mono" href={debugVerifyUrl} style={{ marginInlineStart: 6 }}>
+                {debugVerifyUrl}
+              </a>
+            </div>
+          )}
+          <button
+            className="btn btn-secondary"
+            onClick={resend}
+            style={{ marginTop: 12, height: 40, fontSize: 13 }}
+          >
+            <span className="ms ms-sm">forward_to_inbox</span> {t("resend")}
+          </button>
+          {resentMsg && (
+            <div className="text-sec" style={{ fontSize: 12, marginTop: 6 }}>
+              {resentMsg}
+            </div>
+          )}
+          <div className="login-foot" style={{ marginTop: 16 }}>
+            <Link href={`/${locale}/login`}>{t("signIn")}</Link>
+          </div>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <div className="login-page">
       <div className="login-pattern" />
+      <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={`/${otherLocale}/register`}>
         {locale === "en" ? "العربية" : "English"}
       </Link>
@@ -161,15 +228,6 @@ export function RegisterScreen() {
               style={{ alignSelf: "stretch", justifyContent: "center", padding: "8px 12px" }}
             >
               {error}
-            </div>
-          )}
-          {info && (
-            <div
-              className="badge badge-success"
-              role="status"
-              style={{ alignSelf: "stretch", justifyContent: "center", padding: "8px 12px" }}
-            >
-              {info}
             </div>
           )}
 

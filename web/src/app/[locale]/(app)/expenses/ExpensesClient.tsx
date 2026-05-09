@@ -50,6 +50,7 @@ export function ExpensesClient({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<ExpenseRow | null>(null);
   const [confirmDel, setConfirmDel] = useState<ExpenseRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -229,13 +230,25 @@ export function ExpensesClient({
                       {formatSAR(e.amount, locale)}
                     </td>
                     <td>
-                      <button
-                        className="icon-btn"
-                        title={tCommon("delete")}
-                        onClick={() => setConfirmDel(e)}
-                      >
-                        <span className="ms ms-sm">delete</span>
-                      </button>
+                      <div className="actions" style={{ display: "flex", gap: 4 }}>
+                        <button
+                          className="icon-btn"
+                          title={tCommon("edit")}
+                          onClick={() => {
+                            setEditing(e);
+                            setFormOpen(true);
+                          }}
+                        >
+                          <span className="ms ms-sm">edit</span>
+                        </button>
+                        <button
+                          className="icon-btn"
+                          title={tCommon("delete")}
+                          onClick={() => setConfirmDel(e)}
+                        >
+                          <span className="ms ms-sm">delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -254,12 +267,17 @@ export function ExpensesClient({
 
       {formOpen && (
         <ExpenseFormModal
+          key={editing?.id ?? "new"}
           open={formOpen}
-          onClose={() => setFormOpen(false)}
+          onClose={() => {
+            setFormOpen(false);
+            setEditing(null);
+          }}
           owners={owners}
           buildings={buildings}
           units={units}
           locale={locale}
+          editing={editing}
         />
       )}
       <ConfirmDialog
