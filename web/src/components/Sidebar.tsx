@@ -9,11 +9,22 @@ import { BrandLogo } from "./BrandLogo";
 
 type NavItem = { id: string; href: string; icon: string; label: string; badge?: number };
 
+type AppRole = "admin" | "manager" | "viewer" | "owner";
+
+function roleDisplayName(role: string, tr: (key: AppRole) => string): string {
+  if (role === "admin" || role === "manager" || role === "viewer" || role === "owner") {
+    return tr(role);
+  }
+  return role;
+}
+
 export function Sidebar({ user }: { user: { username: string; role: string } | null }) {
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  const roleLabel = useTranslations("roles");
 
   const sections: { label: string; items: NavItem[] }[] = [
     {
@@ -33,12 +44,21 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
         { id: "expenses", href: `/${locale}/expenses`, icon: "receipt_long", label: t("expenses") },
       ],
     },
-    {
-      label: t("admin"),
-      items: [
-        { id: "users", href: `/${locale}/users`, icon: "admin_panel_settings", label: t("users") },
-      ],
-    },
+    ...(user?.role === "admin"
+      ? [
+          {
+            label: t("admin"),
+            items: [
+              {
+                id: "users",
+                href: `/${locale}/users`,
+                icon: "admin_panel_settings",
+                label: t("users"),
+              },
+            ],
+          },
+        ]
+      : []),
   ];
 
   const otherLocale = locale === "en" ? "ar" : "en";
@@ -97,7 +117,7 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
         {!collapsed && user && (
           <div className="user-info">
             <div className="name">{user.username}</div>
-            <div className="role">{user.role}</div>
+            <div className="role">{roleDisplayName(user.role, roleLabel)}</div>
           </div>
         )}
         <Link

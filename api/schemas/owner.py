@@ -31,3 +31,5 @@ class OwnerRead(OwnerBase):
 
     id: int
     created_at: datetime
+    # DB / imports may contain non-RFC strings (e.g. literal "NULL"); responses must not 500.
+    email: Optional[str] = Field(default=None, max_length=120)

@@ -41,3 +41,18 @@ class AccessTokenResponse(BaseModel):
 
 class RoleUpdateRequest(BaseModel):
     role: Role
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    ok: bool = True
+    message: str = "If an account exists for this email, password reset instructions have been sent."
+    debug_reset_url: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=256)
+    new_password: str = Field(min_length=6, max_length=128)

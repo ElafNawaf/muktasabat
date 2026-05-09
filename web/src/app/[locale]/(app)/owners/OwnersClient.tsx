@@ -1,11 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 
+import { ConfirmDialog } from "@/components/Modal";
+import { deleteOwner } from "@/lib/actions";
 import { formatSAR } from "@/lib/format";
 import { initials, ownerColor } from "@/lib/palette";
 import { localized, type Building, type Contract, type Owner, type Unit } from "@/lib/types";
+
+import { OwnerFormModal } from "./OwnerFormModal";
 
 type View = "grid" | "list";
 
@@ -28,6 +32,11 @@ export function OwnersClient({
 
   const [search, setSearch] = useState("");
   const [view, setView] = useState<View>("grid");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Owner | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Owner | null>(null);
+  const [delErr, setDelErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
 
   const portfolios = useMemo(() => {
     const byOwner = new Map<number, { buildings: Building[]; units: Unit[]; activeContracts: Contract[]; monthlyIncome: number; occupancy: number }>();
@@ -59,6 +68,51 @@ export function OwnersClient({
   const totalBuildings = buildings.length;
   const totalMonthly = units.filter((u) => !u.is_available).reduce((s, u) => s + u.rent_amount, 0);
 
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (o: Owner) => {
+    setEditing(o);
+    setFormOpen(true);
+  };
+  const onCloseForm = () => {
+    setFormOpen(false);
+    setEditing(null);
+  };
+
+  const doExport = () => {
+    const headers = ["id", "name", "name_en", "name_ar", "phone", "email", "national_id", "bank_name", "iban"];
+    const rows = filtered.map((o) =>
+      [o.id, o.name, o.name_en, o.name_ar, o.phone, o.email, o.national_id, o.bank_name, o.iban]
+        .map((v) => (v == null ? "" : String(v).replace(/"/g, '""')))
+        .map((v) => `"${v}"`)
+        .join(","),
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `owners-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const doDelete = () => {
+    if (!confirmDel) return;
+    const target = confirmDel;
+    setDelErr(null);
+    start(async () => {
+      const res = await deleteOwner(target.id);
+      if (!res.ok) {
+        setDelErr(res.error);
+        return;
+      }
+      setConfirmDel(null);
+    });
+  };
+
   return (
     <div className="page screen-enter">
       <div className="page-header">
@@ -67,10 +121,10 @@ export function OwnersClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-secondary">
+          <button className="btn btn-secondary" onClick={doExport}>
             <span className="ms">file_download</span> {tCommon("export")}
           </button>
-          <button className="btn btn-primary">
+          <button className="btn btn-primary" onClick={openCreate}>
             <span className="ms">add</span> {tCommon("addNew")}
           </button>
         </div>
@@ -97,9 +151,6 @@ export function OwnersClient({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button className="btn btn-secondary">
-          <span className="ms">filter_list</span> {tCommon("filter")}
-        </button>
         <div style={{ marginInlineStart: "auto" }} />
         <div className="view-toggle">
           <button
@@ -159,11 +210,19 @@ export function OwnersClient({
                     <circle cx="190" cy="60" r="24" fill="rgba(255,255,255,0.05)" />
                   </svg>
                   <div className="owner-actions-top">
-                    <button className="owner-icon-btn" title={tCommon("view")}>
-                      <span className="ms ms-sm">visibility</span>
+                    <button
+                      className="owner-icon-btn"
+                      title={tCommon("edit")}
+                      onClick={() => openEdit(o)}
+                    >
+                      <span className="ms ms-sm">edit</span>
                     </button>
-                    <button className="owner-icon-btn" title={tCommon("more")}>
-                      <span className="ms ms-sm">more_vert</span>
+                    <button
+                      className="owner-icon-btn"
+                      title={tCommon("delete")}
+                      onClick={() => setConfirmDel(o)}
+                    >
+                      <span className="ms ms-sm">delete</span>
                     </button>
                   </div>
                 </div>
@@ -296,11 +355,19 @@ export function OwnersClient({
                       <td className="num">{p.units.length}</td>
                       <td>
                         <div className="actions">
-                          <button className="icon-btn">
-                            <span className="ms ms-sm">visibility</span>
-                          </button>
-                          <button className="icon-btn">
+                          <button
+                            className="icon-btn"
+                            title={tCommon("edit")}
+                            onClick={() => openEdit(o)}
+                          >
                             <span className="ms ms-sm">edit</span>
+                          </button>
+                          <button
+                            className="icon-btn"
+                            title={tCommon("delete")}
+                            onClick={() => setConfirmDel(o)}
+                          >
+                            <span className="ms ms-sm">delete</span>
                           </button>
                         </div>
                       </td>
@@ -312,6 +379,29 @@ export function OwnersClient({
           </div>
         </div>
       )}
+
+      {formOpen && (
+        <OwnerFormModal
+          key={editing?.id ?? "new"}
+          open={formOpen}
+          onClose={onCloseForm}
+          owner={editing}
+        />
+      )}
+      <ConfirmDialog
+        open={Boolean(confirmDel)}
+        onClose={() => {
+          setConfirmDel(null);
+          setDelErr(null);
+        }}
+        onConfirm={doDelete}
+        title={t("deleteTitle")}
+        message={delErr ?? t("deleteMessage", { name: confirmDel ? localized(confirmDel, "name", locale) : "" })}
+        confirmLabel={tCommon("delete")}
+        cancelLabel={tCommon("cancel")}
+        destructive
+        loading={pending}
+      />
     </div>
   );
 }

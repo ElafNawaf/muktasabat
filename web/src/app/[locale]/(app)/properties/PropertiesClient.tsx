@@ -1,9 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
+import { ConfirmDialog } from "@/components/Modal";
 import { BuildingArt, MapPreview, UnitArt } from "@/components/PropertyArt";
+import { deleteBuilding, deleteUnit } from "@/lib/actions";
 import { formatSAR } from "@/lib/format";
 import { buildingMeta, type BuildingMeta } from "@/lib/palette";
 import {
@@ -14,6 +16,9 @@ import {
   type Tenant,
   type Unit,
 } from "@/lib/types";
+
+import { BuildingFormModal } from "./BuildingFormModal";
+import { UnitFormModal } from "./UnitFormModal";
 
 const UNIT_TYPE_LABELS: Record<string, { en: string; ar: string }> = {
   apartment: { en: "Apartment", ar: "شقة" },
@@ -52,6 +57,63 @@ export function PropertiesClient({
   );
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<Lightbox | null>(null);
+  const [search, setSearch] = useState("");
+  const [buildingForm, setBuildingForm] = useState<{ open: boolean; editing: Building | null; defaultOwnerId?: number }>({
+    open: false,
+    editing: null,
+  });
+  const [unitForm, setUnitForm] = useState<{ open: boolean; editing: Unit | null; defaultBuildingId?: number }>({
+    open: false,
+    editing: null,
+  });
+  const [confirmDelBuilding, setConfirmDelBuilding] = useState<Building | null>(null);
+  const [confirmDelUnit, setConfirmDelUnit] = useState<Unit | null>(null);
+  const [delErr, setDelErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const matchesSearch = (b: Building): boolean => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const inB = [b.name, b.name_en, b.name_ar, b.address, b.city, b.district]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+    if (inB) return true;
+    const us = units.filter((u) => u.building_id === b.id);
+    return us.some((u) =>
+      [u.name, u.number, u.unit_type].filter(Boolean).join(" ").toLowerCase().includes(q),
+    );
+  };
+  const visibleBuildings = buildings.filter(matchesSearch);
+
+  const doDeleteBuilding = () => {
+    if (!confirmDelBuilding) return;
+    const target = confirmDelBuilding;
+    setDelErr(null);
+    start(async () => {
+      const res = await deleteBuilding(target.id);
+      if (!res.ok) {
+        setDelErr(res.error);
+        return;
+      }
+      setConfirmDelBuilding(null);
+    });
+  };
+
+  const doDeleteUnit = () => {
+    if (!confirmDelUnit) return;
+    const target = confirmDelUnit;
+    setDelErr(null);
+    start(async () => {
+      const res = await deleteUnit(target.id);
+      if (!res.ok) {
+        setDelErr(res.error);
+        return;
+      }
+      setConfirmDelUnit(null);
+    });
+  };
 
   const toggleBuilding = (id: number) => {
     setOpenBuildings((prev) => {
@@ -126,16 +188,23 @@ export function PropertiesClient({
         <div style={{ display: "flex", gap: 8 }}>
           <div className="search-input">
             <span className="ms">search</span>
-            <input placeholder={tCommon("search") + "…"} />
+            <input
+              placeholder={tCommon("search") + "…"}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          <button className="btn btn-secondary">
-            <span className="ms">filter_list</span> {tCommon("filter")}
+          <button
+            className="btn btn-primary"
+            onClick={() => setBuildingForm({ open: true, editing: null })}
+          >
+            <span className="ms">add</span> {t("addBuilding")}
           </button>
         </div>
       </div>
 
       <div className="drill">
-        {buildings.map((b) => {
+        {visibleBuildings.map((b) => {
           const isOpen = openBuildings.has(b.id);
           const owner = ownerOf(b.owner_id);
           const us = unitsOf(b.id);
@@ -207,6 +276,26 @@ export function PropertiesClient({
                     <div className="lbl">{t("nContracts")}</div>
                   </div>
                 </div>
+                <div
+                  className="actions"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ display: "flex", gap: 4 }}
+                >
+                  <button
+                    className="icon-btn"
+                    title={tCommon("edit")}
+                    onClick={() => setBuildingForm({ open: true, editing: b })}
+                  >
+                    <span className="ms ms-sm">edit</span>
+                  </button>
+                  <button
+                    className="icon-btn"
+                    title={tCommon("delete")}
+                    onClick={() => setConfirmDelBuilding(b)}
+                  >
+                    <span className="ms ms-sm">delete</span>
+                  </button>
+                </div>
               </div>
 
               <div className="drill-body">
@@ -219,12 +308,15 @@ export function PropertiesClient({
                       <BuildingArt buildingId={b.id} meta={meta} cityLabel={cityLabel ?? ""} big />
                       <div className="prop-hero-shade" />
                       <div className="prop-hero-actions">
-                        <button className="prop-pill">
+                        <button
+                          className="prop-pill"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightbox({ kind: "building", building: b, meta });
+                          }}
+                        >
                           <span className="ms ms-sm">photo_library</span> {t("viewPhotos")}
                           <span style={{ opacity: 0.7, marginInlineStart: 4 }}>· 6</span>
-                        </button>
-                        <button className="prop-pill">
-                          <span className="ms ms-sm">videocam</span> {t("virtualTour")}
                         </button>
                       </div>
                     </div>
@@ -268,12 +360,24 @@ export function PropertiesClient({
                           </div>
                         </div>
                         <div className="prop-map-actions">
-                          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
+                          <a
+                            className="btn btn-secondary btn-sm"
+                            style={{ flex: 1 }}
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${meta.lat},${meta.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <span className="ms ms-sm">directions</span> {t("directions")}
-                          </button>
-                          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
+                          </a>
+                          <a
+                            className="btn btn-secondary btn-sm"
+                            style={{ flex: 1 }}
+                            href={`https://www.openstreetmap.org/?mlat=${meta.lat}&mlon=${meta.lng}#map=17/${meta.lat}/${meta.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             <span className="ms ms-sm">open_in_new</span> {t("openMap")}
-                          </button>
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -287,8 +391,16 @@ export function PropertiesClient({
                       · {us.length}
                     </span>
                   </div>
-                  <div className="text-sec" style={{ fontSize: 12 }}>
-                    {t("clickHint")}
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <div className="text-sec" style={{ fontSize: 12 }}>
+                      {t("clickHint")}
+                    </div>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => setUnitForm({ open: true, editing: null, defaultBuildingId: b.id })}
+                    >
+                      <span className="ms ms-sm">add</span> {t("addUnit")}
+                    </button>
                   </div>
                 </div>
 
@@ -348,6 +460,26 @@ export function PropertiesClient({
                             <span>{typeLabel(u.unit_type)}</span>
                             {u.area_sqm && <span>· {u.area_sqm}m²</span>}
                           </div>
+                          <div
+                            className="actions"
+                            style={{ display: "flex", gap: 4, marginTop: 6 }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              className="icon-btn"
+                              title={tCommon("edit")}
+                              onClick={() => setUnitForm({ open: true, editing: u, defaultBuildingId: b.id })}
+                            >
+                              <span className="ms ms-sm">edit</span>
+                            </button>
+                            <button
+                              className="icon-btn"
+                              title={tCommon("delete")}
+                              onClick={() => setConfirmDelUnit(u)}
+                            >
+                              <span className="ms ms-sm">delete</span>
+                            </button>
+                          </div>
                           {selectedUnit === u.id && c && (
                             <div
                               className="contract-panel"
@@ -383,14 +515,15 @@ export function PropertiesClient({
                                   {localized(tn, "name", locale)}
                                 </div>
                               )}
-                              <button
+                              <a
                                 className="btn btn-secondary btn-sm"
-                                style={{ marginTop: 8, width: "100%" }}
+                                style={{ marginTop: 8, width: "100%", justifyContent: "center" }}
+                                href={`/${locale}/contracts?id=${c.id}`}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <span className="ms ms-sm">visibility</span>{" "}
                                 {t("viewContract")}
-                              </button>
+                              </a>
                             </div>
                           )}
                         </div>
@@ -403,6 +536,55 @@ export function PropertiesClient({
           );
         })}
       </div>
+
+      {buildingForm.open && (
+        <BuildingFormModal
+          key={buildingForm.editing?.id ?? "new-b"}
+          open={buildingForm.open}
+          onClose={() => setBuildingForm({ open: false, editing: null })}
+          building={buildingForm.editing}
+          owners={owners}
+          defaultOwnerId={buildingForm.defaultOwnerId}
+        />
+      )}
+      {unitForm.open && (
+        <UnitFormModal
+          key={unitForm.editing?.id ?? "new-u"}
+          open={unitForm.open}
+          onClose={() => setUnitForm({ open: false, editing: null })}
+          unit={unitForm.editing}
+          buildings={buildings}
+          defaultBuildingId={unitForm.defaultBuildingId}
+        />
+      )}
+      <ConfirmDialog
+        open={Boolean(confirmDelBuilding)}
+        onClose={() => {
+          setConfirmDelBuilding(null);
+          setDelErr(null);
+        }}
+        onConfirm={doDeleteBuilding}
+        title={t("deleteBuildingTitle")}
+        message={delErr ?? t("deleteBuildingMessage", { name: confirmDelBuilding ? localized(confirmDelBuilding, "name", locale) : "" })}
+        confirmLabel={tCommon("delete")}
+        cancelLabel={tCommon("cancel")}
+        destructive
+        loading={pending}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmDelUnit)}
+        onClose={() => {
+          setConfirmDelUnit(null);
+          setDelErr(null);
+        }}
+        onConfirm={doDeleteUnit}
+        title={t("deleteUnitTitle")}
+        message={delErr ?? t("deleteUnitMessage", { number: confirmDelUnit?.number ?? "" })}
+        confirmLabel={tCommon("delete")}
+        cancelLabel={tCommon("cancel")}
+        destructive
+        loading={pending}
+      />
 
       {lightbox && (
         <div className="lightbox" onClick={() => setLightbox(null)}>

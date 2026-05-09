@@ -29,3 +29,4 @@ class TenantRead(TenantBase):
 
     id: int
     created_at: datetime
+    email: Optional[str] = Field(default=None, max_length=120)

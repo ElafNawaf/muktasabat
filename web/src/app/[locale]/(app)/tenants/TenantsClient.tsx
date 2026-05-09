@@ -1,8 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 
+import { ConfirmDialog } from "@/components/Modal";
+import { deleteTenant } from "@/lib/actions";
 import { formatSAR } from "@/lib/format";
 import { initials, tenantColor } from "@/lib/palette";
 import {
@@ -12,6 +14,8 @@ import {
   type Tenant,
   type Unit,
 } from "@/lib/types";
+
+import { TenantFormModal } from "./TenantFormModal";
 
 type View = "grid" | "list";
 
@@ -41,6 +45,56 @@ export function TenantsClient({
 
   const [search, setSearch] = useState("");
   const [view, setView] = useState<View>("grid");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Tenant | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Tenant | null>(null);
+  const [delErr, setDelErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (tn: Tenant) => {
+    setEditing(tn);
+    setFormOpen(true);
+  };
+  const onCloseForm = () => {
+    setFormOpen(false);
+    setEditing(null);
+  };
+
+  const doDelete = () => {
+    if (!confirmDel) return;
+    const target = confirmDel;
+    setDelErr(null);
+    start(async () => {
+      const res = await deleteTenant(target.id);
+      if (!res.ok) {
+        setDelErr(res.error);
+        return;
+      }
+      setConfirmDel(null);
+    });
+  };
+
+  const doExport = () => {
+    const headers = ["id", "name", "name_en", "name_ar", "phone", "national_id", "email"];
+    const rows = filtered.map((tn) =>
+      [tn.id, tn.name, tn.name_en, tn.name_ar, tn.phone, tn.national_id, tn.email]
+        .map((v) => (v == null ? "" : String(v).replace(/"/g, '""')))
+        .map((v) => `"${v}"`)
+        .join(","),
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tenants-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const summaries = useMemo(() => {
     const m = new Map<number, LeaseSummary>();
@@ -88,10 +142,10 @@ export function TenantsClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-secondary">
+          <button className="btn btn-secondary" onClick={doExport}>
             <span className="ms">file_download</span> {tCommon("export")}
           </button>
-          <button className="btn btn-primary">
+          <button className="btn btn-primary" onClick={openCreate}>
             <span className="ms">add</span> {tCommon("addNew")}
           </button>
         </div>
@@ -117,9 +171,6 @@ export function TenantsClient({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button className="btn btn-secondary">
-          <span className="ms">filter_list</span> {tCommon("filter")}
-        </button>
         <div style={{ marginInlineStart: "auto" }} />
         <div className="view-toggle">
           <button
@@ -190,8 +241,19 @@ export function TenantsClient({
                         {t("activeLeases")}
                       </span>
                     )}
-                    <button className="owner-icon-btn">
-                      <span className="ms ms-sm">more_vert</span>
+                    <button
+                      className="owner-icon-btn"
+                      title={tCommon("edit")}
+                      onClick={() => openEdit(tn)}
+                    >
+                      <span className="ms ms-sm">edit</span>
+                    </button>
+                    <button
+                      className="owner-icon-btn"
+                      title={tCommon("delete")}
+                      onClick={() => setConfirmDel(tn)}
+                    >
+                      <span className="ms ms-sm">delete</span>
                     </button>
                   </div>
                 </div>
@@ -321,11 +383,19 @@ export function TenantsClient({
                       </td>
                       <td>
                         <div className="actions">
-                          <button className="icon-btn">
-                            <span className="ms ms-sm">visibility</span>
-                          </button>
-                          <button className="icon-btn">
+                          <button
+                            className="icon-btn"
+                            title={tCommon("edit")}
+                            onClick={() => openEdit(tn)}
+                          >
                             <span className="ms ms-sm">edit</span>
+                          </button>
+                          <button
+                            className="icon-btn"
+                            title={tCommon("delete")}
+                            onClick={() => setConfirmDel(tn)}
+                          >
+                            <span className="ms ms-sm">delete</span>
                           </button>
                         </div>
                       </td>
@@ -337,6 +407,29 @@ export function TenantsClient({
           </div>
         </div>
       )}
+
+      {formOpen && (
+        <TenantFormModal
+          key={editing?.id ?? "new"}
+          open={formOpen}
+          onClose={onCloseForm}
+          tenant={editing}
+        />
+      )}
+      <ConfirmDialog
+        open={Boolean(confirmDel)}
+        onClose={() => {
+          setConfirmDel(null);
+          setDelErr(null);
+        }}
+        onConfirm={doDelete}
+        title={t("deleteTitle")}
+        message={delErr ?? t("deleteMessage", { name: confirmDel ? localized(confirmDel, "name", locale) : "" })}
+        confirmLabel={tCommon("delete")}
+        cancelLabel={tCommon("cancel")}
+        destructive
+        loading={pending}
+      />
     </div>
   );
 }

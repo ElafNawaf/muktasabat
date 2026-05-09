@@ -1,3 +1,7 @@
+import hashlib
+import logging
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
@@ -5,17 +9,27 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 
+from api.config import get_settings
 from api.deps import AdminUser, CurrentUser, DbSession
 from api.models import AuditLog, User
 from api.schemas.auth import (
     AccessTokenResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginResponse,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     RoleUpdateRequest,
     UserRead,
 )
 from api.security import create_token, decode_token
+
+logger = logging.getLogger(__name__)
+
+
+def _hash_reset_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -51,6 +65,51 @@ def login(
         refresh_token=create_token(user.id, "refresh"),
         user=UserRead.model_validate(user),
     )
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
+    """Request a password reset. Always returns success message (no email enumeration)."""
+    settings = get_settings()
+    user = db.scalar(select(User).where(User.email == str(payload.email)))
+    debug_url: str | None = None
+
+    if user is not None:
+        raw = secrets.token_urlsafe(32)
+        user.password_reset_token = _hash_reset_token(raw)
+        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        db.add(user)
+        db.commit()
+
+        if settings.reset_password_debug:
+            debug_url = f"/reset-password?token={raw}"
+            logger.warning(
+                "reset_password_debug is enabled: reset token issued for user_id=%s (do not use in production)",
+                user.id,
+            )
+
+    return ForgotPasswordResponse(
+        ok=True,
+        message="If an account exists for this email, password reset instructions have been sent.",
+        debug_reset_url=debug_url,
+    )
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(payload: ResetPasswordRequest, db: DbSession):
+    """Complete password reset using token from forgot-password email (or debug URL)."""
+    digest = _hash_reset_token(payload.token)
+    user = db.scalar(select(User).where(User.password_reset_token == digest))
+    now = datetime.now(timezone.utc)
+    if user is None or user.password_reset_expires is None or user.password_reset_expires < now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset link")
+
+    user.set_password(payload.new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    db.add(user)
+    db.commit()
+    return None
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)

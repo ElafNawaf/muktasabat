@@ -1,11 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
-import { useLocale } from "next-intl";
 
 export function LoginScreen() {
   const t = useTranslations("login");
@@ -47,9 +47,9 @@ export function LoginScreen() {
   return (
     <div className="login-page">
       <div className="login-pattern" />
-      <a className="lang-toggle login-lang" href={`/${otherLocale}/login`}>
+      <Link className="lang-toggle login-lang" href={`/${otherLocale}/login`}>
         {locale === "en" ? "العربية" : "English"}
-      </a>
+      </Link>
 
       <form className="login-card screen-enter" onSubmit={submit}>
         <div className="brand-block">
@@ -109,9 +109,7 @@ export function LoginScreen() {
               />
               {t("rememberMe")}
             </label>
-            <a href="#" onClick={(e) => e.preventDefault()}>
-              {t("forgotPassword")}
-            </a>
+            <Link href={`/${locale}/forgot-password`}>{t("forgotPassword")}</Link>
           </div>
 
           {error && (
@@ -142,9 +140,7 @@ export function LoginScreen() {
 
         <div className="login-foot">
           {t("noAccount")}{" "}
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            {t("register")}
-          </a>
+          <Link href={`/${locale}/register`}>{t("register")}</Link>
         </div>
       </form>
 

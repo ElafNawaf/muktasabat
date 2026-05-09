@@ -22,10 +22,12 @@ export async function POST(req: Request) {
   });
 
   if (!res.ok) {
-    return NextResponse.json(
-      { error: "Invalid username or password" },
-      { status: res.status === 401 ? 401 : 500 },
-    );
+    const status = res.status === 401 ? 401 : res.status >= 500 ? 502 : res.status;
+    const message =
+      res.status === 401
+        ? "Invalid username or password"
+        : "Sign-in failed (server error). Check that the API is running.";
+    return NextResponse.json({ error: message }, { status });
   }
 
   const data = (await res.json()) as {

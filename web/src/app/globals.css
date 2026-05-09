@@ -81,7 +81,10 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; }
+html, body, #root {
+  height: 100%;
+  min-height: 100%;
+}
 body {
   margin: 0;
   font-family: var(--font-en);
@@ -90,6 +93,7 @@ body {
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Shell scrolls inside .page; keep body clipped so only one scrollbar appears */
   overflow: hidden;
 }
 [dir="rtl"] body { font-family: var(--font-ar); }
@@ -129,6 +133,8 @@ body {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   transition: grid-template-columns 240ms var(--ease);
 }
 .app.collapsed { grid-template-columns: var(--sidebar-w-collapsed) 1fr; }
@@ -337,6 +343,8 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   background: var(--color-bg);
   position: relative;
 }
@@ -444,10 +452,13 @@ body {
 
 /* ───────────── Page ───────────── */
 .page {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px 28px 40px;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 .page-header {
   display: flex;

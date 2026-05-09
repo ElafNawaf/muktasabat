@@ -44,6 +44,9 @@ class User(Base):
     is_active_user: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    password_reset_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    password_reset_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     employee: Mapped[Optional["Employee"]] = relationship(back_populates="user", uselist=False)
     owner_link: Mapped[Optional["OwnerUser"]] = relationship(back_populates="user", uselist=False)
 

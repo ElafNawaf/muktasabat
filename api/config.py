@@ -24,6 +24,9 @@ class Settings(BaseSettings):
         "http://localhost:8080",
     ]
 
+    # When true, forgot-password response may include debug_reset_url (dev only).
+    reset_password_debug: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:
