@@ -397,6 +397,29 @@ export async function deleteContract(id: number): Promise<ActionResult<null>> {
   }
 }
 
+export type EjarSyncResult = {
+  fetched: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  owners_created: number;
+  buildings_created: number;
+  units_created: number;
+  tenants_created: number;
+  is_stub_mode: boolean;
+  errors: string[];
+};
+
+export async function syncEjarContracts(): Promise<ActionResult<EjarSyncResult>> {
+  try {
+    const data = await api.post<EjarSyncResult>("/api/v1/contracts/ejar/sync");
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
 export type ContractUpdateInput = {
   contract_number: string;
   branch?: string | null;

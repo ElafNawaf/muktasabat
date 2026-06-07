@@ -16,6 +16,7 @@ from api.schemas.contract import (
     ContractUpdateRequest,
 )
 from api.services.ejar import EjarContractPayload, get_ejar_service
+from api.services.ejar_sync import sync_contracts
 from api.storage import StorageNotConfigured, delete_object, upload_document
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -272,6 +273,46 @@ class EjarStatusResponse(BaseModel):
     ejar_contract_number: str | None
     ejar_registered_at: datetime | None
     is_stub_mode: bool
+
+
+class EjarSyncResponse(BaseModel):
+    fetched: int
+    created: int
+    updated: int
+    skipped: int
+    owners_created: int
+    buildings_created: int
+    units_created: int
+    tenants_created: int
+    is_stub_mode: bool
+    errors: list[str] = []
+
+
+@router.post("/ejar/sync", response_model=EjarSyncResponse)
+async def ejar_sync_contracts(
+    db: DbSession,
+    _user: Perm("contracts", "create"),
+):
+    """Fetch all contracts from the Ejar platform and import them into the portal.
+
+    Missing owners, buildings, units and tenants are created automatically. The
+    operation is idempotent — re-running it updates existing contracts (matched
+    by their Ejar contract number) instead of creating duplicates.
+
+    In STUB mode (no ``EJAR_CLIENT_ID`` configured) a set of sample contracts is
+    imported so the flow can be demoed without REGA credentials.
+    """
+    ejar = get_ejar_service()
+    try:
+        summaries = await ejar.list_contracts()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Failed to fetch contracts from Ejar: {exc}",
+        )
+
+    result = sync_contracts(db, summaries)
+    return EjarSyncResponse(is_stub_mode=ejar.is_stub, **result.as_dict())
 
 
 @router.post("/{contract_id}/ejar/register", response_model=ContractRead)

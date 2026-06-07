@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
-import { ConfirmDialog } from "@/components/Modal";
+import { ConfirmDialog, Modal } from "@/components/Modal";
 import {
   FilterBar,
   FilterClearButton,
@@ -12,7 +12,12 @@ import {
   FilterSelect,
 } from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
-import { deleteContract, terminateContract } from "@/lib/actions";
+import {
+  deleteContract,
+  syncEjarContracts,
+  terminateContract,
+  type EjarSyncResult,
+} from "@/lib/actions";
 import { matchesSearch, uniqueSorted } from "@/lib/filters";
 import { formatDate, formatSAR } from "@/lib/format";
 import {
@@ -49,6 +54,23 @@ export function ContractsClient({
   const tCurrency = useTranslations("currency");
   const { can } = usePermissions();
   const canDelete = can("contracts", "delete");
+  const canCreate = can("contracts", "create");
+
+  const [syncPending, startSync] = useTransition();
+  const [syncResult, setSyncResult] = useState<EjarSyncResult | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const doSyncEjar = () => {
+    setSyncError(null);
+    startSync(async () => {
+      const res = await syncEjarContracts();
+      if (!res.ok) {
+        setSyncError(res.error);
+        return;
+      }
+      setSyncResult(res.data);
+    });
+  };
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -209,11 +231,31 @@ export function ContractsClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          {canCreate && (
+            <button
+              className="btn btn-secondary"
+              onClick={doSyncEjar}
+              disabled={syncPending}
+              title={t("syncEjar")}
+            >
+              <span className="ms">sync</span>{" "}
+              {syncPending ? t("syncing") : t("syncEjar")}
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => setFormOpen(true)}>
             <span className="ms">add</span> {t("newContract")}
           </button>
         </div>
       </div>
+
+      {syncError && (
+        <div
+          className="badge badge-danger"
+          style={{ padding: "10px 14px", fontSize: 13, marginBottom: 12 }}
+        >
+          {syncError}
+        </div>
+      )}
 
       <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
         <Kpi icon="description" label={t("total")} value={String(totals.total)} />
@@ -526,6 +568,77 @@ export function ContractsClient({
         destructive
         loading={pending}
       />
+
+      <Modal
+        open={Boolean(syncResult)}
+        onClose={() => setSyncResult(null)}
+        title={t("syncResultTitle")}
+        size="sm"
+        footer={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setSyncResult(null)}
+          >
+            {t("syncDone")}
+          </button>
+        }
+      >
+        {syncResult && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {syncResult.is_stub_mode && (
+              <div
+                className="badge badge-warning"
+                style={{ padding: "8px 12px", fontSize: 12, lineHeight: 1.5 }}
+              >
+                {t("syncStubNotice")}
+              </div>
+            )}
+            <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+              <Kpi icon="cloud_download" label={t("syncFetched")} value={String(syncResult.fetched)} />
+              <Kpi icon="add_circle" label={t("syncCreated")} value={String(syncResult.created)} variant="success" />
+              <Kpi icon="sync" label={t("syncUpdated")} value={String(syncResult.updated)} />
+              <Kpi
+                icon="block"
+                label={t("syncSkipped")}
+                value={String(syncResult.skipped)}
+                variant={syncResult.skipped > 0 ? "warning" : undefined}
+              />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                {t("syncNewRecords")}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)", lineHeight: 1.8 }}>
+                {t("syncOwners")}: {syncResult.owners_created} · {t("syncBuildings")}:{" "}
+                {syncResult.buildings_created} · {t("syncUnits")}: {syncResult.units_created} ·{" "}
+                {t("syncTenants")}: {syncResult.tenants_created}
+              </div>
+            </div>
+            {syncResult.errors.length > 0 && (
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                  {t("syncErrors")} ({syncResult.errors.length})
+                </div>
+                <ul
+                  style={{
+                    margin: 0,
+                    paddingInlineStart: 18,
+                    fontSize: 12,
+                    color: "var(--color-text-secondary)",
+                    maxHeight: 160,
+                    overflowY: "auto",
+                  }}
+                >
+                  {syncResult.errors.slice(0, 20).map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

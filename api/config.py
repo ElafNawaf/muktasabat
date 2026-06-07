@@ -3,16 +3,18 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ENV_FILE = os.path.join(_REPO_ROOT, ".env")
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         case_sensitive=False,
         extra="ignore",
     )
-
-    database_url: str = os.environ.get("DATABASE_URL", "sqlite:///./muktasbat.db")
-    secret_key: str = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+    database_url: str = "sqlite:///./muktasbat.db"
+    secret_key: str = "dev-secret-change-me"
 
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 8

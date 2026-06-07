@@ -100,6 +100,43 @@ class EjarStatusResult:
     raw: dict = field(default_factory=dict)
 
 
+@dataclass
+class EjarContractSummary:
+    """A contract as returned by Ejar when listing all contracts of the account.
+
+    This carries enough information to (re)build the full owner → building →
+    unit → tenant → contract chain inside the portal during a sync/import.
+    """
+
+    ejar_contract_number: str          # رقم عقد إيجار
+    ejar_reference: str                # internal Ejar reference / UUID
+    status: str                        # "active" | "expired" | "cancelled" | "pending"
+    contract_type: str                 # "residential" | "commercial"
+    start_date: str                    # ISO 8601 "YYYY-MM-DD"
+    end_date: str
+    total_rent_amount: float           # اجمالي قيمة الإيجار لكل المدة
+    payment_cycle: int                 # interval in months between payments
+
+    # Landlord / owner (المالك)
+    landlord_national_id: str
+    landlord_name: str
+
+    # Tenant (المستأجر)
+    tenant_national_id: str
+    tenant_name: str
+    tenant_phone: str
+
+    # Property (العقار)
+    building_name: str
+    building_deed_number: str
+    unit_number: str
+    city: str
+    district: str
+    property_type: str
+
+    raw: dict = field(default_factory=dict)
+
+
 # ── Token cache (simple in-process cache) ─────────────────────────────────────
 
 
@@ -188,6 +225,18 @@ class EjarService:
         token = await self._get_token()
         return await self._live_status(ejar_reference, token)
 
+    async def list_contracts(self) -> list[EjarContractSummary]:
+        """Fetch every contract registered for the account on the Ejar platform.
+
+        In STUB mode a small set of realistic sample contracts is returned so
+        the sync flow can be developed and demoed without REGA credentials.
+        In LIVE mode all pages of ``GET /contracts`` are fetched and merged.
+        """
+        if self._stub:
+            return self._stub_list_contracts()
+        token = await self._get_token()
+        return await self._live_list_contracts(token)
+
     @property
     def is_stub(self) -> bool:
         return self._stub
@@ -215,6 +264,79 @@ class EjarService:
                 "status": "registered",
             },
         )
+
+    def _stub_list_contracts(self) -> list[EjarContractSummary]:
+        """Return a deterministic set of sample Ejar contracts for development."""
+        logger.info("EjarService STUB: list_contracts → returning sample contracts")
+        samples = [
+            EjarContractSummary(
+                ejar_contract_number="EJR-1001STUB",
+                ejar_reference="STUB-REF-1001",
+                status="active",
+                contract_type="residential",
+                start_date="2025-01-01",
+                end_date="2026-01-01",
+                total_rent_amount=48000.0,
+                payment_cycle=3,
+                landlord_national_id="1010101010",
+                landlord_name="عبدالله المالك",
+                tenant_national_id="2020202020",
+                tenant_name="سعد المستأجر",
+                tenant_phone="0500000001",
+                building_name="عمارة النخيل",
+                building_deed_number="DEED-9001",
+                unit_number="101",
+                city="الرياض",
+                district="النخيل",
+                property_type="residential",
+                raw={"stub": True},
+            ),
+            EjarContractSummary(
+                ejar_contract_number="EJR-1002STUB",
+                ejar_reference="STUB-REF-1002",
+                status="active",
+                contract_type="commercial",
+                start_date="2025-03-15",
+                end_date="2027-03-15",
+                total_rent_amount=120000.0,
+                payment_cycle=12,
+                landlord_national_id="1010101010",
+                landlord_name="عبدالله المالك",
+                tenant_national_id="3030303030",
+                tenant_name="شركة المتاجر التجارية",
+                tenant_phone="0500000002",
+                building_name="عمارة النخيل",
+                building_deed_number="DEED-9001",
+                unit_number="G-02",
+                city="الرياض",
+                district="النخيل",
+                property_type="commercial",
+                raw={"stub": True},
+            ),
+            EjarContractSummary(
+                ejar_contract_number="EJR-1003STUB",
+                ejar_reference="STUB-REF-1003",
+                status="expired",
+                contract_type="residential",
+                start_date="2023-06-01",
+                end_date="2024-06-01",
+                total_rent_amount=36000.0,
+                payment_cycle=6,
+                landlord_national_id="4040404040",
+                landlord_name="فهد العقاري",
+                tenant_national_id="5050505050",
+                tenant_name="نورة المستأجرة",
+                tenant_phone="0500000003",
+                building_name="برج الياسمين",
+                building_deed_number="DEED-9002",
+                unit_number="205",
+                city="جدة",
+                district="الياسمين",
+                property_type="residential",
+                raw={"stub": True},
+            ),
+        ]
+        return samples
 
     # ── Live implementations ───────────────────────────────────────────────────
 
@@ -311,6 +433,92 @@ class EjarService:
             ejar_reference=ejar_reference,
             status=data.get("status", "unknown"),
             raw=data,
+        )
+
+    async def _live_list_contracts(self, token: str) -> list[EjarContractSummary]:
+        """Fetch all contracts from Ejar, following pagination until exhausted."""
+        results: list[EjarContractSummary] = []
+        page = 1
+        page_size = 100
+        async with httpx.AsyncClient(timeout=30) as client:
+            while True:
+                resp = await client.get(
+                    f"{self._base_url}/contracts",
+                    params={"page": page, "pageSize": page_size},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                resp.raise_for_status()
+                data: dict[str, Any] = resp.json()
+                items = data.get("items") or data.get("data") or data.get("contracts") or []
+                for item in items:
+                    try:
+                        results.append(self._normalize_contract(item))
+                    except Exception:  # noqa: BLE001 — never let one bad row abort the sync
+                        logger.exception("Ejar: failed to normalize contract %s", item.get("id"))
+                # Stop when there are no more pages / items
+                has_more = data.get("hasMore")
+                if has_more is None:
+                    has_more = len(items) == page_size
+                if not items or not has_more:
+                    break
+                page += 1
+        return results
+
+    @staticmethod
+    def _normalize_contract(item: dict[str, Any]) -> EjarContractSummary:
+        """Map a raw Ejar contract object to our normalized summary.
+
+        Ejar field names are not finalized in public docs, so we accept several
+        common aliases and fall back to empty values rather than failing.
+        """
+
+        def pick(*keys: str, default: Any = "") -> Any:
+            for k in keys:
+                if k in item and item[k] not in (None, ""):
+                    return item[k]
+            return default
+
+        prop = item.get("property") or item.get("unit") or {}
+        landlord = item.get("landlord") or item.get("owner") or {}
+        tenant = item.get("tenant") or {}
+
+        def from_obj(obj: dict[str, Any], *keys: str, default: Any = "") -> Any:
+            for k in keys:
+                if isinstance(obj, dict) and obj.get(k) not in (None, ""):
+                    return obj[k]
+            return default
+
+        return EjarContractSummary(
+            ejar_contract_number=str(pick("ejarContractNumber", "contractNumber", "number")),
+            ejar_reference=str(pick("reference", "id", "uuid")),
+            status=str(pick("status", default="active")).lower(),
+            contract_type=str(pick("contractType", "type", default="residential")).lower(),
+            start_date=str(pick("startDate", "start", default="")),
+            end_date=str(pick("endDate", "end", default="")),
+            total_rent_amount=float(pick("totalRentAmount", "totalAmount", "rentAmount", default=0) or 0),
+            payment_cycle=int(pick("paymentCycle", "paymentIntervalMonths", default=1) or 1),
+            landlord_national_id=str(
+                from_obj(landlord, "nationalId", "id") or pick("landlordNationalId")
+            ),
+            landlord_name=str(from_obj(landlord, "name") or pick("landlordName")),
+            tenant_national_id=str(
+                from_obj(tenant, "nationalId", "id") or pick("tenantNationalId")
+            ),
+            tenant_name=str(from_obj(tenant, "name") or pick("tenantName")),
+            tenant_phone=str(from_obj(tenant, "phone", "mobile") or pick("tenantPhone")),
+            building_name=str(
+                from_obj(prop, "buildingName", "name") or pick("buildingName", default="")
+            ),
+            building_deed_number=str(
+                from_obj(prop, "deedNumber") or pick("deedNumber", default="")
+            ),
+            unit_number=str(from_obj(prop, "unitNumber", "unit") or pick("unitNumber", default="")),
+            city=str(from_obj(prop, "city") or pick("city", default="")),
+            district=str(from_obj(prop, "district") or pick("district", default="")),
+            property_type=str(
+                from_obj(prop, "propertyType", "type") or pick("propertyType", default="residential")
+            ).lower(),
+            raw=item,
         )
 
 
