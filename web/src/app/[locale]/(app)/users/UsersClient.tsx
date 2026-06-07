@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import {
   changeUserRole,
+  deleteUser,
   toggleUserActive,
   updateRolePermissions,
   type RolePermissions,
@@ -18,6 +19,8 @@ import {
   type Role,
 } from "@/lib/types";
 
+import { ConfirmDialog } from "@/components/Modal";
+import { usePermissions } from "@/components/PermissionsProvider";
 import { InviteUserModal } from "./InviteUserModal";
 
 export type AdminUserRow = {
@@ -34,6 +37,7 @@ const MODULE_ICON: Record<ModuleId, string> = {
   contracts: "description",
   payments: "payments",
   owners: "group",
+  agents: "support_agent",
   tenants: "person",
   expenses: "receipt_long",
   users: "admin_panel_settings",
@@ -55,12 +59,15 @@ export function UsersClient({
   const t = useTranslations("usersPage");
   const tCommon = useTranslations("common");
   const tPerms = useTranslations("perms");
+  const { can } = usePermissions();
+  const canDeleteUser = can("users", "delete");
 
   const [tab, setTab] = useState<Tab>("users");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [confirmDel, setConfirmDel] = useState<AdminUserRow | null>(null);
   const [, start] = useTransition();
 
   // Local mirror of roles so the matrix updates immediately on toggle while the
@@ -109,6 +116,22 @@ export function UsersClient({
       const res = await toggleUserActive(u.id);
       setBusyId(null);
       if (!res.ok) setError(res.error);
+    });
+  };
+
+  const doDeleteUser = () => {
+    if (!confirmDel) return;
+    const target = confirmDel;
+    setError(null);
+    setBusyId(target.id);
+    start(async () => {
+      const res = await deleteUser(target.id);
+      setBusyId(null);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setConfirmDel(null);
     });
   };
 
@@ -334,6 +357,16 @@ export function UsersClient({
                         </span>
                         {u.is_active_user ? t("deactivate") : t("activate")}
                       </button>
+                      {canDeleteUser && u.is_active_user && !isMe && (
+                        <button
+                          className="icon-btn"
+                          title={tCommon("delete")}
+                          onClick={() => setConfirmDel(u)}
+                          disabled={isBusy}
+                        >
+                          <span className="ms ms-sm">delete</span>
+                        </button>
+                      )}
                     </div>
                     <div className="user-card-meta">
                       <span className="user-card-status">
@@ -588,6 +621,21 @@ export function UsersClient({
           locale={locale}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmDel)}
+        onClose={() => {
+          setConfirmDel(null);
+          setError(null);
+        }}
+        onConfirm={doDeleteUser}
+        title={t("deleteTitle")}
+        message={error ?? t("deleteMessage", { username: confirmDel?.username ?? "" })}
+        confirmLabel={tCommon("delete")}
+        cancelLabel={tCommon("cancel")}
+        destructive
+        loading={busyId === confirmDel?.id}
+      />
     </div>
   );
 }

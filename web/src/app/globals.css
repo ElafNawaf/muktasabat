@@ -1562,6 +1562,28 @@ body {
 .unit-art { width: 100%; height: 100%; display: block; }
 .unit-img-badge { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.95); backdrop-filter: blur(6px); }
 [dir="rtl"] .unit-img-badge { right: auto; left: 8px; }
+.unit-contract-link {
+  position: absolute;
+  bottom: 8px;
+  inset-inline-start: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: background 120ms var(--ease), color 120ms var(--ease), border-color 120ms var(--ease);
+}
+.unit-contract-link:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+a.icon-btn { text-decoration: none; }
 .unit-card-body { padding: 12px 14px 14px; }
 .unit-card-body .top { display: flex; justify-content: space-between; align-items: center; }
 

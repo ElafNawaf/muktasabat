@@ -3,12 +3,13 @@ from sqlalchemy import select
 
 from api.deps import AdminUser, CurrentUser, DbSession
 from api.models import Role
+from api.permissions import Perm
 from api.schemas.role import RoleCreate, RolePermissionsUpdate, RoleRead
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
 # Modules and actions a permission cell can describe.
-MODULES = {"properties", "contracts", "payments", "owners", "tenants", "expenses", "users"}
+MODULES = {"properties", "contracts", "payments", "owners", "agents", "tenants", "expenses", "users"}
 ACTIONS = {"view", "create", "edit", "delete", "approve"}
 
 
@@ -68,7 +69,7 @@ def create_role(payload: RoleCreate, db: DbSession, _admin: AdminUser):
 
 
 @router.delete("/{code}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_role(code: str, db: DbSession, _admin: AdminUser):
+def delete_role(code: str, db: DbSession, _user: Perm("users", "delete")):
     role = db.get(Role, code)
     if role is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")

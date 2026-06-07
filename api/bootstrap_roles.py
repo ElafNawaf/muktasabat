@@ -4,12 +4,22 @@ Mirrors the prototype's `data.js` role definitions. `system` roles (admin, owner
 are immutable once seeded — the roles router enforces that. Re-running this is
 safe: existing roles are left untouched, only missing rows are inserted.
 """
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.models import Role
 
 
-_MODULES = ["properties", "contracts", "payments", "owners", "tenants", "expenses", "users"]
+_MODULES = [
+    "properties",
+    "contracts",
+    "payments",
+    "owners",
+    "agents",
+    "tenants",
+    "expenses",
+    "users",
+]
 _ALL = {m: {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1} for m in _MODULES}
 
 
@@ -46,6 +56,7 @@ DEFAULT_ROLES: list[dict] = [
                 "contracts": {"view": 1, "create": 1, "edit": 1, "approve": 1},
                 "payments": {"view": 1, "create": 1, "edit": 1, "approve": 1},
                 "owners": {"view": 1, "create": 1, "edit": 1},
+                "agents": {"view": 1, "create": 1, "edit": 1},
                 "tenants": {"view": 1, "create": 1, "edit": 1, "delete": 1},
                 "expenses": {"view": 1, "create": 1, "edit": 1},
                 "users": {"view": 1},
@@ -66,6 +77,7 @@ DEFAULT_ROLES: list[dict] = [
                 "contracts": {"view": 1},
                 "payments": {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1},
                 "owners": {"view": 1},
+                "agents": {"view": 1},
                 "tenants": {"view": 1},
                 "expenses": {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1},
             }
@@ -85,6 +97,7 @@ DEFAULT_ROLES: list[dict] = [
                 "contracts": {"view": 1, "create": 1, "edit": 1},
                 "payments": {"view": 1},
                 "owners": {"view": 1},
+                "agents": {"view": 1},
                 "tenants": {"view": 1, "create": 1, "edit": 1},
             }
         ),
@@ -103,6 +116,7 @@ DEFAULT_ROLES: list[dict] = [
                 "contracts": {"view": 1},
                 "payments": {"view": 1},
                 "owners": {"view": 1},
+                "agents": {"view": 1},
                 "tenants": {"view": 1},
             }
         ),
@@ -134,3 +148,22 @@ def seed_default_roles(db: Session) -> None:
             continue
         db.add(Role(**spec))
     db.commit()
+    sync_missing_module_permissions(db)
+
+
+def sync_missing_module_permissions(db: Session) -> None:
+    """Merge new module permissions into existing roles without overwriting edits."""
+    specs = {spec["code"]: spec["permissions"] for spec in DEFAULT_ROLES}
+    changed = False
+    for role in db.scalars(select(Role)).all():
+        perms = dict(role.permissions or {})
+        role_changed = False
+        for module, actions in specs.get(role.code, {}).items():
+            if module not in perms:
+                perms[module] = actions
+                role_changed = True
+        if role_changed:
+            role.permissions = perms
+            changed = True
+    if changed:
+        db.commit()

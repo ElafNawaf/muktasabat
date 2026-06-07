@@ -490,7 +490,8 @@ def owner_statement(
             if not (m_start <= p.due_date <= m_end):
                 continue
             mgmt = p.amount * (c.unit.management_percentage or 0) / 100
-            agent = p.amount * (c.unit.agent_percentage or 0) / 100
+            agent_pct = c.agent_percentage if c.agent_percentage else (c.unit.agent_percentage or 0)
+            agent = p.amount * agent_pct / 100
             ejar = c.unit.ejar_fee or 0
             owner_share = p.amount - mgmt - agent - ejar
 

@@ -9,21 +9,12 @@ import { DocumentUploader } from "@/components/DocumentUploader";
 import { MapPicker } from "@/components/MapPicker";
 import { Modal } from "@/components/Modal";
 import { createBuilding, updateBuilding, type BuildingInput } from "@/lib/actions";
+import { PRIMARY_BUILDING_TYPES, RESIDENCE_TYPES } from "@/lib/building-types";
 import type { Building, Owner } from "@/lib/types";
 
 import type { UserPick } from "./page";
 
 const CONTRACT_TYPES = ["residential", "commercial", "mixed", "investment"] as const;
-const PROPERTY_TYPES = [
-  "apartment_building",
-  "villa",
-  "commercial",
-  "warehouse",
-  "mixed",
-  "land",
-  "other",
-] as const;
-const RESIDENCE_TYPES = ["singles", "families", "mixed"] as const;
 const DEED_DOC_TYPES = ["deed", "title", "usufruct", "other"] as const;
 
 export function BuildingFormModal({
@@ -229,6 +220,24 @@ export function BuildingFormModal({
             onChangeEn={(v) => set("name_en", v)}
             onChangeAr={(v) => set("name_ar", v)}
           />
+          <div className="field">
+            <label>{t("propertyType")}</label>
+            <select
+              className="select"
+              value={form.property_type ?? ""}
+              onChange={(e) => set("property_type", e.target.value)}
+            >
+              <option value="">{t("selectBuildingType")}</option>
+              {PRIMARY_BUILDING_TYPES.map((p) => (
+                <option key={p} value={p}>
+                  {t(`propertyTypes.${p}`)}
+                </option>
+              ))}
+            </select>
+            <div className="text-sec" style={{ fontSize: 11.5, marginTop: 4 }}>
+              {t("buildingTypeHint")}
+            </div>
+          </div>
           <div className="field-row">
             <div className="field" style={{ flex: 1 }}>
               <label>{t("contractType")}</label>
@@ -398,21 +407,6 @@ export function BuildingFormModal({
 
         <CollapsibleSection title={t("sectionPropertyData")} icon="domain" defaultOpen={false}>
           <div className="field-row">
-            <div className="field" style={{ flex: 1 }}>
-              <label>{t("propertyType")}</label>
-              <select
-                className="select"
-                value={form.property_type ?? ""}
-                onChange={(e) => set("property_type", e.target.value)}
-              >
-                <option value="">—</option>
-                {PROPERTY_TYPES.map((p) => (
-                  <option key={p} value={p}>
-                    {t(`propertyTypes.${p}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="field" style={{ flex: 1 }}>
               <label>{t("residenceType")}</label>
               <select

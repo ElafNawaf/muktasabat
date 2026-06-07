@@ -52,8 +52,16 @@ class ContractRead(BaseModel):
     electricity_split_percentage: Optional[float] = None
     water_on_tenant: bool = True
     water_split_percentage: Optional[float] = None
+    electricity_amount: float = 0
+    water_amount: float = 0
+    electricity_meter_number: Optional[str] = None
+    water_meter_number: Optional[str] = None
     services_amount: float = 0
     insurance_amount: float = 0
+    vat_rate: float = 15
+    vat_amount: float = 0
+    total_amount: float = 0
+    agent_percentage: float = 0
 
     status: ContractStatus
     notes: Optional[str] = None
@@ -94,8 +102,14 @@ class ContractCreateRequest(BaseModel):
     electricity_split_percentage: Optional[float] = Field(default=None, ge=0, le=100)
     water_on_tenant: bool = True
     water_split_percentage: Optional[float] = Field(default=None, ge=0, le=100)
+    electricity_amount: float = Field(default=0, ge=0)
+    water_amount: float = Field(default=0, ge=0)
+    electricity_meter_number: Optional[str] = Field(default=None, max_length=50)
+    water_meter_number: Optional[str] = Field(default=None, max_length=50)
     services_amount: float = Field(default=0, ge=0)
     insurance_amount: float = Field(default=0, ge=0)
+    vat_rate: float = Field(default=15, ge=0, le=100)
+    agent_percentage: float = Field(default=0, ge=0, le=100)
 
     notes: Optional[str] = None
 
@@ -130,8 +144,14 @@ class ContractUpdateRequest(BaseModel):
     electricity_split_percentage: Optional[float] = Field(default=None, ge=0, le=100)
     water_on_tenant: bool = True
     water_split_percentage: Optional[float] = Field(default=None, ge=0, le=100)
+    electricity_amount: float = Field(default=0, ge=0)
+    water_amount: float = Field(default=0, ge=0)
+    electricity_meter_number: Optional[str] = Field(default=None, max_length=50)
+    water_meter_number: Optional[str] = Field(default=None, max_length=50)
     services_amount: float = Field(default=0, ge=0)
     insurance_amount: float = Field(default=0, ge=0)
+    vat_rate: float = Field(default=15, ge=0, le=100)
+    agent_percentage: float = Field(default=0, ge=0, le=100)
 
     status: ContractStatus = "active"
     notes: Optional[str] = None

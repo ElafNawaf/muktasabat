@@ -1,8 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
+import { ConfirmDialog } from "@/components/Modal";
+import { usePermissions } from "@/components/PermissionsProvider";
+import { deletePayment } from "@/lib/actions";
 import { formatDate, formatSAR } from "@/lib/format";
 import {
   localized,
@@ -48,10 +51,15 @@ export function PaymentsClient({
   const t = useTranslations("paymentsPage");
   const tCommon = useTranslations("common");
   const tCurrency = useTranslations("currency");
+  const { can } = usePermissions();
+  const canDelete = can("payments", "delete");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [paying, setPaying] = useState<PaymentRow | null>(null);
+  const [confirmDel, setConfirmDel] = useState<PaymentRow | null>(null);
+  const [delErr, setDelErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
 
   const contractOf = (id: number) => contracts.find((c) => c.id === id);
   const unitOf = (id: number) => units.find((u) => u.id === id);
@@ -106,6 +114,20 @@ export function PaymentsClient({
   };
 
   const fmtDate = (iso: string) => formatDate(iso, locale);
+
+  const doDelete = () => {
+    if (!confirmDel) return;
+    const target = confirmDel;
+    setDelErr(null);
+    start(async () => {
+      const res = await deletePayment(target.id);
+      if (!res.ok) {
+        setDelErr(res.error);
+        return;
+      }
+      setConfirmDel(null);
+    });
+  };
 
   return (
     <div className="page screen-enter">
@@ -222,15 +244,26 @@ export function PaymentsClient({
                       {p.paid_date ? fmtDate(p.paid_date) : "—"}
                     </td>
                     <td>
-                      {eff !== "paid" && (
-                        <button
-                          className="btn btn-sm btn-primary"
-                          onClick={() => setPaying(p)}
-                        >
-                          <span className="ms ms-sm">paid</span>
-                          {t("markPaid")}
-                        </button>
-                      )}
+                      <div className="actions" style={{ display: "flex", gap: 4 }}>
+                        {eff !== "paid" && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => setPaying(p)}
+                          >
+                            <span className="ms ms-sm">paid</span>
+                            {t("markPaid")}
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            className="icon-btn"
+                            title={tCommon("delete")}
+                            onClick={() => setConfirmDel(p)}
+                          >
+                            <span className="ms ms-sm">delete</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -254,6 +287,26 @@ export function PaymentsClient({
           payment={paying}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmDel)}
+        onClose={() => {
+          setConfirmDel(null);
+          setDelErr(null);
+        }}
+        onConfirm={doDelete}
+        title={t("deleteTitle")}
+        message={
+          delErr ??
+          t("deleteMessage", {
+            amount: confirmDel ? formatSAR(confirmDel.amount, locale) : "0",
+          })
+        }
+        confirmLabel={tCommon("delete")}
+        cancelLabel={tCommon("cancel")}
+        destructive
+        loading={pending}
+      />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import { useRef, useState } from "react";
 
 import type { EntityDocument } from "@/lib/types";
 
+import { usePermissions } from "./PermissionsProvider";
+
 /**
  * Inline document/attachment uploader used inside Building / Contract forms.
  *
@@ -59,6 +61,8 @@ export function DocumentUploader({
   const t = useTranslations("documents");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const { can } = usePermissions();
+  const canDelete = can(kind === "contracts" ? "contracts" : "properties", "delete");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -217,17 +221,19 @@ export function DocumentUploader({
               >
                 {doc.filename}
               </a>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => remove(doc)}
-                disabled={busy === `del-${doc.id}`}
-                title={tCommon("delete")}
-              >
-                <span className="ms ms-sm">
-                  {busy === `del-${doc.id}` ? "progress_activity" : "delete"}
-                </span>
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => remove(doc)}
+                  disabled={busy === `del-${doc.id}`}
+                  title={tCommon("delete")}
+                >
+                  <span className="ms ms-sm">
+                    {busy === `del-${doc.id}` ? "progress_activity" : "delete"}
+                  </span>
+                </button>
+              )}
             </li>
           ))}
         </ul>

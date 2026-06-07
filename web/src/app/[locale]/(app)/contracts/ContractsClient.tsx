@@ -1,15 +1,25 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
-import { terminateContract } from "@/lib/actions";
+import {
+  FilterBar,
+  FilterClearButton,
+  FilterResultMeta,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/EntityFilterBar";
+import { usePermissions } from "@/components/PermissionsProvider";
+import { deleteContract, terminateContract } from "@/lib/actions";
+import { matchesSearch, uniqueSorted } from "@/lib/filters";
 import { formatDate, formatSAR } from "@/lib/format";
 import {
   localized,
   type Building,
   type Contract,
+  type Owner,
   type Tenant,
   type Unit,
 } from "@/lib/types";
@@ -23,53 +33,133 @@ export function ContractsClient({
   units,
   tenants,
   buildings,
+  owners,
   locale,
 }: {
   contracts: Contract[];
   units: Unit[];
   tenants: Tenant[];
   buildings: Building[];
+  owners: Owner[];
   locale: string;
 }) {
   const t = useTranslations("contractsPage");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const tCurrency = useTranslations("currency");
+  const { can } = usePermissions();
+  const canDelete = can("contracts", "delete");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [buildingFilter, setBuildingFilter] = useState("all");
+  const [tenantFilter, setTenantFilter] = useState("all");
+  const [contractTypeFilter, setContractTypeFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [cycleFilter, setCycleFilter] = useState("all");
+  const [ejarFilter, setEjarFilter] = useState("all");
+  const [endingSoonFilter, setEndingSoonFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
   const [terminating, setTerminating] = useState<Contract | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Contract | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const unitOf = (id: number) => units.find((u) => u.id === id);
   const tenantOf = (id: number) => tenants.find((tn) => tn.id === id);
   const buildingOf = (id: number) => buildings.find((b) => b.id === id);
+  const ownerOf = (id: number) => owners.find((o) => o.id === id);
+
+  const branches = useMemo(
+    () =>
+      uniqueSorted([
+        ...contracts.map((c) => c.branch),
+        ...buildings.map((b) => b.branch),
+      ]),
+    [contracts, buildings],
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const endingSoonCutoff = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 
   const filtered = contracts.filter((c) => {
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
+
     const u = unitOf(c.unit_id);
     const tn = tenantOf(c.tenant_id);
     const b = u ? buildingOf(u.building_id) : null;
-    const haystack = [
-      c.contract_number,
-      tn?.name,
-      tn?.name_en,
-      tn?.name_ar,
-      tn?.phone,
-      u?.name,
-      u?.number,
-      b?.name,
-      b?.name_en,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(q);
+    const owner = b ? ownerOf(b.owner_id) : null;
+
+    if (
+      !matchesSearch(
+        [
+          c.contract_number,
+          c.ejar_contract_number,
+          c.branch,
+          tn?.name,
+          tn?.name_en,
+          tn?.name_ar,
+          tn?.phone,
+          u?.name,
+          u?.number,
+          b?.name,
+          b?.name_en,
+          owner?.name,
+        ],
+        search,
+      )
+    ) {
+      return false;
+    }
+
+    if (ownerFilter !== "all" && b?.owner_id !== Number(ownerFilter)) return false;
+    if (buildingFilter !== "all" && u?.building_id !== Number(buildingFilter)) return false;
+    if (tenantFilter !== "all" && c.tenant_id !== Number(tenantFilter)) return false;
+    if (contractTypeFilter !== "all" && c.contract_type !== contractTypeFilter) return false;
+
+    const branch = c.branch ?? b?.branch ?? null;
+    if (branchFilter !== "all" && branch !== branchFilter) return false;
+
+    if (cycleFilter !== "all" && String(c.payment_cycle) !== cycleFilter) return false;
+
+    const ejar = c.ejar_status ?? "none";
+    if (ejarFilter !== "all" && ejar !== ejarFilter) return false;
+
+    if (endingSoonFilter === "soon") {
+      if (c.status !== "active" || c.end_date < today || c.end_date > endingSoonCutoff) {
+        return false;
+      }
+    }
+
+    return true;
   });
+
+  const filtersActive =
+    Boolean(search) ||
+    statusFilter !== "all" ||
+    ownerFilter !== "all" ||
+    buildingFilter !== "all" ||
+    tenantFilter !== "all" ||
+    contractTypeFilter !== "all" ||
+    branchFilter !== "all" ||
+    cycleFilter !== "all" ||
+    ejarFilter !== "all" ||
+    endingSoonFilter !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setOwnerFilter("all");
+    setBuildingFilter("all");
+    setTenantFilter("all");
+    setContractTypeFilter("all");
+    setBranchFilter("all");
+    setCycleFilter("all");
+    setEjarFilter("all");
+    setEndingSoonFilter("all");
+  };
 
   const totals = {
     total: contracts.length,
@@ -94,6 +184,20 @@ export function ContractsClient({
         return;
       }
       setTerminating(null);
+    });
+  };
+
+  const doDelete = () => {
+    if (!confirmDel) return;
+    setError(null);
+    const target = confirmDel;
+    start(async () => {
+      const res = await deleteContract(target.id);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setConfirmDel(null);
     });
   };
 
@@ -132,27 +236,129 @@ export function ContractsClient({
         />
       </div>
 
-      <div className="filter-bar">
-        <div className="search-input">
-          <span className="ms">search</span>
-          <input
-            placeholder={tCommon("search") + "…"}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          className="select"
+      <FilterBar
+        trailing={
+          <>
+            <FilterResultMeta
+              showing={filtered.length}
+              total={contracts.length}
+              label={tCommon("showingResults")}
+            />
+            {filtersActive && (
+              <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
+            )}
+          </>
+        }
+      >
+        <FilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={tCommon("search") + "…"}
+        />
+        <FilterSelect
+          label={tCommon("status")}
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          style={{ height: 36, maxWidth: 180 }}
-        >
-          <option value="all">{tCommon("all")}</option>
-          <option value="active">{t("active")}</option>
-          <option value="expired">{t("expired")}</option>
-          <option value="terminated">{t("terminated")}</option>
-        </select>
-      </div>
+          onChange={(v) => setStatusFilter(v as StatusFilter)}
+          options={[
+            { value: "all", label: tCommon("all") },
+            { value: "active", label: t("active") },
+            { value: "expired", label: t("expired") },
+            { value: "terminated", label: t("terminated") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("owner")}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+          options={[
+            { value: "all", label: tFilters("allOwners") },
+            ...owners.map((o) => ({
+              value: String(o.id),
+              label: localized(o, "name", locale),
+            })),
+          ]}
+          maxWidth={220}
+        />
+        <FilterSelect
+          label={tFilters("building")}
+          value={buildingFilter}
+          onChange={setBuildingFilter}
+          options={[
+            { value: "all", label: tFilters("allBuildings") },
+            ...buildings.map((b) => ({
+              value: String(b.id),
+              label: localized(b, "name", locale),
+            })),
+          ]}
+          maxWidth={220}
+        />
+        <FilterSelect
+          label={tFilters("tenant")}
+          value={tenantFilter}
+          onChange={setTenantFilter}
+          options={[
+            { value: "all", label: tFilters("allTenants") },
+            ...tenants.map((tn) => ({
+              value: String(tn.id),
+              label: localized(tn, "name", locale),
+            })),
+          ]}
+          maxWidth={220}
+        />
+        <FilterSelect
+          label={tFilters("contractType")}
+          value={contractTypeFilter}
+          onChange={setContractTypeFilter}
+          options={[
+            { value: "all", label: tFilters("allTypes") },
+            { value: "residential", label: t("contractTypes.residential") },
+            { value: "commercial", label: t("contractTypes.commercial") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("branch")}
+          value={branchFilter}
+          onChange={setBranchFilter}
+          options={[
+            { value: "all", label: tFilters("allBranches") },
+            ...branches.map((b) => ({ value: b, label: b })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("paymentCycle")}
+          value={cycleFilter}
+          onChange={setCycleFilter}
+          options={[
+            { value: "all", label: tFilters("allTypes") },
+            { value: "1", label: "1m" },
+            { value: "3", label: "3m" },
+            { value: "6", label: "6m" },
+            { value: "12", label: "12m" },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("ejarStatus")}
+          value={ejarFilter}
+          onChange={setEjarFilter}
+          options={[
+            { value: "all", label: tFilters("ejarAll") },
+            { value: "none", label: tFilters("ejarNone") },
+            { value: "pending", label: tFilters("ejarPending") },
+            { value: "registered", label: tFilters("ejarRegistered") },
+            { value: "cancelled", label: tFilters("ejarCancelled") },
+            { value: "failed", label: tFilters("ejarFailed") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("endingSoon")}
+          value={endingSoonFilter}
+          onChange={setEndingSoonFilter}
+          options={[
+            { value: "all", label: tFilters("endingSoonAll") },
+            { value: "soon", label: tFilters("endingSoonOnly") },
+          ]}
+        />
+      </FilterBar>
 
       {error && (
         <div className="badge badge-danger" style={{ padding: "8px 12px", fontSize: 12, marginBottom: 12 }}>
@@ -171,6 +377,7 @@ export function ContractsClient({
                 <th>{t("startDate")}</th>
                 <th>{t("endDate")}</th>
                 <th className="num">{t("rent")}</th>
+                <th className="num">{t("contractTotal")}</th>
                 <th>{t("cycle")}</th>
                 <th>{tCommon("status")}</th>
                 <th></th>
@@ -204,6 +411,9 @@ export function ContractsClient({
                     <td className="num mono" style={{ fontSize: 12 }}>
                       {formatSAR(c.rent_amount, locale)}
                     </td>
+                    <td className="num mono" style={{ fontSize: 12, fontWeight: 600 }}>
+                      {formatSAR(c.total_amount || c.total_rent_amount, locale)}
+                    </td>
                     <td>
                       <span className="badge">{c.payment_cycle}m</span>
                     </td>
@@ -236,7 +446,7 @@ export function ContractsClient({
                         >
                           <span className="ms ms-sm">edit</span>
                         </button>
-                        {c.status === "active" && (
+                        {canDelete && c.status === "active" && (
                           <button
                             className="btn btn-sm btn-danger"
                             onClick={() => setTerminating(c)}
@@ -244,6 +454,15 @@ export function ContractsClient({
                           >
                             <span className="ms ms-sm">cancel</span>
                             {t("terminate")}
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            className="icon-btn"
+                            title={tCommon("delete")}
+                            onClick={() => setConfirmDel(c)}
+                          >
+                            <span className="ms ms-sm">delete</span>
                           </button>
                         )}
                       </div>
@@ -289,6 +508,20 @@ export function ContractsClient({
         title={t("terminateTitle")}
         message={error ?? t("terminateMessage", { number: terminating?.contract_number ?? "" })}
         confirmLabel={t("terminate")}
+        cancelLabel={tCommon("cancel")}
+        destructive
+        loading={pending}
+      />
+      <ConfirmDialog
+        open={Boolean(confirmDel)}
+        onClose={() => {
+          setConfirmDel(null);
+          setError(null);
+        }}
+        onConfirm={doDelete}
+        title={t("deleteTitle")}
+        message={error ?? t("deleteMessage", { number: confirmDel?.contract_number ?? "" })}
+        confirmLabel={tCommon("delete")}
         cancelLabel={tCommon("cancel")}
         destructive
         loading={pending}

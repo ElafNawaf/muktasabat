@@ -7,10 +7,11 @@ from typing import Annotated
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from api.config import get_settings
 from api.deps import AdminUser, CurrentUser, DbSession
+from api.permissions import Perm
 from api.email import send_email_verification, send_password_reset_email, send_user_invite
 from api.models import AuditLog, User
 from api.schemas.auth import (
@@ -253,6 +254,29 @@ def toggle_active(user_id: int, db: DbSession, _admin: AdminUser):
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.delete("/admin/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: DbSession, actor: Perm("users", "delete")):
+    if user_id == actor.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot delete your own account")
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if user.role == "admin":
+        admin_count = db.scalar(
+            select(func.count()).select_from(User).where(
+                User.role == "admin",
+                User.is_active_user.is_(True),
+            )
+        )
+        if admin_count is not None and admin_count <= 1:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Cannot delete the last active administrator",
+            )
+    user.is_active_user = False
+    db.commit()
 
 
 @router.post(

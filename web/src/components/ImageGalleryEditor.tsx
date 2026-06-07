@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 
 import type { EntityImage } from "@/lib/types";
 
+import { usePermissions } from "./PermissionsProvider";
 import { Modal } from "./Modal";
 
 type Kind = "buildings" | "units";
@@ -31,6 +32,8 @@ export function ImageGalleryEditor({
   const t = useTranslations("imageGallery");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const { can } = usePermissions();
+  const canDelete = can("properties", "delete");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -168,25 +171,27 @@ export function ImageGalleryEditor({
                 alt={img.caption ?? ""}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={() => remove(img)}
-                disabled={busy === `del-${img.id}`}
-                title={tCommon("delete")}
-                style={{
-                  position: "absolute",
-                  top: 6,
-                  insetInlineEnd: 6,
-                  background: "rgba(0,0,0,0.55)",
-                  color: "#fff",
-                  borderColor: "transparent",
-                }}
-              >
-                <span className="ms ms-sm">
-                  {busy === `del-${img.id}` ? "progress_activity" : "delete"}
-                </span>
-              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => remove(img)}
+                  disabled={busy === `del-${img.id}`}
+                  title={tCommon("delete")}
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    insetInlineEnd: 6,
+                    background: "rgba(0,0,0,0.55)",
+                    color: "#fff",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <span className="ms ms-sm">
+                    {busy === `del-${img.id}` ? "progress_activity" : "delete"}
+                  </span>
+                </button>
+              )}
             </div>
           ))}
         </div>

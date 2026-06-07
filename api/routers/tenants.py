@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from api.deps import CurrentUser, DbSession
+from api.permissions import Perm
 from api.models import Tenant
 from api.schemas.tenant import TenantCreate, TenantRead, TenantUpdate
 
@@ -48,7 +49,7 @@ def update_tenant(
 
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_tenant(tenant_id: int, db: DbSession, _user: CurrentUser):
+def delete_tenant(tenant_id: int, db: DbSession, _user: Perm("tenants", "delete")):
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tenant not found")

@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 
 from api.deps import CurrentUser, DbSession
+from api.permissions import Perm
 from api.models import Building, Unit, UnitImage
 from api.schemas.unit import UnitCreate, UnitImageRead, UnitRead, UnitUpdate
 from api.storage import StorageNotConfigured, delete_object, upload_image
@@ -58,7 +59,7 @@ def update_unit(unit_id: int, payload: UnitUpdate, db: DbSession, _user: Current
 
 
 @router.delete("/{unit_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_unit(unit_id: int, db: DbSession, _user: CurrentUser):
+def delete_unit(unit_id: int, db: DbSession, _user: Perm("properties", "delete")):
     unit = db.get(Unit, unit_id)
     if unit is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unit not found")
@@ -116,7 +117,7 @@ async def upload_unit_image(
     "/{unit_id}/images/{image_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def delete_unit_image(unit_id: int, image_id: int, db: DbSession, _user: CurrentUser):
+def delete_unit_image(unit_id: int, image_id: int, db: DbSession, _user: Perm("properties", "delete")):
     image = db.get(UnitImage, image_id)
     if image is None or image.unit_id != unit_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")

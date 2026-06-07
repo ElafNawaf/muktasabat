@@ -6,6 +6,7 @@ from sqlalchemy import delete, select
 
 from api.deps import CurrentUser, DbSession
 from api.models import Payment, PaymentSplit
+from api.permissions import Perm
 from api.schemas.payment import (
     PaymentMarkPaidRequest,
     PaymentRead,
@@ -81,14 +82,25 @@ def update_payment(
     return payment
 
 
+@router.delete("/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_payment(payment_id: int, db: DbSession, _user: Perm("payments", "delete")):
+    payment = db.get(Payment, payment_id)
+    if payment is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+    db.execute(delete(PaymentSplit).where(PaymentSplit.payment_id == payment.id))
+    db.delete(payment)
+    db.commit()
+
+
 def _create_payment_splits(db, payment: Payment) -> None:
     """Auto-split a payment into owner share, management fee, agent fee, ejar fee."""
     db.execute(delete(PaymentSplit).where(PaymentSplit.payment_id == payment.id))
 
     unit = payment.contract.unit
+    contract = payment.contract
     amount = payment.amount
     mgmt_pct = unit.management_percentage or 0
-    agent_pct = unit.agent_percentage or 0
+    agent_pct = contract.agent_percentage if contract.agent_percentage else (unit.agent_percentage or 0)
 
     mgmt_fee = round(amount * mgmt_pct / 100, 2)
     agent_fee = round(amount * agent_pct / 100, 2)

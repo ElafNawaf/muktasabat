@@ -12,13 +12,17 @@ from api.database import (
     SessionLocal,
     engine,
     ensure_building_assignee_column,
+    ensure_building_extended_columns,
     ensure_building_location_columns,
+    ensure_contract_extended_columns,
+    ensure_owner_agent_id_column,
     ensure_user_email_verification_columns,
     ensure_user_password_reset_columns,
 )
 from api.logging_config import setup_logging
 from api.request_logging import RequestLoggingMiddleware
 from api.routers import (
+    agents,
     analytics,
     auth,
     buildings,
@@ -51,6 +55,9 @@ async def lifespan(app: FastAPI):
     ensure_user_email_verification_columns(engine)
     ensure_building_assignee_column(engine)
     ensure_building_location_columns(engine)
+    ensure_building_extended_columns(engine)
+    ensure_contract_extended_columns(engine)
+    ensure_owner_agent_id_column(engine)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -142,6 +149,7 @@ def health():
 API_V1 = "/api/v1"
 app.include_router(auth.router, prefix=API_V1)
 app.include_router(owners.router, prefix=API_V1)
+app.include_router(agents.router, prefix=API_V1)
 app.include_router(buildings.router, prefix=API_V1)
 app.include_router(units.router, prefix=API_V1)
 app.include_router(tenants.router, prefix=API_V1)

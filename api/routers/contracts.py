@@ -5,8 +5,10 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from api.contract_totals import compute_contract_totals
 from api.deps import CurrentUser, DbSession
 from api.models import Contract, ContractAttachment, Owner, Payment, Tenant, Unit
+from api.permissions import Perm
 from api.schemas.contract import (
     ContractAttachmentRead,
     ContractCreateRequest,
@@ -17,6 +19,19 @@ from api.services.ejar import EjarContractPayload, get_ejar_service
 from api.storage import StorageNotConfigured, delete_object, upload_document
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
+
+
+def _apply_contract_totals(contract: Contract, payload) -> None:
+    rate, vat_amount, total_amount = compute_contract_totals(
+        total_rent_amount=payload.total_rent_amount,
+        insurance_amount=payload.insurance_amount,
+        electricity_amount=payload.electricity_amount,
+        water_amount=payload.water_amount,
+        vat_rate=payload.vat_rate,
+    )
+    contract.vat_rate = rate
+    contract.vat_amount = vat_amount
+    contract.total_amount = total_amount
 
 
 @router.get("", response_model=list[ContractRead])
@@ -72,10 +87,16 @@ def create_contract(
         electricity_split_percentage=payload.electricity_split_percentage,
         water_on_tenant=payload.water_on_tenant,
         water_split_percentage=payload.water_split_percentage,
+        electricity_amount=payload.electricity_amount,
+        water_amount=payload.water_amount,
+        electricity_meter_number=payload.electricity_meter_number,
+        water_meter_number=payload.water_meter_number,
         services_amount=payload.services_amount,
         insurance_amount=payload.insurance_amount,
+        agent_percentage=payload.agent_percentage,
         notes=payload.notes,
     )
+    _apply_contract_totals(contract, payload)
     db.add(contract)
     unit.is_available = False
     db.flush()
@@ -116,17 +137,22 @@ def update_contract(
     contract.electricity_split_percentage = payload.electricity_split_percentage
     contract.water_on_tenant = payload.water_on_tenant
     contract.water_split_percentage = payload.water_split_percentage
+    contract.electricity_amount = payload.electricity_amount
+    contract.water_amount = payload.water_amount
+    contract.electricity_meter_number = payload.electricity_meter_number
+    contract.water_meter_number = payload.water_meter_number
     contract.services_amount = payload.services_amount
     contract.insurance_amount = payload.insurance_amount
     contract.status = payload.status
     contract.notes = payload.notes
+    _apply_contract_totals(contract, payload)
     db.commit()
     db.refresh(contract)
     return contract
 
 
 @router.post("/{contract_id}/terminate", response_model=ContractRead)
-def terminate_contract(contract_id: int, db: DbSession, _user: CurrentUser):
+def terminate_contract(contract_id: int, db: DbSession, _user: Perm("contracts", "delete")):
     contract = db.get(Contract, contract_id)
     if contract is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
@@ -138,6 +164,22 @@ def terminate_contract(contract_id: int, db: DbSession, _user: CurrentUser):
     db.commit()
     db.refresh(contract)
     return contract
+
+
+@router.delete("/{contract_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_contract(contract_id: int, db: DbSession, _user: Perm("contracts", "delete")):
+    contract = db.get(Contract, contract_id)
+    if contract is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+
+    keys = [a.object_key for a in contract.attachments if a.object_key]
+    unit = db.get(Unit, contract.unit_id)
+    if unit and contract.status == "active":
+        unit.is_available = True
+    db.delete(contract)
+    db.commit()
+    for key in keys:
+        delete_object(key)
 
 
 # ---------- Attachments (مرفقات العقد) ----------
@@ -193,7 +235,7 @@ def delete_contract_attachment(
     contract_id: int,
     attachment_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("contracts", "delete"),
 ):
     attachment = db.get(ContractAttachment, attachment_id)
     if attachment is None or attachment.contract_id != contract_id:

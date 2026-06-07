@@ -22,7 +22,10 @@ export function formatPercent(value: number, locale: string = "en"): string {
  */
 export function formatDate(iso: string, locale: string = "en"): string {
   if (!iso) return "—";
-  const lc = locale === "ar" ? "ar-SA" : "en-US";
+  // ar-SA alone uses the Hijri calendar in many browsers but Gregorian in Node,
+  // which causes hydration mismatches. Match the prototype: force Gregorian + Latin digits.
+  const lc =
+    locale === "ar" ? "ar-SA-u-ca-gregory-nu-latn" : "en-US";
   return new Intl.DateTimeFormat(lc, {
     year: "numeric",
     month: "short",

@@ -84,8 +84,8 @@ class Employee(Base):
     owners: Mapped[list["Owner"]] = relationship(secondary=employee_owners, back_populates="employees")
 
 
-class Owner(Base):
-    __tablename__ = "owners"
+class Agent(Base):
+    __tablename__ = "agents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
@@ -101,6 +101,38 @@ class Owner(Base):
     notes_ar: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    owners: Mapped[list["Owner"]] = relationship(back_populates="agent")
+
+
+class Owner(Base):
+    __tablename__ = "owners"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agent_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("agents.id", ondelete="SET NULL"), nullable=True
+    )
+    # individual | company
+    owner_type: Mapped[str] = mapped_column(String(20), default="individual", nullable=False)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    name_en: Mapped[Optional[str]] = mapped_column(String(150))
+    name_ar: Mapped[Optional[str]] = mapped_column(String(150))
+    phone: Mapped[Optional[str]] = mapped_column(String(20))
+    email: Mapped[Optional[str]] = mapped_column(String(120))
+    national_id: Mapped[Optional[str]] = mapped_column(String(20))
+    date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # Commercial registration — company owners only
+    cr_number: Mapped[Optional[str]] = mapped_column(String(20))
+    representative_national_id: Mapped[Optional[str]] = mapped_column(String(20))
+    representative_date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    representative_phone: Mapped[Optional[str]] = mapped_column(String(20))
+    bank_name: Mapped[Optional[str]] = mapped_column(String(100))
+    iban: Mapped[Optional[str]] = mapped_column(String(34))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    notes_en: Mapped[Optional[str]] = mapped_column(Text)
+    notes_ar: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    agent: Mapped[Optional["Agent"]] = relationship(back_populates="owners")
     buildings: Mapped[list["Building"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
@@ -286,10 +318,25 @@ class Contract(Base):
     water_on_tenant: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # تقسيم فاتورة الماء
     water_split_percentage: Mapped[Optional[float]] = mapped_column(Float)
+    # مبلغ الكهرباء — electricity bill amount (SAR)
+    electricity_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    # مبلغ الماء — water bill amount (SAR)
+    water_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    # رقم عداد الكهرباء — electricity meter number
+    electricity_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
+    # رقم عداد المياه — water meter number
+    water_meter_number: Mapped[Optional[str]] = mapped_column(String(50))
     # خدمات — services fee amount
     services_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     # التأمين — security deposit / insurance amount
     insurance_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    # VAT — ضريبة القيمة المضافة
+    vat_rate: Mapped[float] = mapped_column(Float, default=15, nullable=False)
+    vat_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    # إجمالي العقد — rent + insurance + utilities + VAT
+    total_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
+    # نسبة الوسيط — agent commission %
+    agent_percentage: Mapped[float] = mapped_column(Float, default=0, nullable=False)
 
     status: Mapped[str] = mapped_column(String(20), default="active")
     notes: Mapped[Optional[str]] = mapped_column(Text)

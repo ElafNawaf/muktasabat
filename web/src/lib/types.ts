@@ -3,7 +3,7 @@
  * Mirror api/schemas/*.py — keep in sync when those change.
  */
 
-export type Owner = {
+export type Agent = {
   id: number;
   name: string;
   name_en: string | null;
@@ -11,6 +11,31 @@ export type Owner = {
   phone: string | null;
   email: string | null;
   national_id: string | null;
+  bank_name: string | null;
+  iban: string | null;
+  notes: string | null;
+  notes_en: string | null;
+  notes_ar: string | null;
+  created_at: string;
+};
+
+export type OwnerType = "individual" | "company";
+
+export type Owner = {
+  id: number;
+  agent_id: number | null;
+  owner_type: OwnerType;
+  name: string;
+  name_en: string | null;
+  name_ar: string | null;
+  phone: string | null;
+  email: string | null;
+  national_id: string | null;
+  date_of_birth: string | null;
+  cr_number: string | null;
+  representative_national_id: string | null;
+  representative_date_of_birth: string | null;
+  representative_phone: string | null;
   bank_name: string | null;
   iban: string | null;
   notes: string | null;
@@ -144,10 +169,20 @@ export type Contract = {
   electricity_split_percentage: number | null;
   water_on_tenant: boolean;
   water_split_percentage: number | null;
+  electricity_amount: number;
+  water_amount: number;
+  electricity_meter_number: string | null;
+  water_meter_number: string | null;
   services_amount: number;
   insurance_amount: number;
+  vat_rate: number;
+  vat_amount: number;
+  total_amount: number;
+  agent_percentage: number;
   status: "active" | "expired" | "terminated";
   notes: string | null;
+  ejar_status: string | null;
+  ejar_registered_at: string | null;
   created_at: string;
   attachments: EntityDocument[];
 };
@@ -158,6 +193,7 @@ export type ModuleId =
   | "contracts"
   | "payments"
   | "owners"
+  | "agents"
   | "tenants"
   | "expenses"
   | "users";
@@ -178,6 +214,7 @@ export const MODULE_IDS: ModuleId[] = [
   "contracts",
   "payments",
   "owners",
+  "agents",
   "tenants",
   "expenses",
   "users",

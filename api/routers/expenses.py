@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
 from api.deps import CurrentUser, DbSession
+from api.permissions import Perm
 from api.models import Expense
 from api.schemas.expense import ExpenseCategory, ExpenseCreate, ExpenseRead
 
@@ -55,7 +56,7 @@ def update_expense(
 
 
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_expense(expense_id: int, db: DbSession, _user: CurrentUser):
+def delete_expense(expense_id: int, db: DbSession, _user: Perm("expenses", "delete")):
     expense = db.get(Expense, expense_id)
     if expense is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Expense not found")

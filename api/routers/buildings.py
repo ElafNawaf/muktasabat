@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from api.deps import CurrentUser, DbSession
+from api.permissions import Perm
 from api.models import Building, BuildingDocument, BuildingImage, Owner, User
 from api.schemas.building import (
     BuildingCreate,
@@ -68,7 +69,7 @@ def update_building(
 
 
 @router.delete("/{building_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_building(building_id: int, db: DbSession, _user: CurrentUser):
+def delete_building(building_id: int, db: DbSession, _user: Perm("properties", "delete")):
     building = db.get(Building, building_id)
     if building is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Building not found")
@@ -131,7 +132,7 @@ def delete_building_image(
     building_id: int,
     image_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("properties", "delete"),
 ):
     image = db.get(BuildingImage, image_id)
     if image is None or image.building_id != building_id:
@@ -195,7 +196,7 @@ def delete_building_document(
     building_id: int,
     document_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("properties", "delete"),
 ):
     document = db.get(BuildingDocument, document_id)
     if document is None or document.building_id != building_id:

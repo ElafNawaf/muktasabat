@@ -1,12 +1,22 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
+import {
+  FilterBar,
+  FilterClearButton,
+  FilterResultMeta,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/EntityFilterBar";
 import { ImageGalleryEditor } from "@/components/ImageGalleryEditor";
 import { ConfirmDialog } from "@/components/Modal";
+import { usePermissions } from "@/components/PermissionsProvider";
 import { BuildingArt, MapPreview, UnitArt } from "@/components/PropertyArt";
 import { deleteBuilding, deleteUnit } from "@/lib/actions";
+import { ALL_BUILDING_TYPES, BUILDING_TYPE_ICONS, RESIDENCE_TYPES } from "@/lib/building-types";
+import { localizedCity, localizedDistrict, uniqueSorted } from "@/lib/filters";
 import { formatSAR } from "@/lib/format";
 import { buildingMeta, type BuildingMeta } from "@/lib/palette";
 import {
@@ -53,13 +63,26 @@ export function PropertiesClient({
 }) {
   const t = useTranslations("properties");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
+  const tBuildingForm = useTranslations("buildingForm");
+  const { can } = usePermissions();
+  const canDelete = can("properties", "delete");
   const tCurrency = useTranslations("currency");
 
   const [openBuildings, setOpenBuildings] = useState<Set<number>>(() => new Set());
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<Lightbox | null>(null);
   const [search, setSearch] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState<"all" | number>("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const [districtFilter, setDistrictFilter] = useState("all");
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState("all");
+  const [residenceTypeFilter, setResidenceTypeFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [assigneeFilter, setAssigneeFilter] = useState("all");
+  const [occupancyFilter, setOccupancyFilter] = useState("all");
+  const [unitStatusFilter, setUnitStatusFilter] = useState("all");
+  const [unitTypeFilter, setUnitTypeFilter] = useState("all");
   const [buildingForm, setBuildingForm] = useState<{ open: boolean; editing: Building | null; defaultOwnerId?: number }>({
     open: false,
     editing: null,
@@ -78,23 +101,167 @@ export function PropertiesClient({
     | null
   >(null);
 
-  const matchesSearch = (b: Building): boolean => {
-    if (!search) return true;
+  const matchesSearchBuilding = (b: Building): boolean => {
+    if (!search.trim()) return true;
     const q = search.toLowerCase();
-    const inB = [b.name, b.name_en, b.name_ar, b.address, b.city, b.district]
+    const inB = [
+      b.name,
+      b.name_en,
+      b.name_ar,
+      b.address,
+      b.city,
+      b.district,
+      b.building_code,
+      b.branch,
+      b.street,
+    ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase()
       .includes(q);
     if (inB) return true;
-    const us = units.filter((u) => u.building_id === b.id);
-    return us.some((u) =>
-      [u.name, u.number, u.unit_type].filter(Boolean).join(" ").toLowerCase().includes(q),
-    );
+    return units
+      .filter((u) => u.building_id === b.id)
+      .some((u) =>
+        [u.name, u.number, u.unit_type].filter(Boolean).join(" ").toLowerCase().includes(q),
+      );
   };
-  const matchesOwner = (b: Building): boolean =>
-    ownerFilter === "all" ? true : b.owner_id === ownerFilter;
-  const visibleBuildings = buildings.filter((b) => matchesOwner(b) && matchesSearch(b));
+
+  const buildingOccupancy = (b: Building) => {
+    const us = units.filter((u) => u.building_id === b.id);
+    if (us.length === 0) return { pct: 0, count: 0, available: 0 };
+    const occupied = us.filter((u) => !u.is_available).length;
+    return {
+      pct: Math.round((occupied / us.length) * 100),
+      count: us.length,
+      available: us.filter((u) => u.is_available).length,
+    };
+  };
+
+  const cities = useMemo(
+    () =>
+      uniqueSorted(
+        buildings.flatMap((b) => [localizedCity(b, locale), b.city, b.city_en, b.city_ar]),
+      ),
+    [buildings, locale],
+  );
+
+  const districts = useMemo(() => {
+    const pool =
+      cityFilter === "all"
+        ? buildings
+        : buildings.filter((b) => {
+            const city = localizedCity(b, locale) ?? b.city;
+            return city === cityFilter || b.city === cityFilter;
+          });
+    return uniqueSorted(
+      pool.flatMap((b) => [localizedDistrict(b, locale), b.district, b.district_en, b.district_ar]),
+    );
+  }, [buildings, cityFilter, locale]);
+
+  const branches = useMemo(() => uniqueSorted(buildings.map((b) => b.branch)), [buildings]);
+
+  const unitTypes = useMemo(
+    () => uniqueSorted(units.map((u) => u.unit_type)),
+    [units],
+  );
+
+  const visibleBuildings = useMemo(() => {
+    return buildings.filter((b) => {
+      if (!matchesSearchBuilding(b)) return false;
+      if (ownerFilter !== "all" && b.owner_id !== Number(ownerFilter)) return false;
+
+      const city = localizedCity(b, locale) ?? b.city;
+      if (cityFilter !== "all" && city !== cityFilter && b.city !== cityFilter) return false;
+
+      const district = localizedDistrict(b, locale) ?? b.district;
+      if (
+        districtFilter !== "all" &&
+        district !== districtFilter &&
+        b.district !== districtFilter
+      ) {
+        return false;
+      }
+
+      if (propertyTypeFilter !== "all" && b.property_type !== propertyTypeFilter) return false;
+      if (residenceTypeFilter !== "all" && b.residence_type !== residenceTypeFilter) return false;
+      if (branchFilter !== "all" && b.branch !== branchFilter) return false;
+
+      if (assigneeFilter === "none" && b.assignee_id != null) return false;
+      if (assigneeFilter !== "all" && assigneeFilter !== "none") {
+        if (b.assignee_id !== Number(assigneeFilter)) return false;
+      }
+
+      const occ = buildingOccupancy(b);
+      if (occupancyFilter === "no_units" && occ.count > 0) return false;
+      if (occupancyFilter !== "all" && occupancyFilter !== "no_units" && occ.count === 0)
+        return false;
+      if (occupancyFilter === "high" && occ.pct < 80) return false;
+      if (occupancyFilter === "medium" && (occ.pct < 40 || occ.pct >= 80)) return false;
+      if (occupancyFilter === "low" && (occ.pct >= 40 || occ.pct === 0)) return false;
+      if (occupancyFilter === "vacant" && occ.pct > 0) return false;
+
+      if (unitStatusFilter === "available" && occ.available === 0) return false;
+      if (unitStatusFilter === "full" && (occ.count === 0 || occ.available > 0)) return false;
+
+      if (unitTypeFilter !== "all") {
+        const hasType = units.some(
+          (u) => u.building_id === b.id && (u.unit_type ?? "apartment") === unitTypeFilter,
+        );
+        if (!hasType) return false;
+      }
+
+      return true;
+    });
+  }, [
+    buildings,
+    units,
+    search,
+    ownerFilter,
+    cityFilter,
+    districtFilter,
+    propertyTypeFilter,
+    residenceTypeFilter,
+    branchFilter,
+    assigneeFilter,
+    occupancyFilter,
+    unitStatusFilter,
+    unitTypeFilter,
+    locale,
+  ]);
+
+  const filtersActive =
+    Boolean(search) ||
+    ownerFilter !== "all" ||
+    cityFilter !== "all" ||
+    districtFilter !== "all" ||
+    propertyTypeFilter !== "all" ||
+    residenceTypeFilter !== "all" ||
+    branchFilter !== "all" ||
+    assigneeFilter !== "all" ||
+    occupancyFilter !== "all" ||
+    unitStatusFilter !== "all" ||
+    unitTypeFilter !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setOwnerFilter("all");
+    setCityFilter("all");
+    setDistrictFilter("all");
+    setPropertyTypeFilter("all");
+    setResidenceTypeFilter("all");
+    setBranchFilter("all");
+    setAssigneeFilter("all");
+    setOccupancyFilter("all");
+    setUnitStatusFilter("all");
+    setUnitTypeFilter("all");
+  };
+
+  const visibleUnitsOf = (buildingId: number) => {
+    const us = units.filter((u) => u.building_id === buildingId);
+    if (unitTypeFilter === "all") return us;
+    return us.filter((u) => (u.unit_type ?? "apartment") === unitTypeFilter);
+  };
 
   const doDeleteBuilding = () => {
     if (!confirmDelBuilding) return;
@@ -136,14 +303,18 @@ export function PropertiesClient({
   const ownerOf = (id: number) => owners.find((o) => o.id === id);
   const userOf = (id: number | null | undefined) =>
     id == null ? null : users.find((u) => u.id === id) ?? null;
-  const unitsOf = (bid: number) => units.filter((u) => u.building_id === bid);
   const activeContractFor = (uid: number) =>
     contracts.find((c) => c.unit_id === uid && c.status === "active");
   const tenantOf = (id: number) => tenants.find((tn) => tn.id === id);
 
   const typeLabel = (type: string | null) => {
-    const t = type ?? "apartment";
-    return UNIT_TYPE_LABELS[t]?.[locale === "ar" ? "ar" : "en"] ?? t;
+    const key = type ?? "apartment";
+    return UNIT_TYPE_LABELS[key]?.[locale === "ar" ? "ar" : "en"] ?? key;
+  };
+
+  const buildingTypeLabel = (type: string | null | undefined) => {
+    if (!type) return null;
+    return tBuildingForm(`propertyTypes.${type}` as "propertyTypes.apartment_building");
   };
 
   if (buildings.length === 0) {
@@ -197,31 +368,6 @@ export function PropertiesClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <div className="search-input">
-            <span className="ms">search</span>
-            <input
-              placeholder={tCommon("search") + "…"}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <select
-            className="select"
-            aria-label={t("filterByOwner")}
-            title={t("filterByOwner")}
-            value={ownerFilter === "all" ? "all" : String(ownerFilter)}
-            onChange={(e) =>
-              setOwnerFilter(e.target.value === "all" ? "all" : Number(e.target.value))
-            }
-            style={{ height: 36, maxWidth: 220 }}
-          >
-            <option value="all">{t("allOwners")}</option>
-            {owners.map((o) => (
-              <option key={o.id} value={o.id}>
-                {localized(o, "name", locale)}
-              </option>
-            ))}
-          </select>
           <button
             className="btn btn-primary"
             onClick={() => setBuildingForm({ open: true, editing: null })}
@@ -231,11 +377,152 @@ export function PropertiesClient({
         </div>
       </div>
 
+      <FilterBar
+        trailing={
+          <>
+            <FilterResultMeta
+              showing={visibleBuildings.length}
+              total={buildings.length}
+              label={tCommon("showingResults")}
+            />
+            {filtersActive && (
+              <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
+            )}
+          </>
+        }
+      >
+        <FilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={tCommon("search") + "…"}
+        />
+        <FilterSelect
+          label={tFilters("owner")}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+          options={[
+            { value: "all", label: tFilters("allOwners") },
+            ...owners.map((o) => ({
+              value: String(o.id),
+              label: localized(o, "name", locale),
+            })),
+          ]}
+          maxWidth={220}
+        />
+        <FilterSelect
+          label={tFilters("city")}
+          value={cityFilter}
+          onChange={(v) => {
+            setCityFilter(v);
+            setDistrictFilter("all");
+          }}
+          options={[
+            { value: "all", label: tFilters("allCities") },
+            ...cities.map((c) => ({ value: c, label: c })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("district")}
+          value={districtFilter}
+          onChange={setDistrictFilter}
+          options={[
+            { value: "all", label: tFilters("allDistricts") },
+            ...districts.map((d) => ({ value: d, label: d })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("propertyType")}
+          value={propertyTypeFilter}
+          onChange={setPropertyTypeFilter}
+          options={[
+            { value: "all", label: tFilters("allTypes") },
+            ...ALL_BUILDING_TYPES.map((p) => ({
+              value: p,
+              label: tBuildingForm(`propertyTypes.${p}`),
+            })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("residenceType")}
+          value={residenceTypeFilter}
+          onChange={setResidenceTypeFilter}
+          options={[
+            { value: "all", label: tFilters("allTypes") },
+            ...RESIDENCE_TYPES.map((r) => ({
+              value: r,
+              label: tBuildingForm(`residenceTypes.${r}`),
+            })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("branch")}
+          value={branchFilter}
+          onChange={setBranchFilter}
+          options={[
+            { value: "all", label: tFilters("allBranches") },
+            ...branches.map((b) => ({ value: b, label: b })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("assignee")}
+          value={assigneeFilter}
+          onChange={setAssigneeFilter}
+          options={[
+            { value: "all", label: tFilters("allAssignees") },
+            { value: "none", label: tFilters("unassigned") },
+            ...users.map((u) => ({ value: String(u.id), label: u.username })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("occupancy")}
+          value={occupancyFilter}
+          onChange={setOccupancyFilter}
+          options={[
+            { value: "all", label: tFilters("occupancyAll") },
+            { value: "high", label: tFilters("occupancyHigh") },
+            { value: "medium", label: tFilters("occupancyMedium") },
+            { value: "low", label: tFilters("occupancyLow") },
+            { value: "vacant", label: tFilters("occupancyVacant") },
+            { value: "no_units", label: tFilters("occupancyNoUnits") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("unitStatus")}
+          value={unitStatusFilter}
+          onChange={setUnitStatusFilter}
+          options={[
+            { value: "all", label: tFilters("unitStatusAll") },
+            { value: "available", label: tFilters("unitStatusAvailable") },
+            { value: "full", label: tFilters("unitStatusFull") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("unitType")}
+          value={unitTypeFilter}
+          onChange={setUnitTypeFilter}
+          options={[
+            { value: "all", label: tFilters("allTypes") },
+            ...unitTypes.map((ut) => ({
+              value: ut,
+              label: typeLabel(ut),
+            })),
+          ]}
+        />
+      </FilterBar>
+
+      {visibleBuildings.length === 0 ? (
+        <div
+          className="card text-sec"
+          style={{ padding: 40, textAlign: "center", fontSize: 13 }}
+        >
+          {tCommon("noResults")}
+        </div>
+      ) : (
       <div className="drill">
         {visibleBuildings.map((b) => {
           const isOpen = openBuildings.has(b.id);
           const owner = ownerOf(b.owner_id);
-          const us = unitsOf(b.id);
+          const us = visibleUnitsOf(b.id);
           const occ = us.filter((u) => !u.is_available).length;
           const occPct = us.length ? Math.round((occ / us.length) * 100) : 0;
           const activeCount = us.reduce(
@@ -276,7 +563,22 @@ export function PropertiesClient({
                   </span>
                 </div>
                 <div className="title-block">
-                  <div className={locale === "ar" ? "ar" : "en"}>{localized(b, "name", locale)}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <div className={locale === "ar" ? "ar" : "en"}>
+                      {localized(b, "name", locale)}
+                    </div>
+                    {b.property_type && (
+                      <span className="badge" style={{ fontSize: 11, fontWeight: 600 }}>
+                        <span
+                          className="ms ms-sm"
+                          style={{ verticalAlign: "middle", marginInlineEnd: 2 }}
+                        >
+                          {BUILDING_TYPE_ICONS[b.property_type] ?? "domain"}
+                        </span>
+                        {buildingTypeLabel(b.property_type)}
+                      </span>
+                    )}
+                  </div>
                   <div className="meta">
                     <span
                       className="ms ms-sm"
@@ -353,13 +655,15 @@ export function PropertiesClient({
                   >
                     <span className="ms ms-sm">edit</span>
                   </button>
-                  <button
-                    className="icon-btn"
-                    title={tCommon("delete")}
-                    onClick={() => setConfirmDelBuilding(b)}
-                  >
-                    <span className="ms ms-sm">delete</span>
-                  </button>
+                  {canDelete && (
+                    <button
+                      className="icon-btn"
+                      title={tCommon("delete")}
+                      onClick={() => setConfirmDelBuilding(b)}
+                    >
+                      <span className="ms ms-sm">delete</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -566,6 +870,16 @@ export function PropertiesClient({
                             <span className="dot" />
                             {u.is_available ? t("available") : t("occupied")}
                           </span>
+                          {!u.is_available && c && (
+                            <a
+                              className="unit-contract-link"
+                              href={`/${locale}/contracts?id=${c.id}`}
+                              title={`${t("viewContract")} · ${c.contract_number}`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="ms ms-sm">description</span>
+                            </a>
+                          )}
                         </div>
                         <div className="unit-card-body">
                           <div className="top">
@@ -592,6 +906,15 @@ export function PropertiesClient({
                             style={{ display: "flex", gap: 4, marginTop: 6 }}
                             onClick={(e) => e.stopPropagation()}
                           >
+                            {c && (
+                              <a
+                                className="icon-btn"
+                                title={`${t("viewContract")} · ${c.contract_number}`}
+                                href={`/${locale}/contracts?id=${c.id}`}
+                              >
+                                <span className="ms ms-sm">description</span>
+                              </a>
+                            )}
                             <button
                               className="icon-btn"
                               title={t("managePhotos")}
@@ -606,13 +929,15 @@ export function PropertiesClient({
                             >
                               <span className="ms ms-sm">edit</span>
                             </button>
-                            <button
-                              className="icon-btn"
-                              title={tCommon("delete")}
-                              onClick={() => setConfirmDelUnit(u)}
-                            >
-                              <span className="ms ms-sm">delete</span>
-                            </button>
+                            {canDelete && (
+                              <button
+                                className="icon-btn"
+                                title={tCommon("delete")}
+                                onClick={() => setConfirmDelUnit(u)}
+                              >
+                                <span className="ms ms-sm">delete</span>
+                              </button>
+                            )}
                           </div>
                           {selectedUnit === u.id && c && (
                             <div
@@ -670,6 +995,7 @@ export function PropertiesClient({
           );
         })}
       </div>
+      )}
 
       {buildingForm.open && (
         <BuildingFormModal

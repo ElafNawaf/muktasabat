@@ -33,6 +33,10 @@ export function ownerColor(id: number): string {
   return OWNER_PALETTE[id % OWNER_PALETTE.length];
 }
 
+export function agentColor(id: number): string {
+  return OWNER_PALETTE[(id + 2) % OWNER_PALETTE.length];
+}
+
 export function tenantColor(id: number): string {
   return TENANT_PALETTE[id % TENANT_PALETTE.length];
 }

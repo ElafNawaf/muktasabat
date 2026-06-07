@@ -8,6 +8,8 @@ import type {
   Contract,
   ModuleId,
   Owner,
+  OwnerType,
+  Agent,
   PermissionAction,
   Role,
   Tenant,
@@ -36,6 +38,7 @@ function refreshAll() {
   // server components fresh after mutations.
   for (const path of [
     "/[locale]/(app)/owners",
+    "/[locale]/(app)/agents",
     "/[locale]/(app)/tenants",
     "/[locale]/(app)/properties",
     "/[locale]/(app)/contracts",
@@ -51,14 +54,21 @@ function refreshAll() {
 // -------- Owners --------
 
 export type OwnerInput = {
+  owner_type?: OwnerType;
   name: string;
   name_en?: string | null;
   name_ar?: string | null;
   phone?: string | null;
   email?: string | null;
   national_id?: string | null;
+  date_of_birth?: string | null;
+  cr_number?: string | null;
+  representative_national_id?: string | null;
+  representative_date_of_birth?: string | null;
+  representative_phone?: string | null;
   bank_name?: string | null;
   iban?: string | null;
+  agent_id?: number | null;
   notes?: string | null;
   notes_en?: string | null;
   notes_ar?: string | null;
@@ -87,6 +97,52 @@ export async function updateOwner(id: number, input: OwnerInput): Promise<Action
 export async function deleteOwner(id: number): Promise<ActionResult<null>> {
   try {
     await api.delete(`/api/v1/owners/${id}`);
+    refreshAll();
+    return { ok: true, data: null };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+// -------- Agents --------
+
+export type AgentInput = {
+  name: string;
+  name_en?: string | null;
+  name_ar?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  national_id?: string | null;
+  bank_name?: string | null;
+  iban?: string | null;
+  notes?: string | null;
+  notes_en?: string | null;
+  notes_ar?: string | null;
+};
+
+export async function createAgent(input: AgentInput): Promise<ActionResult<Agent>> {
+  try {
+    const data = await api.post<Agent>("/api/v1/agents", input);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function updateAgent(id: number, input: AgentInput): Promise<ActionResult<Agent>> {
+  try {
+    const data = await api.put<Agent>(`/api/v1/agents/${id}`, input);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function deleteAgent(id: number): Promise<ActionResult<null>> {
+  try {
+    await api.delete(`/api/v1/agents/${id}`);
     refreshAll();
     return { ok: true, data: null };
   } catch (e) {
@@ -293,8 +349,14 @@ export type ContractInput = {
   electricity_split_percentage?: number | null;
   water_on_tenant?: boolean;
   water_split_percentage?: number | null;
+  electricity_amount?: number;
+  water_amount?: number;
+  electricity_meter_number?: string | null;
+  water_meter_number?: string | null;
   services_amount?: number;
   insurance_amount?: number;
+  vat_rate?: number;
+  agent_percentage?: number;
   notes?: string | null;
 };
 
@@ -313,6 +375,16 @@ export async function terminateContract(id: number): Promise<ActionResult<Contra
     const data = await api.post<Contract>(`/api/v1/contracts/${id}/terminate`);
     refreshAll();
     return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function deleteContract(id: number): Promise<ActionResult<null>> {
+  try {
+    await api.delete(`/api/v1/contracts/${id}`);
+    refreshAll();
+    return { ok: true, data: null };
   } catch (e) {
     return err(e);
   }
@@ -338,8 +410,14 @@ export type ContractUpdateInput = {
   electricity_split_percentage?: number | null;
   water_on_tenant?: boolean;
   water_split_percentage?: number | null;
+  electricity_amount?: number;
+  water_amount?: number;
+  electricity_meter_number?: string | null;
+  water_meter_number?: string | null;
   services_amount?: number;
   insurance_amount?: number;
+  vat_rate?: number;
+  agent_percentage?: number;
   status: "active" | "expired" | "terminated";
   notes?: string | null;
 };
@@ -371,6 +449,16 @@ export async function markPaymentPaid(id: number, input: PayInput): Promise<Acti
     const data = await api.post(`/api/v1/payments/${id}/pay`, input);
     refreshAll();
     return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function deletePayment(id: number): Promise<ActionResult<null>> {
+  try {
+    await api.delete(`/api/v1/payments/${id}`);
+    refreshAll();
+    return { ok: true, data: null };
   } catch (e) {
     return err(e);
   }
@@ -457,6 +545,16 @@ export async function toggleUserActive(id: number): Promise<ActionResult<unknown
     const data = await api.put(`/api/v1/auth/admin/users/${id}/toggle-active`);
     refreshAll();
     return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function deleteUser(id: number): Promise<ActionResult<null>> {
+  try {
+    await api.delete(`/api/v1/auth/admin/users/${id}`);
+    refreshAll();
+    return { ok: true, data: null };
   } catch (e) {
     return err(e);
   }

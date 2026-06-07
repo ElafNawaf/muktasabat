@@ -40,6 +40,7 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
       label: t("data"),
       items: [
         { id: "owners", href: `/${locale}/owners`, icon: "group", label: t("owners") },
+        { id: "agents", href: `/${locale}/agents`, icon: "support_agent", label: t("agents") },
         { id: "tenants", href: `/${locale}/tenants`, icon: "person", label: t("tenants") },
         { id: "contracts", href: `/${locale}/contracts`, icon: "description", label: t("contracts") },
         { id: "payments", href: `/${locale}/payments`, icon: "payments", label: t("payments") },

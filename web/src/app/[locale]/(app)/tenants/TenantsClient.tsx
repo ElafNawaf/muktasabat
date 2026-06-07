@@ -4,7 +4,16 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
+import {
+  FilterBar,
+  FilterClearButton,
+  FilterResultMeta,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/EntityFilterBar";
+import { usePermissions } from "@/components/PermissionsProvider";
 import { deleteTenant } from "@/lib/actions";
+import { localizedCity, matchesSearch, uniqueSorted } from "@/lib/filters";
 import { formatSAR } from "@/lib/format";
 import { initials, tenantColor } from "@/lib/palette";
 import {
@@ -41,9 +50,16 @@ export function TenantsClient({
 }) {
   const t = useTranslations("tenants");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const tCurrency = useTranslations("currency");
+  const { can } = usePermissions();
+  const canDelete = can("tenants", "delete");
 
   const [search, setSearch] = useState("");
+  const [leaseFilter, setLeaseFilter] = useState("all");
+  const [buildingFilter, setBuildingFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const [emailFilter, setEmailFilter] = useState("all");
   const [view, setView] = useState<View>("grid");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Tenant | null>(null);
@@ -117,14 +133,76 @@ export function TenantsClient({
     return m;
   }, [tenants, contracts, units, buildings]);
 
+  const leaseBuildings = useMemo(() => {
+    const ids = new Set<number>();
+    for (const c of contracts) {
+      if (c.status !== "active") continue;
+      const u = units.find((x) => x.id === c.unit_id);
+      if (u) ids.add(u.building_id);
+    }
+    return buildings.filter((b) => ids.has(b.id));
+  }, [contracts, units, buildings]);
+
+  const cities = useMemo(
+    () =>
+      uniqueSorted(
+        leaseBuildings.flatMap((b) => [localizedCity(b, locale), b.city, b.city_en, b.city_ar]),
+      ),
+    [leaseBuildings, locale],
+  );
+
   const filtered = tenants.filter((tn) => {
-    if (!search) return true;
-    const haystack = [tn.name, tn.name_en, tn.name_ar, tn.phone, tn.email]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(search.toLowerCase());
+    const summary = summaries.get(tn.id)!;
+    if (
+      !matchesSearch(
+        [tn.name, tn.name_en, tn.name_ar, tn.phone, tn.email, tn.national_id],
+        search,
+      )
+    ) {
+      return false;
+    }
+    if (leaseFilter === "active" && summary.status !== "active") return false;
+    if (leaseFilter === "none" && summary.status !== "none") return false;
+
+    if (buildingFilter !== "all") {
+      const bid = Number(buildingFilter);
+      const inBuilding = summary.active.some((c) => {
+        const u = units.find((x) => x.id === c.unit_id);
+        return u?.building_id === bid;
+      });
+      if (!inBuilding) return false;
+    }
+
+    if (cityFilter !== "all") {
+      const tenantCities = summary.active.flatMap((c) => {
+        const u = units.find((x) => x.id === c.unit_id);
+        const b = u ? buildings.find((x) => x.id === u.building_id) : null;
+        if (!b) return [];
+        return [localizedCity(b, locale), b.city, b.city_en, b.city_ar];
+      });
+      if (!tenantCities.some((c) => c === cityFilter)) return false;
+    }
+
+    if (emailFilter === "yes" && !tn.email) return false;
+    if (emailFilter === "no" && tn.email) return false;
+
+    return true;
   });
+
+  const filtersActive =
+    Boolean(search) ||
+    leaseFilter !== "all" ||
+    buildingFilter !== "all" ||
+    cityFilter !== "all" ||
+    emailFilter !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setLeaseFilter("all");
+    setBuildingFilter("all");
+    setCityFilter("all");
+    setEmailFilter("all");
+  };
 
   const totalActive = contracts.filter((c) => c.status === "active").length;
   const totalRent = contracts
@@ -162,33 +240,84 @@ export function TenantsClient({
         />
       </div>
 
-      <div className="filter-bar">
-        <div className="search-input">
-          <span className="ms">search</span>
-          <input
-            placeholder={tCommon("search") + "…"}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div style={{ marginInlineStart: "auto" }} />
-        <div className="view-toggle">
-          <button
-            className={"vt-btn" + (view === "grid" ? " active" : "")}
-            onClick={() => setView("grid")}
-            title={tCommon("grid")}
-          >
-            <span className="ms ms-sm">grid_view</span>
-          </button>
-          <button
-            className={"vt-btn" + (view === "list" ? " active" : "")}
-            onClick={() => setView("list")}
-            title={tCommon("list")}
-          >
-            <span className="ms ms-sm">view_list</span>
-          </button>
-        </div>
-      </div>
+      <FilterBar
+        trailing={
+          <>
+            <FilterResultMeta
+              showing={filtered.length}
+              total={tenants.length}
+              label={tCommon("showingResults")}
+            />
+            {filtersActive && (
+              <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
+            )}
+            <div className="view-toggle">
+              <button
+                className={"vt-btn" + (view === "grid" ? " active" : "")}
+                onClick={() => setView("grid")}
+                title={tCommon("grid")}
+              >
+                <span className="ms ms-sm">grid_view</span>
+              </button>
+              <button
+                className={"vt-btn" + (view === "list" ? " active" : "")}
+                onClick={() => setView("list")}
+                title={tCommon("list")}
+              >
+                <span className="ms ms-sm">view_list</span>
+              </button>
+            </div>
+          </>
+        }
+      >
+        <FilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={tCommon("search") + "…"}
+        />
+        <FilterSelect
+          label={tFilters("leaseStatus")}
+          value={leaseFilter}
+          onChange={setLeaseFilter}
+          options={[
+            { value: "all", label: tFilters("leaseAll") },
+            { value: "active", label: tFilters("leaseActive") },
+            { value: "none", label: tFilters("leaseNone") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("building")}
+          value={buildingFilter}
+          onChange={setBuildingFilter}
+          options={[
+            { value: "all", label: tFilters("allBuildings") },
+            ...leaseBuildings.map((b) => ({
+              value: String(b.id),
+              label: localized(b, "name", locale),
+            })),
+          ]}
+          maxWidth={220}
+        />
+        <FilterSelect
+          label={tFilters("city")}
+          value={cityFilter}
+          onChange={setCityFilter}
+          options={[
+            { value: "all", label: tFilters("allCities") },
+            ...cities.map((c) => ({ value: c, label: c })),
+          ]}
+        />
+        <FilterSelect
+          label={tCommon("email")}
+          value={emailFilter}
+          onChange={setEmailFilter}
+          options={[
+            { value: "all", label: tFilters("emailAll") },
+            { value: "yes", label: tFilters("emailYes") },
+            { value: "no", label: tFilters("emailNo") },
+          ]}
+        />
+      </FilterBar>
 
       {filtered.length === 0 ? (
         <Empty icon="person" title={t("noTenants")} subtitle={t("noTenantsHint")} />
@@ -248,13 +377,15 @@ export function TenantsClient({
                     >
                       <span className="ms ms-sm">edit</span>
                     </button>
-                    <button
-                      className="owner-icon-btn"
-                      title={tCommon("delete")}
-                      onClick={() => setConfirmDel(tn)}
-                    >
-                      <span className="ms ms-sm">delete</span>
-                    </button>
+                    {canDelete && (
+                      <button
+                        className="owner-icon-btn"
+                        title={tCommon("delete")}
+                        onClick={() => setConfirmDel(tn)}
+                      >
+                        <span className="ms ms-sm">delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="owner-body">
@@ -390,13 +521,15 @@ export function TenantsClient({
                           >
                             <span className="ms ms-sm">edit</span>
                           </button>
-                          <button
-                            className="icon-btn"
-                            title={tCommon("delete")}
-                            onClick={() => setConfirmDel(tn)}
-                          >
-                            <span className="ms ms-sm">delete</span>
-                          </button>
+                          {canDelete && (
+                            <button
+                              className="icon-btn"
+                              title={tCommon("delete")}
+                              onClick={() => setConfirmDel(tn)}
+                            >
+                              <span className="ms ms-sm">delete</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

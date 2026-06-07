@@ -4,10 +4,19 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
+import {
+  FilterBar,
+  FilterClearButton,
+  FilterResultMeta,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/EntityFilterBar";
+import { usePermissions } from "@/components/PermissionsProvider";
 import { deleteOwner } from "@/lib/actions";
+import { localizedCity, matchesSearch, uniqueSorted } from "@/lib/filters";
 import { formatSAR } from "@/lib/format";
 import { initials, ownerColor } from "@/lib/palette";
-import { localized, type Building, type Contract, type Owner, type Unit } from "@/lib/types";
+import { localized, type Agent, type Building, type Contract, type Owner, type Unit } from "@/lib/types";
 
 import { OwnerFormModal } from "./OwnerFormModal";
 
@@ -15,22 +24,33 @@ type View = "grid" | "list";
 
 export function OwnersClient({
   owners,
+  agents,
   buildings,
   units,
   contracts,
   locale,
 }: {
   owners: Owner[];
+  agents: Agent[];
   buildings: Building[];
   units: Unit[];
   contracts: Contract[];
   locale: string;
 }) {
   const t = useTranslations("owners");
+  const tOwnerForm = useTranslations("ownerForm");
   const tCommon = useTranslations("common");
+  const tFilters = useTranslations("filters");
   const tCurrency = useTranslations("currency");
+  const { can } = usePermissions();
+  const canDelete = can("owners", "delete");
 
   const [search, setSearch] = useState("");
+  const [portfolioFilter, setPortfolioFilter] = useState("all");
+  const [occupancyFilter, setOccupancyFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const [agentFilter, setAgentFilter] = useState("all");
+  const [contactFilter, setContactFilter] = useState("all");
   const [view, setView] = useState<View>("grid");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Owner | null>(null);
@@ -55,14 +75,81 @@ export function OwnersClient({
     return byOwner;
   }, [owners, buildings, units, contracts]);
 
+  const cities = useMemo(
+    () =>
+      uniqueSorted(
+        buildings.flatMap((b) => [localizedCity(b, locale), b.city, b.city_en, b.city_ar]),
+      ),
+    [buildings, locale],
+  );
+
+  const agentOf = (id: number | null | undefined) =>
+    id != null ? agents.find((a) => a.id === id) : null;
+
   const filtered = owners.filter((o) => {
-    if (!search) return true;
-    const haystack = [o.name, o.name_en, o.name_ar, o.phone, o.email]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(search.toLowerCase());
+    const portfolio = portfolios.get(o.id)!;
+    if (
+      !matchesSearch(
+        [o.name, o.name_en, o.name_ar, o.phone, o.email, o.national_id, o.bank_name, o.iban],
+        search,
+      )
+    ) {
+      return false;
+    }
+    if (portfolioFilter === "has_buildings" && portfolio.buildings.length === 0) return false;
+    if (portfolioFilter === "no_buildings" && portfolio.buildings.length > 0) return false;
+    if (portfolioFilter === "has_leases" && portfolio.activeContracts.length === 0) return false;
+    if (portfolioFilter === "no_leases" && portfolio.activeContracts.length > 0) return false;
+
+    if (occupancyFilter !== "all") {
+      if (occupancyFilter === "no_units" && portfolio.units.length > 0) return false;
+      if (occupancyFilter !== "no_units" && portfolio.units.length === 0) return false;
+      if (occupancyFilter === "high" && portfolio.occupancy < 80) return false;
+      if (occupancyFilter === "medium" && (portfolio.occupancy < 40 || portfolio.occupancy >= 80))
+        return false;
+      if (occupancyFilter === "low" && (portfolio.occupancy >= 40 || portfolio.occupancy === 0))
+        return false;
+      if (occupancyFilter === "vacant" && portfolio.occupancy > 0) return false;
+    }
+
+    if (cityFilter !== "all") {
+      const ownerCities = portfolio.buildings.flatMap((b) => [
+        localizedCity(b, locale),
+        b.city,
+        b.city_en,
+        b.city_ar,
+      ]);
+      if (!ownerCities.some((c) => c === cityFilter)) return false;
+    }
+
+    if (contactFilter === "email" && !o.email) return false;
+    if (contactFilter === "phone" && !o.phone) return false;
+    if (contactFilter === "missing" && (o.email || o.phone)) return false;
+
+    if (agentFilter === "none" && o.agent_id != null) return false;
+    if (agentFilter !== "all" && agentFilter !== "none") {
+      if (String(o.agent_id) !== agentFilter) return false;
+    }
+
+    return true;
   });
+
+  const filtersActive =
+    Boolean(search) ||
+    portfolioFilter !== "all" ||
+    occupancyFilter !== "all" ||
+    cityFilter !== "all" ||
+    agentFilter !== "all" ||
+    contactFilter !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setPortfolioFilter("all");
+    setOccupancyFilter("all");
+    setCityFilter("all");
+    setAgentFilter("all");
+    setContactFilter("all");
+  };
 
   const totalUnits = units.length;
   const totalBuildings = buildings.length;
@@ -142,33 +229,100 @@ export function OwnersClient({
         />
       </div>
 
-      <div className="filter-bar">
-        <div className="search-input">
-          <span className="ms">search</span>
-          <input
-            placeholder={tCommon("search") + "…"}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div style={{ marginInlineStart: "auto" }} />
-        <div className="view-toggle">
-          <button
-            className={"vt-btn" + (view === "grid" ? " active" : "")}
-            onClick={() => setView("grid")}
-            title={tCommon("grid")}
-          >
-            <span className="ms ms-sm">grid_view</span>
-          </button>
-          <button
-            className={"vt-btn" + (view === "list" ? " active" : "")}
-            onClick={() => setView("list")}
-            title={tCommon("list")}
-          >
-            <span className="ms ms-sm">view_list</span>
-          </button>
-        </div>
-      </div>
+      <FilterBar
+        trailing={
+          <>
+            <FilterResultMeta
+              showing={filtered.length}
+              total={owners.length}
+              label={tCommon("showingResults")}
+            />
+            {filtersActive && (
+              <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
+            )}
+            <div className="view-toggle">
+              <button
+                className={"vt-btn" + (view === "grid" ? " active" : "")}
+                onClick={() => setView("grid")}
+                title={tCommon("grid")}
+              >
+                <span className="ms ms-sm">grid_view</span>
+              </button>
+              <button
+                className={"vt-btn" + (view === "list" ? " active" : "")}
+                onClick={() => setView("list")}
+                title={tCommon("list")}
+              >
+                <span className="ms ms-sm">view_list</span>
+              </button>
+            </div>
+          </>
+        }
+      >
+        <FilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder={tCommon("search") + "…"}
+        />
+        <FilterSelect
+          label={tFilters("portfolio")}
+          value={portfolioFilter}
+          onChange={setPortfolioFilter}
+          options={[
+            { value: "all", label: tFilters("portfolioAll") },
+            { value: "has_buildings", label: tFilters("portfolioHasBuildings") },
+            { value: "no_buildings", label: tFilters("portfolioNoBuildings") },
+            { value: "has_leases", label: tFilters("portfolioHasLeases") },
+            { value: "no_leases", label: tFilters("portfolioNoLeases") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("occupancy")}
+          value={occupancyFilter}
+          onChange={setOccupancyFilter}
+          options={[
+            { value: "all", label: tFilters("occupancyAll") },
+            { value: "high", label: tFilters("occupancyHigh") },
+            { value: "medium", label: tFilters("occupancyMedium") },
+            { value: "low", label: tFilters("occupancyLow") },
+            { value: "vacant", label: tFilters("occupancyVacant") },
+            { value: "no_units", label: tFilters("occupancyNoUnits") },
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("city")}
+          value={cityFilter}
+          onChange={setCityFilter}
+          options={[
+            { value: "all", label: tFilters("allCities") },
+            ...cities.map((c) => ({ value: c, label: c })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("agent")}
+          value={agentFilter}
+          onChange={setAgentFilter}
+          options={[
+            { value: "all", label: tFilters("allAgents") },
+            { value: "none", label: t("noAgent") },
+            ...agents.map((a) => ({
+              value: String(a.id),
+              label: localized(a, "name", locale),
+            })),
+          ]}
+        />
+        <FilterSelect
+          label={tFilters("contactInfo")}
+          value={contactFilter}
+          onChange={setContactFilter}
+          options={[
+            { value: "all", label: tFilters("contactAll") },
+            { value: "email", label: tFilters("contactEmail") },
+            { value: "phone", label: tFilters("contactPhone") },
+            { value: "missing", label: tFilters("contactMissing") },
+          ]}
+        />
+      </FilterBar>
 
       {filtered.length === 0 ? (
         <Empty
@@ -184,6 +338,7 @@ export function OwnersClient({
             const display = localized(o, "name", locale);
             const alt = localized(o, "name", locale === "ar" ? "en" : "ar") || o.name;
             const init = initials(o.name_en ?? o.name);
+            const agent = agentOf(o.agent_id);
             return (
               <div key={o.id} className="owner-card">
                 <div
@@ -217,13 +372,15 @@ export function OwnersClient({
                     >
                       <span className="ms ms-sm">edit</span>
                     </button>
-                    <button
-                      className="owner-icon-btn"
-                      title={tCommon("delete")}
-                      onClick={() => setConfirmDel(o)}
-                    >
-                      <span className="ms ms-sm">delete</span>
-                    </button>
+                    {canDelete && (
+                      <button
+                        className="owner-icon-btn"
+                        title={tCommon("delete")}
+                        onClick={() => setConfirmDel(o)}
+                      >
+                        <span className="ms ms-sm">delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="owner-body">
@@ -239,6 +396,9 @@ export function OwnersClient({
                   <div className="owner-name-line">
                     <div className="owner-name">{display}</div>
                     {alt && alt !== display && <div className="owner-name-alt">{alt}</div>}
+                    <span className="badge" style={{ fontSize: 10.5, marginTop: 6 }}>
+                      {tOwnerForm(`ownerTypes.${o.owner_type ?? "individual"}`)}
+                    </span>
                   </div>
                   <div className="owner-contacts">
                     {o.phone && (
@@ -254,6 +414,12 @@ export function OwnersClient({
                       </a>
                     )}
                   </div>
+                  {agent && (
+                    <div className="owner-contact" style={{ marginTop: 6 }}>
+                      <span className="ms ms-sm">support_agent</span>
+                      <span>{localized(agent, "name", locale)}</span>
+                    </div>
+                  )}
                   <div className="owner-stats">
                     <div className="ostat">
                       <div className="ostat-num">{portfolio.buildings.length}</div>
@@ -313,6 +479,7 @@ export function OwnersClient({
                   <th>{tCommon("name")}</th>
                   <th>{tCommon("nationalId")}</th>
                   <th>{tCommon("phone")}</th>
+                  <th>{t("agent")}</th>
                   <th className="num">{t("buildings")}</th>
                   <th className="num">{t("units")}</th>
                   <th></th>
@@ -322,6 +489,7 @@ export function OwnersClient({
                 {filtered.map((o) => {
                   const p = portfolios.get(o.id)!;
                   const c = ownerColor(o.id);
+                  const agent = agentOf(o.agent_id);
                   return (
                     <tr key={o.id}>
                       <td>
@@ -346,10 +514,15 @@ export function OwnersClient({
                         </div>
                       </td>
                       <td className="mono" style={{ fontSize: 12 }}>
-                        {o.national_id ?? "—"}
+                        {o.owner_type === "company"
+                          ? o.cr_number ?? "—"
+                          : o.national_id ?? "—"}
                       </td>
                       <td className="mono" style={{ fontSize: 12 }}>
                         {o.phone ?? "—"}
+                      </td>
+                      <td className="text-sec" style={{ fontSize: 12 }}>
+                        {agent ? localized(agent, "name", locale) : t("noAgent")}
                       </td>
                       <td className="num">{p.buildings.length}</td>
                       <td className="num">{p.units.length}</td>
@@ -362,13 +535,15 @@ export function OwnersClient({
                           >
                             <span className="ms ms-sm">edit</span>
                           </button>
-                          <button
-                            className="icon-btn"
-                            title={tCommon("delete")}
-                            onClick={() => setConfirmDel(o)}
-                          >
-                            <span className="ms ms-sm">delete</span>
-                          </button>
+                          {canDelete && (
+                            <button
+                              className="icon-btn"
+                              title={tCommon("delete")}
+                              onClick={() => setConfirmDel(o)}
+                            >
+                              <span className="ms ms-sm">delete</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -386,6 +561,7 @@ export function OwnersClient({
           open={formOpen}
           onClose={onCloseForm}
           owner={editing}
+          agents={agents}
         />
       )}
       <ConfirmDialog

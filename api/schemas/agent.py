@@ -1,44 +1,34 @@
-from datetime import date, datetime
-from typing import Literal, Optional
+from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-OwnerType = Literal["individual", "company"]
 
-
-class OwnerBase(BaseModel):
-    owner_type: OwnerType = "individual"
+class AgentBase(BaseModel):
     name: str = Field(min_length=1, max_length=150)
     name_en: Optional[str] = Field(default=None, max_length=150)
     name_ar: Optional[str] = Field(default=None, max_length=150)
     phone: Optional[str] = Field(default=None, max_length=20)
     email: Optional[EmailStr] = None
     national_id: Optional[str] = Field(default=None, max_length=20)
-    date_of_birth: Optional[date] = None
-    cr_number: Optional[str] = Field(default=None, max_length=20)
-    representative_national_id: Optional[str] = Field(default=None, max_length=20)
-    representative_date_of_birth: Optional[date] = None
-    representative_phone: Optional[str] = Field(default=None, max_length=20)
     bank_name: Optional[str] = Field(default=None, max_length=100)
     iban: Optional[str] = Field(default=None, max_length=34)
     notes: Optional[str] = None
     notes_en: Optional[str] = None
     notes_ar: Optional[str] = None
-    agent_id: Optional[int] = None
 
 
-class OwnerCreate(OwnerBase):
+class AgentCreate(AgentBase):
     pass
 
 
-class OwnerUpdate(OwnerBase):
+class AgentUpdate(AgentBase):
     pass
 
 
-class OwnerRead(OwnerBase):
+class AgentRead(AgentBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     created_at: datetime
-    # DB / imports may contain non-RFC strings (e.g. literal "NULL"); responses must not 500.
     email: Optional[str] = Field(default=None, max_length=120)

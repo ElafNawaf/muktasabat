@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
+import { usePermissions } from "@/components/PermissionsProvider";
 import { deleteExpense } from "@/lib/actions";
 import { formatDate, formatSAR } from "@/lib/format";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
@@ -46,6 +47,8 @@ export function ExpensesClient({
   const t = useTranslations("expensesPage");
   const tCommon = useTranslations("common");
   const tCurrency = useTranslations("currency");
+  const { can } = usePermissions();
+  const canDelete = can("expenses", "delete");
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
@@ -236,13 +239,15 @@ export function ExpensesClient({
                         >
                           <span className="ms ms-sm">edit</span>
                         </button>
-                        <button
-                          className="icon-btn"
-                          title={tCommon("delete")}
-                          onClick={() => setConfirmDel(e)}
-                        >
-                          <span className="ms ms-sm">delete</span>
-                        </button>
+                        {canDelete && (
+                          <button
+                            className="icon-btn"
+                            title={tCommon("delete")}
+                            onClick={() => setConfirmDel(e)}
+                          >
+                            <span className="ms ms-sm">delete</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
