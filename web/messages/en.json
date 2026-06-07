@@ -143,6 +143,7 @@
     "buildings": "Buildings",
     "units": "Units",
     "occupied": "Occupied",
+    "available": "Available",
     "activeContracts": "Active contracts",
     "overduePayments": "Overdue",
     "collectionRate": "Collection rate",

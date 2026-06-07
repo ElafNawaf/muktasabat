@@ -143,6 +143,7 @@
     "buildings": "المباني",
     "units": "الوحدات",
     "occupied": "المؤجَّرة",
+    "available": "الشاغرة",
     "activeContracts": "العقود السارية",
     "overduePayments": "المتأخرات",
     "collectionRate": "نسبة التحصيل",
