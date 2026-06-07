@@ -16,6 +16,7 @@ from api.database import (
     ensure_building_location_columns,
     ensure_contract_extended_columns,
     ensure_owner_agent_id_column,
+    ensure_tenant_extended_columns,
     ensure_user_email_verification_columns,
     ensure_user_password_reset_columns,
 )
@@ -57,6 +58,7 @@ async def lifespan(app: FastAPI):
     ensure_building_location_columns(engine)
     ensure_building_extended_columns(engine)
     ensure_contract_extended_columns(engine)
+    ensure_tenant_extended_columns(engine)
     ensure_owner_agent_id_column(engine)
 
     with SessionLocal() as db:

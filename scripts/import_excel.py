@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import openpyxl
@@ -99,6 +99,24 @@ def to_bool(v, default=True):
     return default
 
 
+def to_date(v):
+    if v is None or v == "":
+        return None
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
+        return v
+    s = str(v).strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
 def read_sheet(path: Path, skip_rows: int = 2):
     """Yield position-indexed tuples skipping the 2 header rows."""
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
@@ -146,11 +164,11 @@ def import_owners(conn, path: Path, dry_run: bool):  # dry_run kept for API symm
         # Ensure fallback owner exists FIRST (used by buildings step)
         cur.execute(
             """
-            INSERT INTO owners (name, name_ar, notes, created_at)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO owners (name, name_ar, owner_type, notes, created_at)
+            VALUES (%s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
             """,
-            (UNASSIGNED_OWNER_NAME, UNASSIGNED_OWNER_NAME,
+            (UNASSIGNED_OWNER_NAME, UNASSIGNED_OWNER_NAME, "individual",
              "Fallback owner for buildings imported without an explicit owner_ref. Re-assign in the UI.",
              datetime.utcnow()),
         )
@@ -211,11 +229,11 @@ def import_owners(conn, path: Path, dry_run: bool):  # dry_run kept for API symm
                     """
                     INSERT INTO owners
                       (name, name_en, name_ar, phone, email, national_id,
-                       bank_name, iban, notes, notes_en, notes_ar, created_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       bank_name, iban, owner_type, notes, notes_en, notes_ar, created_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (name, name_en, name_ar, phone, email, nat_id, bank, iban,
-                     notes, notes_en, notes_ar, datetime.utcnow()),
+                     "individual", notes, notes_en, notes_ar, datetime.utcnow()),
                 )
                 inserted += 1
 
@@ -230,18 +248,18 @@ def import_tenants(conn, path: Path, dry_run: bool):
       2  name_en
       3  name_ar
       4  phone
-      5  commercial_record  → into notes
+      5  commercial_record  → cr_number (company)
       6  national_id
-      7  birth_or_record_date → into notes
-      8  manager_national_id  → into notes
+      7  birth_or_record_date → date_of_birth (individual) or company record date
+      8  manager_national_id  → representative_national_id
       9  manager_name         → into notes
-      10 manager_birth_date   → into notes
+      10 manager_birth_date   → representative_date_of_birth
       11 email
       12 notes
       13 tax_number      → into notes
       14 notes_ar
 
-    Schema requires phone and national_id NOT NULL → fall back to "—" when empty.
+    tenant_type is "company" when commercial_record (col 5) is present, else "individual".
     """
     inserted = updated = 0
     with conn.cursor() as cur:
@@ -256,28 +274,29 @@ def import_tenants(conn, path: Path, dry_run: bool):
             phone    = clean(row[4]) or "—"   # NOT NULL fallback
             comm_reg = clean(row[5])
             nat_id   = clean(row[6]) or "—"   # NOT NULL fallback
-            birth    = clean(row[7])
+            birth    = to_date(row[7])
             mgr_id   = clean(row[8])
             mgr_name = clean(row[9])
-            mgr_birth = clean(row[10])
+            mgr_birth = to_date(row[10])
             email    = clean(row[11])
             notes_in = clean(row[12])
             tax_no   = clean(row[13])
             notes_ar = clean(row[14])
 
+            tenant_type = "company" if comm_reg else "individual"
+            cr_number = comm_reg if tenant_type == "company" else None
+            absher_phone = phone if tenant_type == "company" and phone != "—" else None
+            date_of_birth = birth if tenant_type == "individual" else None
+            rep_nat_id = mgr_id if tenant_type == "company" else None
+            rep_dob = mgr_birth if tenant_type == "company" else None
+            if tenant_type == "company":
+                nat_id = rep_nat_id or cr_number or nat_id
+
             notes_parts = []
             if notes_in:
                 notes_parts.append(notes_in)
-            if comm_reg:
-                notes_parts.append(f"السجل التجاري: {comm_reg}")
-            if birth:
-                notes_parts.append(f"تاريخ الميلاد/السجل: {birth}")
             if mgr_name:
                 notes_parts.append(f"المدير: {mgr_name}")
-            if mgr_id:
-                notes_parts.append(f"هوية المدير: {mgr_id}")
-            if mgr_birth:
-                notes_parts.append(f"تاريخ ميلاد المدير: {mgr_birth}")
             if tax_no:
                 notes_parts.append(f"الرقم الضريبي: {tax_no}")
             notes = " | ".join(notes_parts) if notes_parts else None
@@ -291,27 +310,38 @@ def import_tenants(conn, path: Path, dry_run: bool):
                 cur.execute(
                     """
                     UPDATE tenants
-                    SET name_en = COALESCE(%s, name_en),
+                    SET tenant_type = %s,
+                        name_en = COALESCE(%s, name_en),
                         name_ar = COALESCE(%s, name_ar),
                         national_id = CASE WHEN %s <> '—' THEN %s ELSE national_id END,
+                        date_of_birth = COALESCE(%s, date_of_birth),
+                        cr_number = COALESCE(%s, cr_number),
+                        absher_phone = COALESCE(%s, absher_phone),
+                        representative_national_id = COALESCE(%s, representative_national_id),
+                        representative_date_of_birth = COALESCE(%s, representative_date_of_birth),
                         email   = COALESCE(%s, email),
                         notes   = COALESCE(%s, notes),
                         notes_ar = COALESCE(%s, notes_ar)
                     WHERE id = %s
                     """,
-                    (name_en, name_ar, nat_id, nat_id, email, notes, notes_ar, existing_id),
+                    (tenant_type, name_en, name_ar, nat_id, nat_id,
+                     date_of_birth, cr_number, absher_phone, rep_nat_id, rep_dob,
+                     email, notes, notes_ar, existing_id),
                 )
                 updated += 1
             else:
                 cur.execute(
                     """
                     INSERT INTO tenants
-                      (name, name_en, name_ar, phone, national_id, email,
-                       notes, notes_ar, created_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                      (tenant_type, name, name_en, name_ar, phone, national_id,
+                       date_of_birth, cr_number, absher_phone,
+                       representative_national_id, representative_date_of_birth,
+                       email, notes, notes_ar, created_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
-                    (name, name_en, name_ar, phone, nat_id, email,
-                     notes, notes_ar, datetime.utcnow()),
+                    (tenant_type, name, name_en, name_ar, phone, nat_id,
+                     date_of_birth, cr_number, absher_phone, rep_nat_id, rep_dob,
+                     email, notes, notes_ar, datetime.utcnow()),
                 )
                 inserted += 1
 

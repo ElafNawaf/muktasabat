@@ -261,11 +261,19 @@ class Tenant(Base):
     __tablename__ = "tenants"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # individual | company
+    tenant_type: Mapped[str] = mapped_column(String(20), default="individual", nullable=False)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     name_en: Mapped[Optional[str]] = mapped_column(String(150))
     name_ar: Mapped[Optional[str]] = mapped_column(String(150))
     phone: Mapped[str] = mapped_column(String(20), nullable=False)
     national_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # Company-only fields
+    cr_number: Mapped[Optional[str]] = mapped_column(String(20))
+    absher_phone: Mapped[Optional[str]] = mapped_column(String(20))
+    representative_national_id: Mapped[Optional[str]] = mapped_column(String(20))
+    representative_date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(120))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     notes_en: Mapped[Optional[str]] = mapped_column(Text)

@@ -397,6 +397,8 @@
     "expiring": "Expiring",
     "noTenants": "No tenants yet",
     "noTenantsHint": "Tenants you add will be searchable and visible across all leases.",
+    "typeIndividual": "Individual",
+    "typeCompany": "Company",
     "deleteTitle": "Delete tenant?",
     "deleteMessage": "Are you sure you want to delete \"{name}\"?"
   },
@@ -409,9 +411,23 @@
     "nameEn": "Name (English)",
     "nameAr": "Name (Arabic)",
     "notes": "Notes",
+    "tenantType": "Tenant type",
+    "tenantTypes": {
+      "individual": "Individual",
+      "company": "Company"
+    },
+    "companyName": "Company name",
+    "crNumber": "Commercial registration (CR)",
+    "absherPhone": "Absher phone",
+    "dateOfBirth": "Date of birth",
+    "representativeSection": "Authorized representative",
+    "representativeNationalId": "Representative national ID",
+    "representativeDateOfBirth": "Representative date of birth",
     "nameRequired": "Display name is required",
     "phoneRequired": "Phone is required",
-    "nationalIdRequired": "National ID is required"
+    "nationalIdRequired": "National ID is required",
+    "crRequired": "Commercial registration (CR) is required",
+    "absherPhoneRequired": "Absher phone is required"
   },
   "buildingForm": {
     "createTitle": "Add building",

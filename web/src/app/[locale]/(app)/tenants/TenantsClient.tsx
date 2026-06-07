@@ -49,6 +49,7 @@ export function TenantsClient({
   locale: string;
 }) {
   const t = useTranslations("tenants");
+  const tForm = useTranslations("tenantForm");
   const tCommon = useTranslations("common");
   const tFilters = useTranslations("filters");
   const tCurrency = useTranslations("currency");
@@ -95,9 +96,37 @@ export function TenantsClient({
   };
 
   const doExport = () => {
-    const headers = ["id", "name", "name_en", "name_ar", "phone", "national_id", "email"];
+    const headers = [
+      "id",
+      "tenant_type",
+      "name",
+      "name_en",
+      "name_ar",
+      "phone",
+      "national_id",
+      "date_of_birth",
+      "cr_number",
+      "absher_phone",
+      "representative_national_id",
+      "representative_date_of_birth",
+      "email",
+    ];
     const rows = filtered.map((tn) =>
-      [tn.id, tn.name, tn.name_en, tn.name_ar, tn.phone, tn.national_id, tn.email]
+      [
+        tn.id,
+        tn.tenant_type,
+        tn.name,
+        tn.name_en,
+        tn.name_ar,
+        tn.phone,
+        tn.national_id,
+        tn.date_of_birth,
+        tn.cr_number,
+        tn.absher_phone,
+        tn.representative_national_id,
+        tn.representative_date_of_birth,
+        tn.email,
+      ]
         .map((v) => (v == null ? "" : String(v).replace(/"/g, '""')))
         .map((v) => `"${v}"`)
         .join(","),
@@ -155,7 +184,17 @@ export function TenantsClient({
     const summary = summaries.get(tn.id)!;
     if (
       !matchesSearch(
-        [tn.name, tn.name_en, tn.name_ar, tn.phone, tn.email, tn.national_id],
+        [
+          tn.name,
+          tn.name_en,
+          tn.name_ar,
+          tn.phone,
+          tn.email,
+          tn.national_id,
+          tn.cr_number,
+          tn.absher_phone,
+          tn.representative_national_id,
+        ],
         search,
       )
     ) {
@@ -326,6 +365,7 @@ export function TenantsClient({
           {filtered.map((tn) => {
             const s = summaries.get(tn.id)!;
             const c = tenantColor(tn.id);
+            const tenantType = tn.tenant_type ?? "individual";
             const display = localized(tn, "name", locale);
             const init = initials(tn.name_en ?? tn.name);
             return (
@@ -400,13 +440,24 @@ export function TenantsClient({
                   </div>
                   <div className="owner-name-line">
                     <div className="owner-name">{display}</div>
-                    <div className="owner-name-alt mono">{tn.national_id}</div>
+                    <div className="owner-name-alt mono">
+                      {tenantType === "company"
+                        ? tn.cr_number ?? tn.national_id
+                        : tn.national_id}
+                    </div>
+                    <div className="text-sec" style={{ fontSize: 11, marginTop: 2 }}>
+                      {tenantType === "company" ? t("typeCompany") : t("typeIndividual")}
+                    </div>
                   </div>
                   <div className="owner-contacts">
                     {tn.phone && (
                       <a className="owner-contact" href={`tel:${tn.phone}`}>
                         <span className="ms ms-sm">call</span>
-                        <span className="mono">{tn.phone}</span>
+                        <span className="mono">
+                          {tenantType === "company" && tn.absher_phone
+                            ? tn.absher_phone
+                            : tn.phone}
+                        </span>
                       </a>
                     )}
                     {tn.email && (
@@ -461,6 +512,7 @@ export function TenantsClient({
               <thead>
                 <tr>
                   <th>{tCommon("name")}</th>
+                  <th>{tForm("tenantType")}</th>
                   <th>{tCommon("nationalId")}</th>
                   <th>{tCommon("phone")}</th>
                   <th>{tCommon("email")}</th>
@@ -472,6 +524,7 @@ export function TenantsClient({
                 {filtered.map((tn) => {
                   const s = summaries.get(tn.id)!;
                   const c = tenantColor(tn.id);
+                  const tenantType = tn.tenant_type ?? "individual";
                   return (
                     <tr key={tn.id}>
                       <td>
@@ -495,11 +548,18 @@ export function TenantsClient({
                           </div>
                         </div>
                       </td>
-                      <td className="mono" style={{ fontSize: 12 }}>
-                        {tn.national_id}
+                      <td className="text-sec" style={{ fontSize: 12 }}>
+                        {tenantType === "company" ? t("typeCompany") : t("typeIndividual")}
                       </td>
                       <td className="mono" style={{ fontSize: 12 }}>
-                        {tn.phone}
+                        {tenantType === "company"
+                          ? tn.cr_number ?? "—"
+                          : tn.national_id}
+                      </td>
+                      <td className="mono" style={{ fontSize: 12 }}>
+                        {tenantType === "company" && tn.absher_phone
+                          ? tn.absher_phone
+                          : tn.phone}
                       </td>
                       <td className="text-sec">{tn.email ?? "—"}</td>
                       <td className="num">

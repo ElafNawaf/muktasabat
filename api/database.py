@@ -197,6 +197,32 @@ def ensure_contract_extended_columns(engine) -> None:
             )
 
 
+def ensure_tenant_extended_columns(engine) -> None:
+    """Add tenant type / company fields when the tenants table predates them."""
+    insp = inspect(engine)
+    if not insp.has_table("tenants"):
+        return
+    existing = {c["name"] for c in insp.get_columns("tenants")}
+    additions: list[tuple[str, str]] = [
+        ("tenant_type", "VARCHAR(20) DEFAULT 'individual' NOT NULL"),
+        ("date_of_birth", "DATE"),
+        ("cr_number", "VARCHAR(20)"),
+        ("absher_phone", "VARCHAR(20)"),
+        ("representative_national_id", "VARCHAR(20)"),
+        ("representative_date_of_birth", "DATE"),
+    ]
+    stmts = [
+        f"ALTER TABLE tenants ADD COLUMN {name} {col_type}"
+        for name, col_type in additions
+        if name not in existing
+    ]
+    if not stmts:
+        return
+    with engine.begin() as conn:
+        for stmt in stmts:
+            conn.execute(text(stmt))
+
+
 def ensure_owner_agent_id_column(engine) -> None:
     """Add owner columns when the owners table predates them."""
     insp = inspect(engine)

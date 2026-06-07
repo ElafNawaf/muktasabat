@@ -397,6 +397,8 @@
     "expiring": "ينتهي قريباً",
     "noTenants": "لا يوجد مستأجرون بعد",
     "noTenantsHint": "المستأجرون الذين تضيفهم سيكونون قابلين للبحث وظاهرين في جميع العقود.",
+    "typeIndividual": "فرد",
+    "typeCompany": "شركة",
     "deleteTitle": "حذف المستأجر؟",
     "deleteMessage": "هل تريد حذف \"{name}\"؟"
   },
@@ -409,9 +411,23 @@
     "nameEn": "الاسم (إنجليزي)",
     "nameAr": "الاسم (عربي)",
     "notes": "ملاحظات",
+    "tenantType": "نوع المستأجر",
+    "tenantTypes": {
+      "individual": "فرد",
+      "company": "شركة"
+    },
+    "companyName": "اسم الشركة",
+    "crNumber": "السجل التجاري",
+    "absherPhone": "جوال أبشر",
+    "dateOfBirth": "تاريخ الميلاد",
+    "representativeSection": "الممثل النظامي",
+    "representativeNationalId": "هوية الممثل",
+    "representativeDateOfBirth": "تاريخ ميلاد الممثل",
     "nameRequired": "الاسم المعروض مطلوب",
     "phoneRequired": "رقم الجوال مطلوب",
-    "nationalIdRequired": "رقم الهوية مطلوب"
+    "nationalIdRequired": "رقم الهوية مطلوب",
+    "crRequired": "السجل التجاري مطلوب",
+    "absherPhoneRequired": "جوال أبشر مطلوب"
   },
   "buildingForm": {
     "createTitle": "إضافة مبنى",

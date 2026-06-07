@@ -130,13 +130,21 @@ export type Unit = {
   images: EntityImage[];
 };
 
+export type TenantType = "individual" | "company";
+
 export type Tenant = {
   id: number;
+  tenant_type: TenantType;
   name: string;
   name_en: string | null;
   name_ar: string | null;
   phone: string;
   national_id: string;
+  date_of_birth: string | null;
+  cr_number: string | null;
+  absher_phone: string | null;
+  representative_national_id: string | null;
+  representative_date_of_birth: string | null;
   email: string | null;
   notes: string | null;
   notes_en: string | null;
