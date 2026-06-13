@@ -319,12 +319,14 @@ export function TenantsClient({
             </div>
           </>
         }
+        search={
+          <FilterSearch
+            value={search}
+            onChange={setSearch}
+            placeholder={tCommon("search") + "…"}
+          />
+        }
       >
-        <FilterSearch
-          value={search}
-          onChange={setSearch}
-          placeholder={tCommon("search") + "…"}
-        />
         <FilterSelect
           label={tFilters("leaseStatus")}
           value={leaseFilter}

@@ -390,12 +390,14 @@ export function PropertiesClient({
             )}
           </>
         }
+        search={
+          <FilterSearch
+            value={search}
+            onChange={setSearch}
+            placeholder={tCommon("search") + "…"}
+          />
+        }
       >
-        <FilterSearch
-          value={search}
-          onChange={setSearch}
-          placeholder={tCommon("search") + "…"}
-        />
         <FilterSelect
           label={tFilters("owner")}
           value={ownerFilter}

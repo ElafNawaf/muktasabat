@@ -6,21 +6,10 @@ import { useState, useTransition } from "react";
 import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
 import { createExpense, updateExpense, type ExpenseInput } from "@/lib/actions";
+import { EXPENSE_CATEGORIES } from "@/lib/expense-categories";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
 import type { ExpenseRow } from "./ExpensesClient";
-
-const CATEGORIES: ExpenseInput["category"][] = [
-  "maintenance",
-  "utilities",
-  "insurance",
-  "legal",
-  "marketing",
-  "cleaning",
-  "security",
-  "government_fees",
-  "other",
-];
 
 const PAID_BY: ExpenseInput["paid_by"][] = ["company", "owner", "tenant"];
 
@@ -153,9 +142,9 @@ export function ExpenseFormModal({
               value={form.category}
               onChange={(e) => set("category", e.target.value as ExpenseInput["category"])}
             >
-              {CATEGORIES.map((c) => (
+              {EXPENSE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
-                  {c}
+                  {t(`categories.${c}`)}
                 </option>
               ))}
             </select>

@@ -4,6 +4,13 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
+import {
+  FilterBar,
+  FilterClearButton,
+  FilterResultMeta,
+  FilterSearch,
+  FilterStatusPills,
+} from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { deletePayment } from "@/lib/actions";
 import { formatDate, formatSAR } from "@/lib/format";
@@ -115,6 +122,12 @@ export function PaymentsClient({
 
   const fmtDate = (iso: string) => formatDate(iso, locale);
 
+  const filtersActive = statusFilter !== "all" || search.trim() !== "";
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+  };
+
   const doDelete = () => {
     if (!confirmDel) return;
     const target = confirmDel;
@@ -159,27 +172,39 @@ export function PaymentsClient({
         />
       </div>
 
-      <div className="filter-bar">
-        <div className="search-input">
-          <span className="ms">search</span>
-          <input
-            placeholder={tCommon("search") + "…"}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      <FilterBar
+        statusRow={
+          <FilterStatusPills
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v)}
+            options={[
+              { value: "all", label: tCommon("all"), count: totals.total },
+              { value: "pending", label: t("pending"), count: totals.pending },
+              { value: "paid", label: t("paid"), count: totals.paid },
+              { value: "overdue", label: t("overdue"), count: totals.overdue },
+            ]}
           />
-        </div>
-        <select
-          className="select"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          style={{ height: 36, maxWidth: 180 }}
-        >
-          <option value="all">{tCommon("all")}</option>
-          <option value="pending">{t("pending")}</option>
-          <option value="paid">{t("paid")}</option>
-          <option value="overdue">{t("overdue")}</option>
-        </select>
-      </div>
+        }
+        trailing={
+          <>
+            <FilterResultMeta
+              showing={filtered.length}
+              total={payments.length}
+              label={tCommon("showingResults")}
+            />
+            {filtersActive && (
+              <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
+            )}
+          </>
+        }
+        search={
+          <FilterSearch
+            value={search}
+            onChange={setSearch}
+            placeholder={tCommon("search") + "…"}
+          />
+        }
+      />
 
       <div className="card card-tight">
         <div className="tbl-wrap">

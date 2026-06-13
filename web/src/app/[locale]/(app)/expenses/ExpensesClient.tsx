@@ -4,8 +4,16 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
+import {
+  FilterBar,
+  FilterClearButton,
+  FilterResultMeta,
+  FilterSearch,
+  FilterSelect,
+} from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { deleteExpense } from "@/lib/actions";
+import { EXPENSE_CATEGORIES } from "@/lib/expense-categories";
 import { formatDate, formatSAR } from "@/lib/format";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
@@ -115,6 +123,11 @@ export function ExpensesClient({
   };
 
   const categories = Array.from(new Set(expenses.map((e) => e.category)));
+  const filtersActive = categoryFilter !== "all" || search.trim() !== "";
+  const clearFilters = () => {
+    setSearch("");
+    setCategoryFilter("all");
+  };
 
   return (
     <div className="page screen-enter">
@@ -149,29 +162,44 @@ export function ExpensesClient({
         />
       </div>
 
-      <div className="filter-bar">
-        <div className="search-input">
-          <span className="ms">search</span>
-          <input
-            placeholder={tCommon("search") + "…"}
+      <FilterBar
+        trailing={
+          <>
+            <FilterResultMeta
+              showing={filtered.length}
+              total={expenses.length}
+              label={tCommon("showingResults")}
+            />
+            {filtersActive && (
+              <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
+            )}
+          </>
+        }
+        search={
+          <FilterSearch
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
+            placeholder={tCommon("search") + "…"}
           />
-        </div>
-        <select
-          className="select"
+        }
+      >
+        <FilterSelect
+          label={t("category")}
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          style={{ height: 36, maxWidth: 220 }}
-        >
-          <option value="all">{tCommon("all")}</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
+          onChange={setCategoryFilter}
+          options={[
+            { value: "all", label: tCommon("all") },
+            ...EXPENSE_CATEGORIES.map((c) => ({
+              value: c,
+              label: t(`categories.${c}`),
+            })),
+            ...categories
+              .filter((c) => !EXPENSE_CATEGORIES.includes(c as typeof EXPENSE_CATEGORIES[number]))
+              .map((c) => ({ value: c, label: c })),
+          ]}
+          maxWidth={240}
+        />
+      </FilterBar>
 
       {error && (
         <div className="badge badge-danger" style={{ padding: "8px 12px", fontSize: 12, marginBottom: 12 }}>
@@ -212,7 +240,7 @@ export function ExpensesClient({
                       {fmtDate(e.expense_date)}
                     </td>
                     <td>
-                      <span className="badge">{e.category}</span>
+                      <span className="badge">{t(`categories.${e.category}`)}</span>
                     </td>
                     <td>{localized(e, "description", locale) || e.description}</td>
                     <td className="text-sec" style={{ fontSize: 12 }}>

@@ -148,12 +148,14 @@ export function AgentsClient({
             </div>
           </>
         }
+        search={
+          <FilterSearch
+            value={search}
+            onChange={setSearch}
+            placeholder={tCommon("search") + "…"}
+          />
+        }
       >
-        <FilterSearch
-          value={search}
-          onChange={setSearch}
-          placeholder={tCommon("search") + "…"}
-        />
         <FilterSelect
           label={tFilters("ownerLink")}
           value={ownerLinkFilter}

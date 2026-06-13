@@ -69,6 +69,8 @@
     }
   },
   "filters": {
+    "panelTitle": "تصفية",
+    "refineBy": "تفصيل حسب",
     "city": "المدينة",
     "district": "الحي",
     "owner": "المالك",
@@ -737,6 +739,17 @@
       "company": "الشركة",
       "owner": "المالك",
       "tenant": "المستأجر"
+    },
+    "categories": {
+      "maintenance": "صيانة",
+      "utilities": "مرافق",
+      "insurance": "تأمين",
+      "legal": "قانوني",
+      "marketing": "تسويق",
+      "cleaning": "نظافة",
+      "security": "أمن",
+      "government_fees": "رسوم حكومية",
+      "other": "أخرى"
     }
   },
   "screens": {

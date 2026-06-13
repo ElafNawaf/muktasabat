@@ -20,6 +20,12 @@ import {
 } from "@/lib/types";
 
 import { ConfirmDialog } from "@/components/Modal";
+import {
+  FilterBar,
+  FilterClearButton,
+  FilterResultMeta,
+  FilterSearch,
+} from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { InviteUserModal } from "./InviteUserModal";
 
@@ -85,6 +91,9 @@ export function UsersClient({
       u.role.toLowerCase().includes(q)
     );
   });
+
+  const filtersActive = search.trim() !== "";
+  const clearFilters = () => setSearch("");
 
   const userRoles: { code: string; label: string }[] = useMemo(
     () =>
@@ -257,16 +266,27 @@ export function UsersClient({
             />
           </div>
 
-          <div className="filter-bar">
-            <div className="search-input">
-              <span className="ms">search</span>
-              <input
-                placeholder={tCommon("search") + "…"}
+          <FilterBar
+            trailing={
+              <>
+                <FilterResultMeta
+                  showing={filtered.length}
+                  total={users.length}
+                  label={tCommon("showingResults")}
+                />
+                {filtersActive && (
+                  <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
+                )}
+              </>
+            }
+            search={
+              <FilterSearch
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={setSearch}
+                placeholder={tCommon("search") + "…"}
               />
-            </div>
-          </div>
+            }
+          />
 
           {filtered.length === 0 ? (
             <div
