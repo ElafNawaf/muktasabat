@@ -184,15 +184,17 @@ def ensure_contract_extended_columns(engine) -> None:
                 )
             )
         if "total_amount" not in existing:
+            # Postgres ROUND only accepts numeric, not double precision;
+            # rent/insurance/etc. are Float, so cast the sum before rounding.
             conn.execute(
                 text(
                     "UPDATE contracts SET vat_rate = 15, "
                     "vat_amount = ROUND("
-                    "(COALESCE(total_rent_amount, 0) + COALESCE(insurance_amount, 0) + "
-                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 0.15, 2), "
+                    "((COALESCE(total_rent_amount, 0) + COALESCE(insurance_amount, 0) + "
+                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 0.15)::numeric, 2), "
                     "total_amount = ROUND("
-                    "(COALESCE(total_rent_amount, 0) + COALESCE(insurance_amount, 0) + "
-                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 1.15, 2)"
+                    "((COALESCE(total_rent_amount, 0) + COALESCE(insurance_amount, 0) + "
+                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 1.15)::numeric, 2)"
                 )
             )
 
