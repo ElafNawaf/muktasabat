@@ -106,10 +106,14 @@ export function TenantsClient({
       "national_id",
       "date_of_birth",
       "cr_number",
+      "cr_date",
       "absher_phone",
+      "representative_name",
       "representative_national_id",
       "representative_date_of_birth",
+      "tax_number",
       "email",
+      "companions",
     ];
     const rows = filtered.map((tn) =>
       [
@@ -122,10 +126,14 @@ export function TenantsClient({
         tn.national_id,
         tn.date_of_birth,
         tn.cr_number,
+        tn.cr_date,
         tn.absher_phone,
+        tn.representative_name,
         tn.representative_national_id,
         tn.representative_date_of_birth,
+        tn.tax_number,
         tn.email,
+        JSON.stringify(tn.companions ?? []),
       ]
         .map((v) => (v == null ? "" : String(v).replace(/"/g, '""')))
         .map((v) => `"${v}"`)
@@ -193,7 +201,10 @@ export function TenantsClient({
           tn.national_id,
           tn.cr_number,
           tn.absher_phone,
+          tn.representative_name,
           tn.representative_national_id,
+          tn.tax_number,
+          ...(tn.companions ?? []).flatMap((c) => [c.name, c.national_id]),
         ],
         search,
       )
@@ -447,6 +458,9 @@ export function TenantsClient({
                     </div>
                     <div className="text-sec" style={{ fontSize: 11, marginTop: 2 }}>
                       {tenantType === "company" ? t("typeCompany") : t("typeIndividual")}
+                      {tenantType === "individual" && (tn.companions?.length ?? 0) > 0 && (
+                        <> · {t("companionsCount", { count: tn.companions.length })}</>
+                      )}
                     </div>
                   </div>
                   <div className="owner-contacts">

@@ -28,6 +28,7 @@ def _apply_contract_totals(contract: Contract, payload) -> None:
         insurance_amount=payload.insurance_amount,
         electricity_amount=payload.electricity_amount,
         water_amount=payload.water_amount,
+        services_amount=payload.services_amount,
         vat_rate=payload.vat_rate,
     )
     contract.vat_rate = rate

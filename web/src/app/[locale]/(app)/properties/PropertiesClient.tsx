@@ -900,6 +900,14 @@ export function PropertiesClient({
                           <div className="meta">
                             <span>{typeLabel(u.unit_type)}</span>
                             {u.area_sqm && <span>· {u.area_sqm}m²</span>}
+                            {u.agent_percentage > 0 && (
+                              <span>
+                                · {t("agentPct")} {u.agent_percentage}%
+                              </span>
+                            )}
+                            {u.agent_name && (
+                              <span>· {t("agentName")}: {u.agent_name}</span>
+                            )}
                           </div>
                           <div
                             className="actions"
@@ -972,6 +980,19 @@ export function PropertiesClient({
                               {tn && (
                                 <div style={{ fontSize: 12.5, marginTop: 4 }}>
                                   {localized(tn, "name", locale)}
+                                </div>
+                              )}
+                              {(c.agent_percentage > 0 || u.agent_percentage > 0) && (
+                                <div
+                                  className="text-sec"
+                                  style={{ fontSize: 11.5, marginTop: 4 }}
+                                >
+                                  {t("agentPct")}:{" "}
+                                  {c.agent_percentage > 0
+                                    ? c.agent_percentage
+                                    : u.agent_percentage}
+                                  %
+                                  {u.agent_name && ` · ${u.agent_name}`}
                                 </div>
                               )}
                               <a

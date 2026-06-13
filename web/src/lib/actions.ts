@@ -13,6 +13,7 @@ import type {
   PermissionAction,
   Role,
   Tenant,
+  TenantCompanionInput,
   TenantType,
   Unit,
 } from "./types";
@@ -162,13 +163,17 @@ export type TenantInput = {
   national_id: string;
   date_of_birth?: string | null;
   cr_number?: string | null;
+  cr_date?: string | null;
   absher_phone?: string | null;
+  representative_name?: string | null;
   representative_national_id?: string | null;
   representative_date_of_birth?: string | null;
+  tax_number?: string | null;
   email?: string | null;
   notes?: string | null;
   notes_en?: string | null;
   notes_ar?: string | null;
+  companions?: TenantCompanionInput[];
 };
 
 export async function createTenant(input: TenantInput): Promise<ActionResult<Tenant>> {

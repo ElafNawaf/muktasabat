@@ -271,9 +271,12 @@ class Tenant(Base):
     date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     # Company-only fields
     cr_number: Mapped[Optional[str]] = mapped_column(String(20))
+    cr_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     absher_phone: Mapped[Optional[str]] = mapped_column(String(20))
+    representative_name: Mapped[Optional[str]] = mapped_column(String(150))
     representative_national_id: Mapped[Optional[str]] = mapped_column(String(20))
     representative_date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    tax_number: Mapped[Optional[str]] = mapped_column(String(30))
     email: Mapped[Optional[str]] = mapped_column(String(120))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     notes_en: Mapped[Optional[str]] = mapped_column(Text)
@@ -281,6 +284,27 @@ class Tenant(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     contracts: Mapped[list["Contract"]] = relationship(back_populates="tenant")
+    companions: Mapped[list["TenantCompanion"]] = relationship(
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        order_by="TenantCompanion.id",
+    )
+
+
+class TenantCompanion(Base):
+    """Resident companion (مرافق) linked to an individual tenant."""
+
+    __tablename__ = "tenant_companions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(
+        ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    national_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    date_of_birth: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="companions")
 
 
 class Contract(Base):

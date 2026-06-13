@@ -132,6 +132,19 @@ export type Unit = {
 
 export type TenantType = "individual" | "company";
 
+export type TenantCompanion = {
+  id: number;
+  name: string;
+  national_id: string;
+  date_of_birth: string | null;
+};
+
+export type TenantCompanionInput = {
+  name: string;
+  national_id: string;
+  date_of_birth?: string | null;
+};
+
 export type Tenant = {
   id: number;
   tenant_type: TenantType;
@@ -142,14 +155,18 @@ export type Tenant = {
   national_id: string;
   date_of_birth: string | null;
   cr_number: string | null;
+  cr_date: string | null;
   absher_phone: string | null;
+  representative_name: string | null;
   representative_national_id: string | null;
   representative_date_of_birth: string | null;
+  tax_number: string | null;
   email: string | null;
   notes: string | null;
   notes_en: string | null;
   notes_ar: string | null;
   created_at: string;
+  companions: TenantCompanion[];
 };
 
 export type Contract = {

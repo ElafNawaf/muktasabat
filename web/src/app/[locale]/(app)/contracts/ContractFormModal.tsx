@@ -6,7 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { DocumentUploader } from "@/components/DocumentUploader";
 import { Modal } from "@/components/Modal";
-import { computeContractTotals } from "@/lib/contract-totals";
+import { computeContractTotals, computeTotalRentAmount } from "@/lib/contract-totals";
 import {
   createContract,
   updateContract,
@@ -154,20 +154,38 @@ export function ContractFormModal({
     return availableUnits.filter((u) => u.building_id === selectedBuildingId);
   }, [availableUnits, selectedBuildingId]);
 
+  const totalRentAmount = useMemo(
+    () =>
+      computeTotalRentAmount(
+        form.rent_amount ?? 0,
+        form.payment_count ?? 1,
+        form.payment_cycle ?? 1,
+      ),
+    [form.rent_amount, form.payment_count, form.payment_cycle],
+  );
+
+  const installmentAmount = useMemo(
+    () =>
+      Math.round((Number(form.rent_amount) || 0) * (Number(form.payment_cycle) || 1) * 100) / 100,
+    [form.rent_amount, form.payment_cycle],
+  );
+
   const totals = useMemo(
     () =>
       computeContractTotals({
-        total_rent_amount: form.total_rent_amount,
+        total_rent_amount: totalRentAmount,
         insurance_amount: form.insurance_amount,
         electricity_amount: form.electricity_amount,
         water_amount: form.water_amount,
+        services_amount: form.services_amount,
         vat_rate: form.vat_rate,
       }),
     [
-      form.total_rent_amount,
+      totalRentAmount,
       form.insurance_amount,
       form.electricity_amount,
       form.water_amount,
+      form.services_amount,
       form.vat_rate,
     ],
   );
@@ -217,7 +235,7 @@ export function ContractFormModal({
       branch: form.branch?.toString().trim() || null,
       ejar_contract_number: form.ejar_contract_number?.toString().trim() || null,
       rent_amount: Number(form.rent_amount),
-      total_rent_amount: Number(form.total_rent_amount) || 0,
+      total_rent_amount: totalRentAmount,
       services_amount: Number(form.services_amount) || 0,
       insurance_amount: Number(form.insurance_amount) || 0,
       duration_years: Number(form.duration_years) || 0,
@@ -504,25 +522,27 @@ export function ContractFormModal({
           </div>
           <div className="field-row">
             <div className="field" style={{ flex: 1 }}>
-              <label>{t("rent")} (SAR / installment)</label>
+              <label>{t("rentMonthly")} (SAR)</label>
               <input
                 className="input"
                 type="number"
-                min={1}
+                min={0}
                 value={form.rent_amount}
                 onChange={(e) => set("rent_amount", Number(e.target.value))}
                 required
               />
             </div>
             <div className="field" style={{ flex: 1 }}>
+              <label>{t("installmentAmount")} (SAR)</label>
+              <div className="input" style={{ background: "var(--color-bg-deep)" }}>
+                {tCurrency("sar")} {formatSAR(installmentAmount, locale)}
+              </div>
+            </div>
+            <div className="field" style={{ flex: 1 }}>
               <label>{t("totalRentAmount")} (SAR)</label>
-              <input
-                className="input"
-                type="number"
-                min={0}
-                value={form.total_rent_amount ?? 0}
-                onChange={(e) => set("total_rent_amount", Number(e.target.value))}
-              />
+              <div className="input" style={{ background: "var(--color-bg-deep)" }}>
+                {tCurrency("sar")} {formatSAR(totalRentAmount, locale)}
+              </div>
             </div>
           </div>
         </CollapsibleSection>

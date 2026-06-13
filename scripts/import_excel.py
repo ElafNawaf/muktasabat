@@ -250,13 +250,13 @@ def import_tenants(conn, path: Path, dry_run: bool):
       4  phone
       5  commercial_record  → cr_number (company)
       6  national_id
-      7  birth_or_record_date → date_of_birth (individual) or company record date
+      7  birth_or_record_date → date_of_birth (individual) or cr_date (company)
       8  manager_national_id  → representative_national_id
-      9  manager_name         → into notes
+      9  manager_name         → representative_name
       10 manager_birth_date   → representative_date_of_birth
       11 email
       12 notes
-      13 tax_number      → into notes
+      13 tax_number
       14 notes_ar
 
     tenant_type is "company" when commercial_record (col 5) is present, else "individual".
@@ -287,19 +287,15 @@ def import_tenants(conn, path: Path, dry_run: bool):
             cr_number = comm_reg if tenant_type == "company" else None
             absher_phone = phone if tenant_type == "company" and phone != "—" else None
             date_of_birth = birth if tenant_type == "individual" else None
+            cr_date = birth if tenant_type == "company" else None
+            rep_name = mgr_name if tenant_type == "company" else None
             rep_nat_id = mgr_id if tenant_type == "company" else None
             rep_dob = mgr_birth if tenant_type == "company" else None
+            tax_number = tax_no if tenant_type == "company" else None
             if tenant_type == "company":
                 nat_id = rep_nat_id or cr_number or nat_id
 
-            notes_parts = []
-            if notes_in:
-                notes_parts.append(notes_in)
-            if mgr_name:
-                notes_parts.append(f"المدير: {mgr_name}")
-            if tax_no:
-                notes_parts.append(f"الرقم الضريبي: {tax_no}")
-            notes = " | ".join(notes_parts) if notes_parts else None
+            notes = notes_in or None
 
             existing_id = fetchone(
                 cur,
@@ -316,17 +312,20 @@ def import_tenants(conn, path: Path, dry_run: bool):
                         national_id = CASE WHEN %s <> '—' THEN %s ELSE national_id END,
                         date_of_birth = COALESCE(%s, date_of_birth),
                         cr_number = COALESCE(%s, cr_number),
+                        cr_date = COALESCE(%s, cr_date),
                         absher_phone = COALESCE(%s, absher_phone),
+                        representative_name = COALESCE(%s, representative_name),
                         representative_national_id = COALESCE(%s, representative_national_id),
                         representative_date_of_birth = COALESCE(%s, representative_date_of_birth),
+                        tax_number = COALESCE(%s, tax_number),
                         email   = COALESCE(%s, email),
                         notes   = COALESCE(%s, notes),
                         notes_ar = COALESCE(%s, notes_ar)
                     WHERE id = %s
                     """,
                     (tenant_type, name_en, name_ar, nat_id, nat_id,
-                     date_of_birth, cr_number, absher_phone, rep_nat_id, rep_dob,
-                     email, notes, notes_ar, existing_id),
+                     date_of_birth, cr_number, cr_date, absher_phone, rep_name,
+                     rep_nat_id, rep_dob, tax_number, email, notes, notes_ar, existing_id),
                 )
                 updated += 1
             else:
@@ -334,14 +333,16 @@ def import_tenants(conn, path: Path, dry_run: bool):
                     """
                     INSERT INTO tenants
                       (tenant_type, name, name_en, name_ar, phone, national_id,
-                       date_of_birth, cr_number, absher_phone,
-                       representative_national_id, representative_date_of_birth,
+                       date_of_birth, cr_number, cr_date, absher_phone,
+                       representative_name, representative_national_id,
+                       representative_date_of_birth, tax_number,
                        email, notes, notes_ar, created_at)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """,
                     (tenant_type, name, name_en, name_ar, phone, nat_id,
-                     date_of_birth, cr_number, absher_phone, rep_nat_id, rep_dob,
-                     email, notes, notes_ar, datetime.utcnow()),
+                     date_of_birth, cr_number, cr_date, absher_phone, rep_name,
+                     rep_nat_id, rep_dob, tax_number, email, notes, notes_ar,
+                     datetime.utcnow()),
                 )
                 inserted += 1
 

@@ -207,9 +207,12 @@ def ensure_tenant_extended_columns(engine) -> None:
         ("tenant_type", "VARCHAR(20) DEFAULT 'individual' NOT NULL"),
         ("date_of_birth", "DATE"),
         ("cr_number", "VARCHAR(20)"),
+        ("cr_date", "DATE"),
         ("absher_phone", "VARCHAR(20)"),
+        ("representative_name", "VARCHAR(150)"),
         ("representative_national_id", "VARCHAR(20)"),
         ("representative_date_of_birth", "DATE"),
+        ("tax_number", "VARCHAR(30)"),
     ]
     stmts = [
         f"ALTER TABLE tenants ADD COLUMN {name} {col_type}"
@@ -221,6 +224,25 @@ def ensure_tenant_extended_columns(engine) -> None:
     with engine.begin() as conn:
         for stmt in stmts:
             conn.execute(text(stmt))
+
+
+def migrate_tenant_escorts_to_companions(engine) -> None:
+    """Copy legacy tenant_escorts rows into tenant_companions after the rename."""
+    insp = inspect(engine)
+    if not insp.has_table("tenant_escorts") or not insp.has_table("tenant_companions"):
+        return
+    with engine.begin() as conn:
+        count = conn.execute(text("SELECT COUNT(*) FROM tenant_companions")).scalar()
+        if count and count > 0:
+            return
+        conn.execute(
+            text(
+                """
+                INSERT INTO tenant_companions (tenant_id, name, national_id, date_of_birth)
+                SELECT tenant_id, name, national_id, date_of_birth FROM tenant_escorts
+                """
+            )
+        )
 
 
 def ensure_owner_agent_id_column(engine) -> None:
