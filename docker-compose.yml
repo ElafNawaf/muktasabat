@@ -23,6 +23,15 @@ services:
     environment:
       DATABASE_URL: postgresql://muktasbat:${DB_PASSWORD:-muktasbat_secret}@db:5432/muktasbat
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      # S3 / file uploads — set these in .env (or your hosting environment)
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}       # leave blank for AWS; set for R2/MinIO
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}  # optional CDN prefix (e.g. CloudFront)
+      # SES email
+      SES_REGION: ${SES_REGION:-}
+      SES_FROM_EMAIL: ${SES_FROM_EMAIL:-}
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:3001}
     depends_on:
       db:
         condition: service_healthy
