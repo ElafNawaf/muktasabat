@@ -186,6 +186,8 @@ def ensure_contract_extended_columns(engine) -> None:
                 )
             )
         if "total_amount" not in existing:
+            # Postgres ROUND only accepts numeric, not double precision;
+            # rent/insurance/etc. are Float, so cast the sum before rounding.
             conn.execute(
                 text(
                     "UPDATE contracts SET vat_rate = 15, "

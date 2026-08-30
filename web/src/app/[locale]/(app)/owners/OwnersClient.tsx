@@ -258,12 +258,14 @@ export function OwnersClient({
             </div>
           </>
         }
+        search={
+          <FilterSearch
+            value={search}
+            onChange={setSearch}
+            placeholder={tCommon("search") + "…"}
+          />
+        }
       >
-        <FilterSearch
-          value={search}
-          onChange={setSearch}
-          placeholder={tCommon("search") + "…"}
-        />
         <FilterSelect
           label={tFilters("portfolio")}
           value={portfolioFilter}

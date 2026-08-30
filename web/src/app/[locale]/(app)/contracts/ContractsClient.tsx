@@ -10,6 +10,7 @@ import {
   FilterResultMeta,
   FilterSearch,
   FilterSelect,
+  FilterStatusPills,
 } from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
 import {
@@ -324,6 +325,18 @@ export function ContractsClient({
       </div>
 
       <FilterBar
+        statusRow={
+          <FilterStatusPills
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v)}
+            options={[
+              { value: "all", label: tCommon("all"), count: totals.total },
+              { value: "active", label: t("active"), count: totals.active },
+              { value: "expired", label: t("expired"), count: totals.expired },
+              { value: "terminated", label: t("terminated"), count: totals.terminated },
+            ]}
+          />
+        }
         trailing={
           <>
             <FilterResultMeta
@@ -336,23 +349,14 @@ export function ContractsClient({
             )}
           </>
         }
+        search={
+          <FilterSearch
+            value={search}
+            onChange={setSearch}
+            placeholder={tCommon("search") + "…"}
+          />
+        }
       >
-        <FilterSearch
-          value={search}
-          onChange={setSearch}
-          placeholder={tCommon("search") + "…"}
-        />
-        <FilterSelect
-          label={tCommon("status")}
-          value={statusFilter}
-          onChange={(v) => setStatusFilter(v as StatusFilter)}
-          options={[
-            { value: "all", label: tCommon("all") },
-            { value: "active", label: t("active") },
-            { value: "expired", label: t("expired") },
-            { value: "terminated", label: t("terminated") },
-          ]}
-        />
         <FilterSelect
           label={tFilters("owner")}
           value={ownerFilter}

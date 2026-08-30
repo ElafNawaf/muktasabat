@@ -70,6 +70,8 @@
     }
   },
   "filters": {
+    "panelTitle": "Filters",
+    "refineBy": "Refine by",
     "city": "City",
     "district": "District",
     "owner": "Owner",
@@ -755,6 +757,17 @@
       "company": "Company",
       "owner": "Owner",
       "tenant": "Tenant"
+    },
+    "categories": {
+      "maintenance": "Maintenance",
+      "utilities": "Utilities",
+      "insurance": "Insurance",
+      "legal": "Legal",
+      "marketing": "Marketing",
+      "cleaning": "Cleaning",
+      "security": "Security",
+      "government_fees": "Government fees",
+      "other": "Other"
     }
   },
   "screens": {
