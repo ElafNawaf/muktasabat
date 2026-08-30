@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
 import { createExpense, updateExpense, type ExpenseInput } from "@/lib/actions";
-import { EXPENSE_CATEGORIES } from "@/lib/expense-categories";
+import { EXPENSE_CATEGORIES, categoryMeta } from "@/lib/expense-categories";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
 import type { ExpenseRow } from "./ExpensesClient";
@@ -134,31 +134,41 @@ export function ExpenseFormModal({
             {error}
           </div>
         )}
-        <div className="field-row">
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("category")}</label>
-            <select
-              className="select"
-              value={form.category}
-              onChange={(e) => set("category", e.target.value as ExpenseInput["category"])}
-            >
-              {EXPENSE_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {t(`categories.${c}`)}
-                </option>
-              ))}
-            </select>
+        <div className="field">
+          <label>{t("category")}</label>
+          <div className="radio-cards">
+            {EXPENSE_CATEGORIES.map((c) => {
+              const m = categoryMeta(c);
+              const selected = form.category === c;
+              return (
+                <div
+                  key={c}
+                  className={"radio-card" + (selected ? " selected" : "")}
+                  onClick={() => set("category", c)}
+                  style={{ padding: 10, display: "flex", alignItems: "center", gap: 8 }}
+                  role="radio"
+                  aria-checked={selected}
+                >
+                  <span className="ms ms-sm" style={{ color: m.color }}>
+                    {m.icon}
+                  </span>
+                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>
+                    {t(`categories.${c}`)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>{t("date")}</label>
-            <input
-              className="input"
-              type="date"
-              value={form.expense_date}
-              onChange={(e) => set("expense_date", e.target.value)}
-              required
-            />
-          </div>
+        </div>
+        <div className="field">
+          <label>{t("date")}</label>
+          <input
+            className="input"
+            type="date"
+            value={form.expense_date}
+            onChange={(e) => set("expense_date", e.target.value)}
+            required
+          />
         </div>
         <BilingualField
           label={t("description")}

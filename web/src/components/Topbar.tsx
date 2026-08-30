@@ -15,12 +15,18 @@ export function Topbar({
   user: { username: string; role: string };
 }) {
   const t = useTranslations("common");
+  const roleLabel = useTranslations("roles");
   const { theme, toggle } = useTheme();
   const { toggle: toggleMobileNav } = useMobileNav();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
 
   const initials = user.username.slice(0, 2).toUpperCase();
+  // Localize the role like the sidebar does; fall back to a capitalized raw
+  // value so the pill never shows a bare lowercase string.
+  const roleText = roleLabel.has(user.role)
+    ? roleLabel(user.role)
+    : user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
   async function logout() {
     if (signingOut) return;
@@ -65,7 +71,7 @@ export function Topbar({
         >
           <span className="name">{user.username}</span>
         </div>
-        <span className="role-pill">{user.role}</span>
+        <span className="role-pill">{roleText}</span>
       </button>
     </header>
   );

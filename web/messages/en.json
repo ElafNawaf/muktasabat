@@ -232,7 +232,9 @@
     "collected": "Collected",
     "loadFailed": "Could not load dashboard data"
   },
-  "currency": { "sar": "SAR" },
+  "currency": {
+    "sar": "SAR"
+  },
   "properties": {
     "title": "Properties",
     "subtitle": "Browse buildings, expand to inspect units and contracts.",
@@ -265,7 +267,8 @@
     "setLocation": "Set location",
     "approxLocation": "approximate",
     "agentPct": "Agent %",
-    "agentName": "Agent"
+    "agentName": "Agent",
+    "availableToLease": "Available to lease"
   },
   "mapPicker": {
     "label": "Location on map",
@@ -675,7 +678,17 @@
     "contractNumberRequired": "Contract number is required",
     "dateOrderInvalid": "End date must be after start date",
     "months": "months",
-    "notes": "Notes"
+    "notes": "Notes",
+    "viewContract": "View contract",
+    "paymentSchedule": "Payment schedule",
+    "amount": "Amount",
+    "dueDate": "Due date",
+    "paid": "Paid",
+    "pending": "Pending",
+    "overdue": "Overdue",
+    "noPayments": "No payments recorded yet.",
+    "owner": "Owner",
+    "installmentNo": "#"
   },
   "paymentsPage": {
     "title": "Payments",
@@ -704,7 +717,15 @@
       "bank_transfer": "Bank transfer",
       "cash": "Cash",
       "cheque": "Cheque"
-    }
+    },
+    "daysOverdue": "{days}d overdue",
+    "dueInDays": "in {days}d",
+    "dueToday": "due today",
+    "splitTitle": "Payment split",
+    "ownerShare": "Owner share",
+    "mgmtFee": "Management fee",
+    "agentFee": "Agent fee",
+    "ejarFee": "Ejar fee"
   },
   "expensesPage": {
     "title": "Expenses",
@@ -753,9 +774,21 @@
     }
   },
   "screens": {
-    "contracts": { "title": "Contracts", "subtitle": "All active and historical contracts." },
-    "payments": { "title": "Payments", "subtitle": "Collection schedule and history." },
-    "expenses": { "title": "Expenses", "subtitle": "Operational costs by building and category." },
-    "users": { "title": "User Management", "subtitle": "Manage role-based access for your team." }
+    "contracts": {
+      "title": "Contracts",
+      "subtitle": "All active and historical contracts."
+    },
+    "payments": {
+      "title": "Payments",
+      "subtitle": "Collection schedule and history."
+    },
+    "expenses": {
+      "title": "Expenses",
+      "subtitle": "Operational costs by building and category."
+    },
+    "users": {
+      "title": "User Management",
+      "subtitle": "Manage role-based access for your team."
+    }
   }
 }

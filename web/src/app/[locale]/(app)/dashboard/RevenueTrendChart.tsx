@@ -17,9 +17,11 @@ type Point = { label: string; collected: number; expected: number };
 export function RevenueTrendChart({
   data,
   labels,
+  rtl = false,
 }: {
   data: Point[];
   labels: { collected: string; expected: string };
+  rtl?: boolean;
 }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -28,20 +30,35 @@ export function RevenueTrendChart({
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+      <AreaChart data={data} margin={{ top: 8, right: 16, left: -8, bottom: 8 }}>
         <defs>
           <linearGradient id="grad-collected" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7B1A1A" stopOpacity={0.5} />
+            <stop offset="0%" stopColor="#7B1A1A" stopOpacity={0.32} />
             <stop offset="100%" stopColor="#7B1A1A" stopOpacity={0} />
           </linearGradient>
           <linearGradient id="grad-expected" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#9CA3AF" stopOpacity={0.4} />
-            <stop offset="100%" stopColor="#9CA3AF" stopOpacity={0} />
+            <stop offset="0%" stopColor="#888888" stopOpacity={0.18} />
+            <stop offset="100%" stopColor="#888888" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid stroke={grid} vertical={false} />
-        <XAxis dataKey="label" stroke={axis} fontSize={12} tickLine={false} axisLine={false} />
-        <YAxis stroke={axis} fontSize={12} tickLine={false} axisLine={false} width={48} />
+        <XAxis
+          dataKey="label"
+          stroke={axis}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          reversed={rtl}
+        />
+        <YAxis
+          stroke={axis}
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          width={48}
+          orientation={rtl ? "right" : "left"}
+          tickFormatter={(v: number) => (v ? v / 1000 + "k" : "0")}
+        />
         <Tooltip
           contentStyle={{
             background: isDark ? "#1F1A1B" : "#FFFFFF",
@@ -56,8 +73,9 @@ export function RevenueTrendChart({
           type="monotone"
           dataKey="expected"
           name={labels.expected}
-          stroke="#9CA3AF"
-          strokeWidth={1.4}
+          stroke="rgba(127,127,127,0.6)"
+          strokeWidth={1.5}
+          strokeDasharray="3 3"
           fill="url(#grad-expected)"
         />
         <Area
@@ -65,7 +83,7 @@ export function RevenueTrendChart({
           dataKey="collected"
           name={labels.collected}
           stroke="#7B1A1A"
-          strokeWidth={2}
+          strokeWidth={2.2}
           fill="url(#grad-collected)"
         />
       </AreaChart>

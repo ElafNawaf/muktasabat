@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Right-side drawer dialog used for every form in the app (Owner, Tenant,
@@ -40,7 +40,24 @@ export function Modal({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  // Deferred unmount so the drawer plays its exit (slide-out) transition:
+  // `mounted` keeps the node in the DOM for 300ms after `open` flips to false,
+  // during which the `.open` class is removed so the panel/scrim animate out.
+  // The `.open` class is applied synchronously with `open` (not gated on a
+  // rAF), so the drawer is reliably on-screen the moment it mounts even when
+  // the tab is backgrounded and transitions/rAF are throttled.
+  const [mounted, setMounted] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    const timer = setTimeout(() => setMounted(false), 300);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  if (!mounted) return null;
 
   // Drawer widths (CSS default is 540px; sm shrinks for confirmations,
   // lg widens for big multi-section forms).
@@ -50,7 +67,7 @@ export function Modal({
   // `.modal-overlay.open .modal { transform: translateX(0) }` selector matches —
   // otherwise the panel stays at translateX(100%) (offscreen) and looks "crashed".
   return (
-    <div className="modal-overlay open" onClick={onClose}>
+    <div className={"modal-overlay" + (open ? " open" : "")} onClick={onClose}>
       <div
         className="modal"
         style={{ width: widths[size] }}

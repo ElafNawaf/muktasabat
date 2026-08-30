@@ -624,14 +624,27 @@ export function PropertiesClient({
                     })()}
                   </div>
                 </div>
+                <div className="prop-occ-mini" title={t("occupancy")}>
+                  <div
+                    className="prop-occ-ring"
+                    style={{
+                      background: `conic-gradient(${meta.hueA} ${occPct * 3.6}deg, var(--color-bg-deep) 0deg)`,
+                    }}
+                  >
+                    <div className="prop-occ-ring-inner">
+                      {occPct}
+                      <span style={{ fontSize: 9 }}>%</span>
+                    </div>
+                  </div>
+                </div>
                 <div className="stats">
                   <div className="stat">
                     <div className="num">{us.length}</div>
                     <div className="lbl">{t("nUnits")}</div>
                   </div>
                   <div className="stat">
-                    <div className="num">{occPct}%</div>
-                    <div className="lbl">{t("occupancy")}</div>
+                    <div className="num">{occ}</div>
+                    <div className="lbl">{t("occupied")}</div>
                   </div>
                   <div className="stat">
                     <div className="num">{activeCount}</div>
@@ -885,7 +898,16 @@ export function PropertiesClient({
                         </div>
                         <div className="unit-card-body">
                           <div className="top">
-                            <div className="num">{u.number}</div>
+                            <div
+                              className="num"
+                              style={{ display: "flex", alignItems: "center", gap: 8 }}
+                            >
+                              <span
+                                className={"unit-avail-dot " + (u.is_available ? "free" : "busy")}
+                                title={u.is_available ? t("available") : t("occupied")}
+                              />
+                              {u.number}
+                            </div>
                             <div className="rent">
                               {tCurrency("sar")} {formatSAR(u.rent_amount, locale)}
                               <span
@@ -1006,6 +1028,12 @@ export function PropertiesClient({
                                 <span className="ms ms-sm">visibility</span>{" "}
                                 {t("viewContract")}
                               </a>
+                            </div>
+                          )}
+                          {selectedUnit === u.id && !c && u.is_available && (
+                            <div className="unit-vacant-note" style={{ marginTop: 8 }}>
+                              <span className="ms ms-sm">check_circle</span>
+                              {t("availableToLease")}
                             </div>
                           )}
                         </div>

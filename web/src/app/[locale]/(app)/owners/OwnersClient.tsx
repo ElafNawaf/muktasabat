@@ -402,20 +402,22 @@ export function OwnersClient({
                       {tOwnerForm(`ownerTypes.${o.owner_type ?? "individual"}`)}
                     </span>
                   </div>
-                  <div className="owner-contacts">
-                    {o.phone && (
-                      <a className="owner-contact" href={`tel:${o.phone}`}>
-                        <span className="ms ms-sm">call</span>
-                        <span className="mono">{o.phone}</span>
-                      </a>
-                    )}
-                    {o.email && (
-                      <a className="owner-contact" href={`mailto:${o.email}`}>
-                        <span className="ms ms-sm">mail</span>
-                        <span>{o.email}</span>
-                      </a>
-                    )}
-                  </div>
+                  {(o.phone || o.email) && (
+                    <div className="owner-contacts">
+                      {o.phone && (
+                        <a className="owner-contact" href={`tel:${o.phone}`}>
+                          <span className="ms ms-sm">call</span>
+                          <span className="mono">{o.phone}</span>
+                        </a>
+                      )}
+                      {o.email && (
+                        <a className="owner-contact" href={`mailto:${o.email}`}>
+                          <span className="ms ms-sm">mail</span>
+                          <span>{o.email}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
                   {agent && (
                     <div className="owner-contact" style={{ marginTop: 6 }}>
                       <span className="ms ms-sm">support_agent</span>

@@ -34,12 +34,22 @@ import { ContractFormModal } from "./ContractFormModal";
 
 type StatusFilter = "all" | "active" | "expired" | "terminated";
 
+export type ContractPayment = {
+  id: number;
+  contract_id: number;
+  amount: number;
+  due_date: string;
+  paid_date: string | null;
+  status: "pending" | "paid" | "overdue";
+};
+
 export function ContractsClient({
   contracts,
   units,
   tenants,
   buildings,
   owners,
+  payments = [],
   locale,
 }: {
   contracts: Contract[];
@@ -47,6 +57,7 @@ export function ContractsClient({
   tenants: Tenant[];
   buildings: Building[];
   owners: Owner[];
+  payments?: ContractPayment[];
   locale: string;
 }) {
   const t = useTranslations("contractsPage");
@@ -85,6 +96,7 @@ export function ContractsClient({
   const [endingSoonFilter, setEndingSoonFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
+  const [viewing, setViewing] = useState<Contract | null>(null);
   const [terminating, setTerminating] = useState<Contract | null>(null);
   const [confirmDel, setConfirmDel] = useState<Contract | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -434,8 +446,12 @@ export function ContractsClient({
                 const u = unitOf(c.unit_id);
                 const tn = tenantOf(c.tenant_id);
                 const b = u ? buildingOf(u.building_id) : null;
+                const endingSoon =
+                  c.status === "active" &&
+                  c.end_date >= today &&
+                  c.end_date <= endingSoonCutoff;
                 return (
-                  <tr key={c.id}>
+                  <tr key={c.id} className={endingSoon ? "warn-row" : ""}>
                     <td className="mono" style={{ fontSize: 12 }}>
                       {c.contract_number}
                     </td>
@@ -461,7 +477,7 @@ export function ContractsClient({
                       {formatSAR(c.total_amount || c.total_rent_amount, locale)}
                     </td>
                     <td>
-                      <span className="badge">{c.payment_cycle}m</span>
+                      <span className="badge badge-info">{c.payment_cycle}m</span>
                     </td>
                     <td>
                       {c.status === "active" && (
@@ -475,13 +491,20 @@ export function ContractsClient({
                         </span>
                       )}
                       {c.status === "terminated" && (
-                        <span className="badge">
+                        <span className="badge badge-neutral">
                           <span className="dot" /> {t("terminated")}
                         </span>
                       )}
                     </td>
                     <td>
                       <div className="actions" style={{ display: "flex", gap: 4 }}>
+                        <button
+                          className="icon-btn"
+                          title={t("viewContract")}
+                          onClick={() => setViewing(c)}
+                        >
+                          <span className="ms ms-sm">visibility</span>
+                        </button>
                         <button
                           className="icon-btn"
                           title={tCommon("edit")}
@@ -527,6 +550,152 @@ export function ContractsClient({
           </table>
         </div>
       </div>
+
+      <Modal
+        open={Boolean(viewing)}
+        onClose={() => setViewing(null)}
+        title={viewing?.contract_number ?? ""}
+        subtitle={
+          viewing
+            ? (() => {
+                const tn = tenantOf(viewing.tenant_id);
+                return tn ? localized(tn, "name", locale) : "";
+              })()
+            : undefined
+        }
+        size="lg"
+      >
+        {viewing &&
+          (() => {
+            const u = unitOf(viewing.unit_id);
+            const b = u ? buildingOf(u.building_id) : null;
+            const o = b ? ownerOf(b.owner_id) : null;
+            const tn = tenantOf(viewing.tenant_id);
+            const subtotal = viewing.total_rent_amount;
+            const total = viewing.total_amount || viewing.total_rent_amount;
+            const vat = viewing.vat_amount || Math.max(0, total - subtotal);
+            const schedule = payments
+              .filter((p) => p.contract_id === viewing.id)
+              .sort((a, b2) => a.due_date.localeCompare(b2.due_date));
+            const effStatus = (p: ContractPayment) =>
+              p.status === "paid"
+                ? "paid"
+                : p.due_date < today
+                  ? "overdue"
+                  : "pending";
+            const statusBadge = (s: string) =>
+              s === "paid"
+                ? "badge badge-success"
+                : s === "overdue"
+                  ? "badge badge-danger"
+                  : "badge badge-neutral";
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <span
+                    className={
+                      "badge " +
+                      (viewing.status === "active"
+                        ? "badge-success"
+                        : viewing.status === "expired"
+                          ? "badge-danger"
+                          : "badge-neutral")
+                    }
+                  >
+                    <span className="dot" /> {t(viewing.status)}
+                  </span>
+                  <span className="badge badge-info">{viewing.payment_cycle}m</span>
+                  <span className="text-sec" style={{ fontSize: 12.5 }}>
+                    {fmtDate(viewing.start_date)} → {fmtDate(viewing.end_date)}
+                  </span>
+                </div>
+
+                <div className="contract-panel">
+                  <div className="row">
+                    <div className="item">
+                      <div className="lbl">{t("tenant")}</div>
+                      <div className="val">{tn ? localized(tn, "name", locale) : "—"}</div>
+                    </div>
+                    <div className="item">
+                      <div className="lbl">{t("unit")}</div>
+                      <div className="val">
+                        {u ? `${localized(u, "name", locale)} · #${u.number}` : "—"}
+                      </div>
+                    </div>
+                    <div className="item">
+                      <div className="lbl">{t("owner")}</div>
+                      <div className="val">{o ? localized(o, "name", locale) : "—"}</div>
+                    </div>
+                    <div className="item">
+                      <div className="lbl">{t("rent")}</div>
+                      <div className="val mono">
+                        {tCurrency("sar")} {formatSAR(viewing.rent_amount, locale)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 style={{ margin: "0 0 8px", fontSize: 13.5 }}>{t("contractTotals")}</h3>
+                  <div className="fee-table">
+                    <div className="lbl">{t("subtotal")}</div>
+                    <div className="val mono">
+                      {tCurrency("sar")} {formatSAR(subtotal, locale)}
+                    </div>
+                    <div className="lbl">
+                      {t("vatAmount")} ({viewing.vat_rate}%)
+                    </div>
+                    <div className="val mono">
+                      {tCurrency("sar")} {formatSAR(vat, locale)}
+                    </div>
+                    <div className="lbl total">{t("contractTotal")}</div>
+                    <div className="val total mono">
+                      {tCurrency("sar")} {formatSAR(total, locale)}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 style={{ margin: "0 0 8px", fontSize: 13.5 }}>{t("paymentSchedule")}</h3>
+                  {schedule.length === 0 ? (
+                    <div className="text-sec" style={{ fontSize: 12.5 }}>
+                      {t("noPayments")}
+                    </div>
+                  ) : (
+                    <div className="schedule">
+                      <div className="row head">
+                        <span>{t("installmentNo")}</span>
+                        <span>{t("dueDate")}</span>
+                        <span></span>
+                        <span></span>
+                        <span style={{ textAlign: "end" }}>{t("amount")}</span>
+                      </div>
+                      {schedule.map((p, i) => {
+                        const s = effStatus(p);
+                        return (
+                          <div key={p.id} className="row">
+                            <span className="mono">{i + 1}</span>
+                            <span>{fmtDate(p.due_date)}</span>
+                            <span></span>
+                            <span className={statusBadge(s)}>
+                              <span className="dot" /> {t(s)}
+                            </span>
+                            <span
+                              className="mono"
+                              style={{ textAlign: "end", fontWeight: 600 }}
+                            >
+                              {formatSAR(p.amount, locale)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+      </Modal>
 
       {formOpen && (
         <ContractFormModal

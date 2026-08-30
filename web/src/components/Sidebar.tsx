@@ -19,7 +19,13 @@ function roleDisplayName(role: string, tr: (key: AppRole) => string): string {
   return role;
 }
 
-export function Sidebar({ user }: { user: { username: string; role: string } | null }) {
+export function Sidebar({
+  user,
+  badges,
+}: {
+  user: { username: string; role: string } | null;
+  badges?: { payments?: number };
+}) {
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
@@ -43,7 +49,13 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
         { id: "agents", href: `/${locale}/agents`, icon: "support_agent", label: t("agents") },
         { id: "tenants", href: `/${locale}/tenants`, icon: "person", label: t("tenants") },
         { id: "contracts", href: `/${locale}/contracts`, icon: "description", label: t("contracts") },
-        { id: "payments", href: `/${locale}/payments`, icon: "payments", label: t("payments") },
+        {
+          id: "payments",
+          href: `/${locale}/payments`,
+          icon: "payments",
+          label: t("payments"),
+          badge: badges?.payments || undefined,
+        },
         { id: "expenses", href: `/${locale}/expenses`, icon: "receipt_long", label: t("expenses") },
       ],
     },

@@ -5,10 +5,25 @@ import { useState, useTransition } from "react";
 
 import { Modal } from "@/components/Modal";
 import { markPaymentPaid, type PayInput } from "@/lib/actions";
+import { formatSAR } from "@/lib/format";
 
 import type { PaymentRow } from "./PaymentsClient";
 
-const METHODS: PayInput["payment_method"][] = ["bank_transfer", "cash", "cheque"];
+const METHODS: { value: NonNullable<PayInput["payment_method"]>; icon: string }[] = [
+  { value: "bank_transfer", icon: "account_balance" },
+  { value: "cash", icon: "payments" },
+  { value: "cheque", icon: "receipt" },
+];
+
+// Human label for a payment-split row, falling back to the raw type.
+function splitLabel(type: string, t: (k: string) => string): string {
+  const key = type.toLowerCase();
+  if (/management|mgmt/.test(key)) return t("mgmtFee");
+  if (/agent|broker/.test(key)) return t("agentFee");
+  if (/ejar/.test(key)) return t("ejarFee");
+  if (/owner|landlord|net/.test(key)) return t("ownerShare");
+  return type.replace(/_/g, " ");
+}
 
 export function PayModal({
   open,
@@ -79,17 +94,34 @@ export function PayModal({
         )}
         <div className="field">
           <label>{t("paymentMethod")}</label>
-          <select
-            className="select"
-            value={form.payment_method}
-            onChange={(e) => set("payment_method", e.target.value as PayInput["payment_method"])}
-          >
+          <div className="radio-cards">
             {METHODS.map((m) => (
-              <option key={m} value={m}>
-                {t(`methods.${m}`)}
-              </option>
+              <div
+                key={m.value}
+                className={"radio-card" + (form.payment_method === m.value ? " selected" : "")}
+                onClick={() => set("payment_method", m.value)}
+                style={{ textAlign: "center" }}
+                role="radio"
+                aria-checked={form.payment_method === m.value}
+              >
+                <span
+                  className="ms"
+                  style={{
+                    fontSize: 22,
+                    color:
+                      form.payment_method === m.value
+                        ? "var(--color-primary)"
+                        : "var(--color-text-secondary)",
+                  }}
+                >
+                  {m.icon}
+                </span>
+                <div style={{ fontSize: 12.5, fontWeight: 500, marginTop: 4 }}>
+                  {t(`methods.${m.value}`)}
+                </div>
+              </div>
             ))}
-          </select>
+          </div>
         </div>
         <div className="field-row">
           <div className="field" style={{ flex: 1 }}>
@@ -121,6 +153,27 @@ export function PayModal({
             onChange={(e) => set("notes", e.target.value)}
           />
         </div>
+
+        {payment.splits && payment.splits.length > 0 && (
+          <div className="field">
+            <label>{t("splitTitle")}</label>
+            <div className="split">
+              <div className="item">
+                <span className="lbl">{t("amount")}</span>
+                <span className="val">{formatSAR(payment.amount, "en")}</span>
+              </div>
+              {payment.splits.map((s) => {
+                const isOwner = /owner|landlord|net/i.test(s.split_type);
+                return (
+                  <div key={s.id} className={"item" + (isOwner ? " total" : "")}>
+                    <span className="lbl">{s.description ?? splitLabel(s.split_type, t)}</span>
+                    <span className="val">{formatSAR(s.amount, "en")}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </form>
     </Modal>
   );

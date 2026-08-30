@@ -14,6 +14,7 @@ import {
 import { usePermissions } from "@/components/PermissionsProvider";
 import { deletePayment } from "@/lib/actions";
 import { formatDate, formatSAR } from "@/lib/format";
+import { initials, tenantColor } from "@/lib/palette";
 import {
   localized,
   type Building,
@@ -39,6 +40,16 @@ export type PaymentRow = {
 };
 
 type StatusFilter = "all" | "pending" | "paid" | "overdue";
+type View = "grid" | "list";
+
+const STATUS_META: Record<
+  PaymentRow["status"],
+  { color: string; icon: string }
+> = {
+  paid: { color: "#10B981", icon: "task_alt" },
+  pending: { color: "#F59E0B", icon: "schedule" },
+  overdue: { color: "#EF4444", icon: "error" },
+};
 
 export function PaymentsClient({
   payments,
@@ -63,6 +74,7 @@ export function PaymentsClient({
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [view, setView] = useState<View>("grid");
   const [paying, setPaying] = useState<PaymentRow | null>(null);
   const [confirmDel, setConfirmDel] = useState<PaymentRow | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
@@ -121,6 +133,29 @@ export function PaymentsClient({
   };
 
   const fmtDate = (iso: string) => formatDate(iso, locale);
+
+  // Relative due sub-line shown under the due date on cards.
+  const dueSub = (
+    p: PaymentRow,
+    eff: PaymentRow["status"],
+  ): { text: string; color: string } => {
+    if (eff === "paid")
+      return {
+        text: p.paid_date ? fmtDate(p.paid_date) : t("paid"),
+        color: "var(--color-text-secondary)",
+      };
+    const days = Math.round(
+      (new Date(p.due_date).getTime() - new Date(today).getTime()) / 86400000,
+    );
+    if (days < 0)
+      return { text: t("daysOverdue", { days: -days }), color: STATUS_META.overdue.color };
+    if (days === 0)
+      return { text: t("dueToday"), color: STATUS_META.pending.color };
+    return { text: t("dueInDays", { days }), color: "var(--color-text-secondary)" };
+  };
+
+  // Grid renders soonest-due first, matching the prototype ordering.
+  const sorted = [...filtered].sort((a, b) => a.due_date.localeCompare(b.due_date));
 
   const filtersActive = statusFilter !== "all" || search.trim() !== "";
   const clearFilters = () => {
@@ -195,6 +230,22 @@ export function PaymentsClient({
             {filtersActive && (
               <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
             )}
+            <div className="view-toggle">
+              <button
+                className={"vt-btn" + (view === "grid" ? " active" : "")}
+                onClick={() => setView("grid")}
+                title={tCommon("grid")}
+              >
+                <span className="ms ms-sm">grid_view</span>
+              </button>
+              <button
+                className={"vt-btn" + (view === "list" ? " active" : "")}
+                onClick={() => setView("list")}
+                title={tCommon("list")}
+              >
+                <span className="ms ms-sm">view_list</span>
+              </button>
+            </div>
           </>
         }
         search={
@@ -206,6 +257,112 @@ export function PaymentsClient({
         }
       />
 
+      {view === "grid" ? (
+        filtered.length === 0 ? (
+          <div className="card card-tight">
+            <div style={{ textAlign: "center", padding: 48, color: "var(--color-text-secondary)" }}>
+              {tCommon("noResults")}
+            </div>
+          </div>
+        ) : (
+          <div className="pmt-grid">
+            {sorted.map((p) => {
+              const c = contractOf(p.contract_id);
+              const u = c ? unitOf(c.unit_id) : null;
+              const tn = c ? tenantOf(c.tenant_id) : null;
+              const b = u ? buildingOf(u.building_id) : null;
+              const eff = effectiveStatus(p);
+              const sm = STATUS_META[eff];
+              const sub = dueSub(p, eff);
+              const tenantName = tn ? localized(tn, "name", locale) : "—";
+              return (
+                <div key={p.id} className="pmt-card">
+                  <span className="pmt-card-rail" style={{ background: sm.color }} />
+                  <div className="pmt-card-hd">
+                    <div
+                      className="pmt-card-avatar"
+                      style={{ background: tn ? tenantColor(tn.id) : "var(--color-gray-mid)" }}
+                    >
+                      {tn ? initials(tn.name_en ?? tn.name) : "—"}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="pmt-card-tenant">{tenantName}</div>
+                      <div className="pmt-card-unit">
+                        <span className="ms">apartment</span>
+                        {u ? `#${u.number}` : "—"}
+                        {b ? ` · ${localized(b, "name", locale)}` : ""}
+                      </div>
+                    </div>
+                    <span
+                      className="pmt-card-status"
+                      style={{ background: sm.color + "1A", color: sm.color }}
+                    >
+                      <span className="ms">{sm.icon}</span>
+                      {t(eff)}
+                    </span>
+                  </div>
+
+                  <div className="pmt-card-amt">
+                    <div>
+                      <div className="pmt-card-amt-lbl">{t("amount")}</div>
+                      <div className="pmt-card-amt-num">{formatSAR(p.amount, locale)}</div>
+                    </div>
+                    <div className="pmt-card-amt-r">
+                      <div className="pmt-card-due">{fmtDate(p.due_date)}</div>
+                      <div className="pmt-card-due-sub" style={{ color: sub.color }}>
+                        {sub.text}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pmt-card-meta">
+                    {c?.contract_number && (
+                      <span className="pmt-meta-chip">
+                        <span className="ms">description</span>
+                        {c.contract_number}
+                      </span>
+                    )}
+                    {eff === "paid" && p.payment_method && (
+                      <span className="pmt-meta-chip">
+                        <span className="ms">account_balance_wallet</span>
+                        {t(`methods.${p.payment_method}`)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="pmt-card-actions">
+                    {eff !== "paid" && (
+                      <button
+                        className="btn btn-sm btn-primary"
+                        style={{ flex: 1 }}
+                        onClick={() => setPaying(p)}
+                      >
+                        <span className="ms ms-sm">paid</span>
+                        {t("markPaid")}
+                      </button>
+                    )}
+                    {eff === "paid" && p.receipt_number && (
+                      <span className="pmt-meta-chip" style={{ flex: 1, justifyContent: "center" }}>
+                        <span className="ms">receipt_long</span>
+                        {p.receipt_number}
+                      </span>
+                    )}
+                    {canDelete && (
+                      <button
+                        className="icon-btn"
+                        title={tCommon("delete")}
+                        onClick={() => setConfirmDel(p)}
+                      >
+                        <span className="ms ms-sm">delete</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
       <div className="card card-tight">
         <div className="tbl-wrap">
           <table className="tbl">
@@ -304,6 +461,7 @@ export function PaymentsClient({
           </table>
         </div>
       </div>
+      )}
 
       {paying && (
         <PayModal

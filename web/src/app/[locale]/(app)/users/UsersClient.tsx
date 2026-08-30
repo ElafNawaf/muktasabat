@@ -51,6 +51,24 @@ const MODULE_ICON: Record<ModuleId, string> = {
 
 type Tab = "users" | "roles";
 
+// Per-role Material Symbols icon, mirroring the prototype's role→icon mapping.
+function roleIcon(code: string): string {
+  switch (code) {
+    case "admin":
+      return "shield";
+    case "manager":
+      return "supervisor_account";
+    case "accountant":
+      return "calculate";
+    case "agent":
+      return "handshake";
+    case "viewer":
+      return "visibility";
+    default:
+      return "key";
+  }
+}
+
 export function UsersClient({
   users,
   roles,
@@ -415,17 +433,7 @@ export function UsersClient({
       {tab === "roles" && selectedRole && (
         <div className="roles-layout">
           <aside className="card card-tight" style={{ padding: 8 }}>
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--color-text-secondary)",
-                padding: "8px 12px 4px",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              {t("roles")}
-            </div>
+            <div className="roles-list-hd">{t("roles")}</div>
             {rolesState.map((r) => {
               const userCount = users.filter((u) => u.role === r.code).length;
               const isSel = r.code === selectedRoleCode;
@@ -436,28 +444,17 @@ export function UsersClient({
                   onClick={() => setSelectedRoleCode(r.code)}
                   style={isSel ? { borderInlineStartColor: r.color } : undefined}
                 >
-                  <div
-                    className="role-swatch"
-                    style={{ background: r.color }}
-                    aria-hidden
-                  />
+                  <div className="role-swatch" style={{ background: r.color }}>
+                    <span className="ms ms-sm" style={{ color: "#fff" }}>
+                      {roleIcon(r.code)}
+                    </span>
+                  </div>
                   <div style={{ flex: 1, minWidth: 0, textAlign: "start" }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>
+                    <div className="role-name">
                       {locale === "ar" ? r.label_ar : r.label_en}
-                      {r.system && (
-                        <span
-                          className="badge"
-                          style={{
-                            marginInlineStart: 8,
-                            fontSize: 10,
-                            padding: "2px 6px",
-                          }}
-                        >
-                          {t("system")}
-                        </span>
-                      )}
+                      {r.system && <span className="role-system">{t("system")}</span>}
                     </div>
-                    <div className="text-sec" style={{ fontSize: 11 }}>
+                    <div className="role-count">
                       {userCount} {userCount === 1 ? t("oneUser") : t("manyUsers")}
                     </div>
                   </div>
@@ -467,62 +464,67 @@ export function UsersClient({
           </aside>
 
           <section className="role-detail" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 14,
-                    background: `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}cc)`,
-                    boxShadow: `0 8px 24px -10px ${selectedRole.color}80`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <span className="ms" style={{ fontSize: 26, color: "#fff" }}>
-                    shield
-                  </span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 16 }}>
-                    {locale === "ar" ? selectedRole.label_ar : selectedRole.label_en}
-                    {selectedRole.system && (
-                      <span
-                        className="badge"
-                        style={{ marginInlineStart: 10, fontSize: 10, padding: "2px 6px" }}
-                      >
-                        {t("system")}
+            {(() => {
+              const totalCells = MODULE_IDS.length * PERMISSION_ACTIONS.length;
+              const grantedCells = MODULE_IDS.reduce((sum, m) => {
+                const cell = selectedRole.permissions[m] ?? {};
+                return sum + PERMISSION_ACTIONS.reduce((s, a) => s + (cell[a] ? 1 : 0), 0);
+              }, 0);
+              const pct = totalCells ? Math.round((grantedCells / totalCells) * 100) : 0;
+              const roleUsers = users.filter((u) => u.role === selectedRole.code).length;
+              return (
+                <div className="card role-hero">
+                  <div className="role-hero-main">
+                    <div
+                      className="role-hero-swatch"
+                      style={{
+                        background: `linear-gradient(135deg, ${selectedRole.color}, ${selectedRole.color}cc)`,
+                        boxShadow: `0 8px 24px -10px ${selectedRole.color}80`,
+                      }}
+                    >
+                      <span className="ms" style={{ fontSize: 26, color: "#fff" }}>
+                        {roleIcon(selectedRole.code)}
                       </span>
-                    )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="role-hero-title">
+                        {locale === "ar" ? selectedRole.label_ar : selectedRole.label_en}
+                        {selectedRole.system && (
+                          <span className="role-system">{t("system")}</span>
+                        )}
+                      </div>
+                      <div className="role-hero-desc">
+                        {locale === "ar"
+                          ? selectedRole.description_ar ?? ""
+                          : selectedRole.description_en ?? ""}
+                      </div>
+                    </div>
+                    <div className="role-hero-stats">
+                      <div className="rh-stat">
+                        <div className="rh-num" style={{ color: selectedRole.color }}>
+                          {roleUsers}
+                        </div>
+                        <div className="rh-lbl">{t("users")}</div>
+                      </div>
+                      <div className="rh-stat">
+                        <div className="rh-num" style={{ color: selectedRole.color }}>
+                          {pct}%
+                        </div>
+                        <div className="rh-lbl">{t("granted")}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-sec" style={{ fontSize: 12.5 }}>
-                    {locale === "ar"
-                      ? selectedRole.description_ar ?? ""
-                      : selectedRole.description_en ?? ""}
+                  <div className="role-coverage">
+                    <div className="role-coverage-bar">
+                      <div style={{ width: `${pct}%`, background: selectedRole.color }} />
+                    </div>
                   </div>
                 </div>
-                <div style={{ textAlign: "end" }}>
-                  <div style={{ fontSize: 22, fontWeight: 600, color: selectedRole.color }}>
-                    {users.filter((u) => u.role === selectedRole.code).length}
-                  </div>
-                  <div className="text-sec" style={{ fontSize: 11 }}>
-                    {t("users")}
-                  </div>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
 
             <div className="card card-tight">
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "12px 16px",
-                  borderBottom: "1px solid var(--color-border)",
-                }}
-              >
+              <div className="perm-hd">
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{t("matrixTitle")}</div>
                   <div className="text-sec" style={{ fontSize: 11.5 }}>
@@ -533,10 +535,7 @@ export function UsersClient({
                   </div>
                 </div>
                 {selectedRole.system && (
-                  <span
-                    className="badge"
-                    style={{ alignSelf: "center", fontSize: 11, padding: "4px 10px" }}
-                  >
+                  <span className="lock-hint" style={{ alignSelf: "center" }}>
                     <span className="ms ms-sm">lock</span> {t("readOnly")}
                   </span>
                 )}
@@ -581,10 +580,11 @@ export function UsersClient({
                               <td key={a} style={{ textAlign: "center" }}>
                                 <button
                                   type="button"
-                                  className="icon-btn"
+                                  className={"perm-cell" + (on ? " on" : "")}
                                   disabled={selectedRole.system}
                                   onClick={() => togglePerm(selectedRole.code, mod, a)}
                                   aria-label={`${tPerms(a)} ${tCommon(`modules.${mod}`)}`}
+                                  aria-pressed={on}
                                   style={
                                     on
                                       ? {
@@ -603,24 +603,14 @@ export function UsersClient({
                           <td style={{ textAlign: "center" }}>
                             <button
                               type="button"
-                              className="icon-btn"
+                              className={"toggle" + (allOn ? " on" : "")}
                               disabled={selectedRole.system}
                               onClick={() =>
                                 toggleAllForModule(selectedRole.code, mod, allOn)
                               }
                               aria-label={`${t("all")} ${tCommon(`modules.${mod}`)}`}
-                              style={
-                                allOn
-                                  ? {
-                                      background: selectedRole.color + "1F",
-                                      color: selectedRole.color,
-                                      borderColor: selectedRole.color + "55",
-                                    }
-                                  : undefined
-                              }
-                            >
-                              <span className="ms ms-sm">{allOn ? "select_all" : "deselect"}</span>
-                            </button>
+                              aria-pressed={allOn}
+                            />
                           </td>
                         </tr>
                       );

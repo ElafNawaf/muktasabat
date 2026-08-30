@@ -232,7 +232,9 @@
     "collected": "محصّل",
     "loadFailed": "تعذّر تحميل بيانات اللوحة"
   },
-  "currency": { "sar": "ر.س" },
+  "currency": {
+    "sar": "ر.س"
+  },
   "properties": {
     "title": "العقارات",
     "subtitle": "تصفّح المباني، ووسّع لاستعراض الوحدات والعقود.",
@@ -265,7 +267,8 @@
     "setLocation": "تحديد الموقع",
     "approxLocation": "تقريبي",
     "agentPct": "نسبة الوسيط",
-    "agentName": "الوسيط"
+    "agentName": "الوسيط",
+    "availableToLease": "متاحة للإيجار"
   },
   "mapPicker": {
     "label": "الموقع على الخريطة",
@@ -675,7 +678,17 @@
     "contractNumberRequired": "رقم العقد مطلوب",
     "dateOrderInvalid": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية",
     "months": "شهر",
-    "notes": "ملاحظات"
+    "notes": "ملاحظات",
+    "viewContract": "عرض العقد",
+    "paymentSchedule": "جدول الدفعات",
+    "amount": "المبلغ",
+    "dueDate": "تاريخ الاستحقاق",
+    "paid": "مدفوع",
+    "pending": "معلّق",
+    "overdue": "متأخر",
+    "noPayments": "لا توجد دفعات مسجلة بعد.",
+    "owner": "المالك",
+    "installmentNo": "#"
   },
   "paymentsPage": {
     "title": "المدفوعات",
@@ -704,7 +717,15 @@
       "bank_transfer": "تحويل بنكي",
       "cash": "نقدي",
       "cheque": "شيك"
-    }
+    },
+    "daysOverdue": "متأخر {days} يوم",
+    "dueInDays": "خلال {days} يوم",
+    "dueToday": "مستحق اليوم",
+    "splitTitle": "توزيع الدفعة",
+    "ownerShare": "حصة المالك",
+    "mgmtFee": "رسوم الإدارة",
+    "agentFee": "رسوم الوسيط",
+    "ejarFee": "رسوم إيجار"
   },
   "expensesPage": {
     "title": "المصروفات",
@@ -753,9 +774,21 @@
     }
   },
   "screens": {
-    "contracts": { "title": "العقود", "subtitle": "جميع العقود السارية والسابقة." },
-    "payments": { "title": "المدفوعات", "subtitle": "جدول التحصيل والسجل." },
-    "expenses": { "title": "المصروفات", "subtitle": "التكاليف التشغيلية حسب المبنى والفئة." },
-    "users": { "title": "إدارة المستخدمين", "subtitle": "إدارة الأدوار والصلاحيات لفريقك." }
+    "contracts": {
+      "title": "العقود",
+      "subtitle": "جميع العقود السارية والسابقة."
+    },
+    "payments": {
+      "title": "المدفوعات",
+      "subtitle": "جدول التحصيل والسجل."
+    },
+    "expenses": {
+      "title": "المصروفات",
+      "subtitle": "التكاليف التشغيلية حسب المبنى والفئة."
+    },
+    "users": {
+      "title": "إدارة المستخدمين",
+      "subtitle": "إدارة الأدوار والصلاحيات لفريقك."
+    }
   }
 }

@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
 import type { Building, Contract, Owner, Tenant, Unit } from "@/lib/types";
 
-import { ContractsClient } from "./ContractsClient";
+import { ContractsClient, type ContractPayment } from "./ContractsClient";
 
 export default async function ContractsPage({
   params,
@@ -16,12 +16,13 @@ export default async function ContractsPage({
   const t = await getTranslations("contractsPage");
   const me = await requireAuth(locale);
 
-  const [contracts, units, tenants, buildings, owners] = await Promise.all([
+  const [contracts, units, tenants, buildings, owners, payments] = await Promise.all([
     api.get<Contract[]>("/api/v1/contracts"),
     api.get<Unit[]>("/api/v1/units"),
     api.get<Tenant[]>("/api/v1/tenants"),
     api.get<Building[]>("/api/v1/buildings"),
     api.get<Owner[]>("/api/v1/owners"),
+    api.get<ContractPayment[]>("/api/v1/payments"),
   ]);
 
   return (
@@ -33,6 +34,7 @@ export default async function ContractsPage({
         tenants={tenants}
         buildings={buildings}
         owners={owners}
+        payments={payments}
         locale={locale}
       />
     </>

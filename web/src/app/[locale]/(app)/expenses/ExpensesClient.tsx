@@ -13,7 +13,7 @@ import {
 } from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { deleteExpense } from "@/lib/actions";
-import { EXPENSE_CATEGORIES } from "@/lib/expense-categories";
+import { EXPENSE_CATEGORIES, categoryMeta } from "@/lib/expense-categories";
 import { formatDate, formatSAR } from "@/lib/format";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
@@ -240,7 +240,20 @@ export function ExpensesClient({
                       {fmtDate(e.expense_date)}
                     </td>
                     <td>
-                      <span className="badge">{t(`categories.${e.category}`)}</span>
+                      {(() => {
+                        const m = categoryMeta(e.category);
+                        return (
+                          <span
+                            className="badge"
+                            style={{ background: m.color + "1A", color: m.color }}
+                          >
+                            <span className="ms ms-sm" style={{ fontSize: 13 }}>
+                              {m.icon}
+                            </span>
+                            {t(`categories.${e.category}`)}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td>{localized(e, "description", locale) || e.description}</td>
                     <td className="text-sec" style={{ fontSize: 12 }}>

@@ -256,6 +256,7 @@ export default async function DashboardPage({
                     <RevenueTrendChart
                       data={trends.months}
                       labels={{ collected: t("collected"), expected: t("expected") }}
+                      rtl={isAr}
                     />
                   </div>
                 </div>
@@ -290,13 +291,17 @@ export default async function DashboardPage({
             {/* Buildings leaderboard + activity stream */}
             <div className="dash-2col">
               <div className="card card-tight">
-                <div className="card-hd" style={{ padding: "16px 20px 14px" }}>
+                <div className="card-hd">
                   <div>
                     <h3>{isAr ? "أداء المباني" : "Top performing buildings"}</h3>
                     <div className="text-sec" style={{ fontSize: 12, marginTop: 2 }}>
                       {isAr ? "حسب الإيراد الشهري" : "By monthly revenue"}
                     </div>
                   </div>
+                  <a className="btn btn-ghost btn-sm" href={`/${locale}/properties`}>
+                    {isAr ? "عرض الكل" : "View all"}
+                    <span className="ms ms-sm">arrow_forward</span>
+                  </a>
                 </div>
                 <div className="lboard">
                   {ranked.length === 0 ? (
@@ -330,7 +335,7 @@ export default async function DashboardPage({
               </div>
 
               <div className="card card-tight">
-                <div className="card-hd" style={{ padding: "16px 20px 14px" }}>
+                <div className="card-hd">
                   <div>
                     <h3>{isAr ? "النشاط الأخير" : "Recent activity"}</h3>
                     <div className="text-sec" style={{ fontSize: 12, marginTop: 2 }}>
