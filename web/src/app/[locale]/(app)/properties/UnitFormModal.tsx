@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
+import { NumericInput } from "@/components/NumericInput";
 import { createUnit, updateUnit, type UnitInput } from "@/lib/actions";
 import type { Building, Unit } from "@/lib/types";
 
@@ -175,60 +176,51 @@ export function UnitFormModal({
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label>{t("area")}</label>
-            <input
-              className="input"
-              type="number"
+            <NumericInput
               min={0}
-              value={form.area_sqm ?? ""}
-              onChange={(e) => set("area_sqm", e.target.value === "" ? null : Number(e.target.value))}
+              emptyAsNull
+              value={form.area_sqm}
+              onValueChange={(v) => set("area_sqm", v)}
             />
           </div>
         </div>
         <div className="field-row">
           <div className="field" style={{ flex: 1 }}>
             <label>{t("rent")}</label>
-            <input
-              className="input"
-              type="number"
+            <NumericInput
               min={0}
               value={form.rent_amount}
-              onChange={(e) => set("rent_amount", Number(e.target.value))}
+              onValueChange={(v) => set("rent_amount", v ?? 0)}
             />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label>{t("ejarFee")}</label>
-            <input
-              className="input"
-              type="number"
+            <NumericInput
               min={0}
               value={form.ejar_fee}
-              onChange={(e) => set("ejar_fee", Number(e.target.value))}
+              onValueChange={(v) => set("ejar_fee", v ?? 0)}
             />
           </div>
         </div>
         <div className="field-row">
           <div className="field" style={{ flex: 1 }}>
             <label>{t("mgmtPct")}</label>
-            <input
-              className="input"
-              type="number"
+            <NumericInput
               min={0}
               max={100}
               step="0.1"
               value={form.management_percentage}
-              onChange={(e) => set("management_percentage", Number(e.target.value))}
+              onValueChange={(v) => set("management_percentage", v ?? 0)}
             />
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label>{t("agentPct")}</label>
-            <input
-              className="input"
-              type="number"
+            <NumericInput
               min={0}
               max={100}
               step="0.1"
               value={form.agent_percentage}
-              onChange={(e) => set("agent_percentage", Number(e.target.value))}
+              onValueChange={(v) => set("agent_percentage", v ?? 0)}
             />
           </div>
         </div>

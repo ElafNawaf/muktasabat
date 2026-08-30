@@ -14,16 +14,22 @@ import {
 import { usePermissions } from "@/components/PermissionsProvider";
 import {
   deleteContract,
+  registerContractOnEjar,
   syncEjarContracts,
   terminateContract,
+  validateContractOnEjar,
   type EjarSyncResult,
 } from "@/lib/actions";
 import { matchesSearch, uniqueSorted } from "@/lib/filters";
 import { formatDate, formatSAR } from "@/lib/format";
 import {
+  issueMessage,
   localized,
+  type Agent,
   type Building,
   type Contract,
+  type EjarReadiness,
+  type ManagementContract,
   type Owner,
   type Tenant,
   type Unit,
@@ -39,6 +45,8 @@ export function ContractsClient({
   tenants,
   buildings,
   owners,
+  agents = [],
+  managementContracts = [],
   locale,
 }: {
   contracts: Contract[];
@@ -46,6 +54,8 @@ export function ContractsClient({
   tenants: Tenant[];
   buildings: Building[];
   owners: Owner[];
+  agents?: Agent[];
+  managementContracts?: ManagementContract[];
   locale: string;
 }) {
   const t = useTranslations("contractsPage");
@@ -59,6 +69,35 @@ export function ContractsClient({
   const [syncPending, startSync] = useTransition();
   const [syncResult, setSyncResult] = useState<EjarSyncResult | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  const [readiness, setReadiness] = useState<
+    { contract: Contract; result: EjarReadiness } | null
+  >(null);
+  const [ejarPending, startEjar] = useTransition();
+
+  const doCheckEjar = (c: Contract) => {
+    setSyncError(null);
+    startEjar(async () => {
+      const res = await validateContractOnEjar(c.id);
+      if (!res.ok) {
+        setSyncError(res.error);
+        return;
+      }
+      setReadiness({ contract: c, result: res.data });
+    });
+  };
+
+  const doRegisterEjar = (c: Contract) => {
+    setSyncError(null);
+    startEjar(async () => {
+      const res = await registerContractOnEjar(c.id);
+      if (!res.ok) {
+        setSyncError(res.error);
+        return;
+      }
+      setReadiness(null);
+    });
+  };
 
   const doSyncEjar = () => {
     setSyncError(null);
@@ -251,7 +290,13 @@ export function ContractsClient({
       {syncError && (
         <div
           className="badge badge-danger"
-          style={{ padding: "10px 14px", fontSize: 13, marginBottom: 12 }}
+          style={{
+            padding: "10px 14px",
+            fontSize: 13,
+            marginBottom: 12,
+            whiteSpace: "pre-line",
+            lineHeight: 1.6,
+          }}
         >
           {syncError}
         </div>
@@ -284,7 +329,7 @@ export function ContractsClient({
             <FilterResultMeta
               showing={filtered.length}
               total={contracts.length}
-              label={tCommon("showingResults")}
+              label={tCommon("showingResults", { showing: filtered.length, total: contracts.length })}
             />
             {filtersActive && (
               <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />
@@ -480,6 +525,24 @@ export function ContractsClient({
                       <div className="actions" style={{ display: "flex", gap: 4 }}>
                         <button
                           className="icon-btn"
+                          title={t("ejarReadiness")}
+                          onClick={() => doCheckEjar(c)}
+                          disabled={ejarPending}
+                        >
+                          <span className="ms ms-sm">fact_check</span>
+                        </button>
+                        {canCreate && c.ejar_status !== "registered" && (
+                          <button
+                            className="icon-btn"
+                            title={t("registerOnEjar")}
+                            onClick={() => doRegisterEjar(c)}
+                            disabled={ejarPending}
+                          >
+                            <span className="ms ms-sm">cloud_upload</span>
+                          </button>
+                        )}
+                        <button
+                          className="icon-btn"
                           title={tCommon("edit")}
                           onClick={() => {
                             setEditing(c);
@@ -535,7 +598,10 @@ export function ContractsClient({
           units={units}
           tenants={tenants}
           buildings={buildings}
+          owners={owners}
+          agents={agents}
           contracts={contracts}
+          managementContracts={managementContracts}
           locale={locale}
           editing={editing}
         />
@@ -568,6 +634,64 @@ export function ContractsClient({
         destructive
         loading={pending}
       />
+
+      <Modal
+        open={Boolean(readiness)}
+        onClose={() => setReadiness(null)}
+        title={t("ejarReadiness")}
+        subtitle={readiness?.contract.contract_number}
+        size="md"
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setReadiness(null)}>
+              {t("syncDone")}
+            </button>
+            {readiness?.result.ready && canCreate && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={ejarPending}
+                onClick={() => readiness && doRegisterEjar(readiness.contract)}
+              >
+                {t("registerOnEjar")}
+              </button>
+            )}
+          </>
+        }
+      >
+        {readiness && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {readiness.result.is_stub_mode && (
+              <div className="badge badge-warning" style={{ padding: "8px 12px", fontSize: 12 }}>
+                {t("syncStubNotice")}
+              </div>
+            )}
+            <div
+              className={"badge " + (readiness.result.ready ? "badge-success" : "badge-danger")}
+              style={{ padding: "10px 14px", fontSize: 13 }}
+            >
+              {readiness.result.ready
+                ? t("ejarReady")
+                : t("ejarNotReady", { count: readiness.result.error_count })}
+            </div>
+            <ul style={{ margin: 0, paddingInlineStart: 18, lineHeight: 1.8, fontSize: 12.5 }}>
+              {readiness.result.issues.map((issue, i) => (
+                <li
+                  key={i}
+                  style={{
+                    color:
+                      issue.severity === "error"
+                        ? "var(--color-danger)"
+                        : "var(--color-text-secondary)",
+                  }}
+                >
+                  {issueMessage(issue, locale)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={Boolean(syncResult)}

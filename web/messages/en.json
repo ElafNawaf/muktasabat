@@ -13,7 +13,8 @@
     "contracts": "Contracts",
     "payments": "Payments",
     "expenses": "Expenses",
-    "users": "User Management"
+    "users": "User Management",
+    "managementContracts": "Management contracts"
   },
   "roles": {
     "admin": "Administrator",
@@ -230,7 +231,9 @@
     "collected": "Collected",
     "loadFailed": "Could not load dashboard data"
   },
-  "currency": { "sar": "SAR" },
+  "currency": {
+    "sar": "SAR"
+  },
   "properties": {
     "title": "Properties",
     "subtitle": "Browse buildings, expand to inspect units and contracts.",
@@ -620,7 +623,8 @@
     "contractTypeLabel": "Contract type",
     "contractTypes": {
       "residential": "Residential",
-      "commercial": "Commercial"
+      "commercial": "Commercial",
+      "management": "Management"
     },
     "validityType": "Validity",
     "validityTypes": {
@@ -673,7 +677,21 @@
     "contractNumberRequired": "Contract number is required",
     "dateOrderInvalid": "End date must be after start date",
     "months": "months",
-    "notes": "Notes"
+    "notes": "Notes",
+    "ejarSignedBy": "Signed on Ejar by",
+    "ejarSignatories": {
+      "landlord": "Landlord",
+      "property_manager": "Property manager (this office)"
+    },
+    "managementContract": "Management contract",
+    "managementContractHint": "The mandate authorising this office to sign for the owner. Required when the signing party is the property manager.",
+    "noManagementContract": "None — landlord signs",
+    "ejarReadiness": "Ejar readiness",
+    "ejarRegistrationFee": "Ejar registration fee",
+    "noMandateWarning": "No active management contract exists for this owner. Register one before filing the lease on Ejar, or set the landlord as the signing party.",
+    "ejarReady": "All required fields are present. This lease can be submitted to Ejar.",
+    "ejarNotReady": "{count} field(s) must be fixed before Ejar will accept this lease.",
+    "registerOnEjar": "Register on Ejar"
   },
   "paymentsPage": {
     "title": "Payments",
@@ -740,9 +758,187 @@
     }
   },
   "screens": {
-    "contracts": { "title": "Contracts", "subtitle": "All active and historical contracts." },
-    "payments": { "title": "Payments", "subtitle": "Collection schedule and history." },
-    "expenses": { "title": "Expenses", "subtitle": "Operational costs by building and category." },
-    "users": { "title": "User Management", "subtitle": "Manage role-based access for your team." }
+    "contracts": {
+      "title": "Contracts",
+      "subtitle": "All active and historical contracts."
+    },
+    "payments": {
+      "title": "Payments",
+      "subtitle": "Collection schedule and history."
+    },
+    "expenses": {
+      "title": "Expenses",
+      "subtitle": "Operational costs by building and category."
+    },
+    "users": {
+      "title": "User Management",
+      "subtitle": "Manage role-based access for your team."
+    }
+  },
+  "managementContracts": {
+    "title": "Management Contracts",
+    "subtitle": "Owner ↔ company property management mandates registered on Ejar",
+    "newContract": "New management contract",
+    "establishment": "Establishment",
+    "setUpEstablishment": "Set up establishment",
+    "noCompanyWarning": "No real-estate establishment profile is set up yet. Ejar files every contract under a licensed establishment, so this must be completed before any contract can be registered.",
+    "syncEjar": "Sync from Ejar",
+    "syncing": "Syncing…",
+    "close": "Close",
+    "notes": "Notes",
+    "total": "Contracts",
+    "activeCount": "Active",
+    "registeredOnEjar": "Registered on Ejar",
+    "annualFees": "Annual fees",
+    "contractNumber": "Contract no.",
+    "ejarContractNumber": "Ejar contract no.",
+    "ejarNumberPlaceholder": "Leave empty — assigned by Ejar",
+    "owner": "Owner",
+    "selectOwner": "Select an owner",
+    "ownerHint": "Only this owner's properties can be placed under the mandate — Ejar rejects a portfolio belonging to another landlord.",
+    "propertiesUnderManagement": "Portfolio",
+    "unitsShort": "units",
+    "period": "Period",
+    "fee": "Fee",
+    "annualFee": "Annual fee",
+    "authorities": "Authority",
+    "ejarState": "Ejar",
+    "branch": "Branch",
+    "contractDate": "Contract date",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "durationMonths": "Duration (months)",
+    "noticePeriodDays": "Notice period (days)",
+    "autoRenew": "Auto-renew",
+    "months": "months",
+    "createTitle": "New management contract",
+    "createSubtitle": "عقد إدارة أملاك — authorises this office to manage and lease the owner's properties",
+    "editTitle": "Edit management contract",
+    "editSubtitle": "Changes apply to the portal record; re-register on Ejar if the terms changed",
+    "sectionParties": "Parties",
+    "sectionBasic": "Contract details",
+    "sectionPortfolio": "Properties under management",
+    "sectionFee": "Management fee",
+    "sectionAuthorities": "Scope of authority",
+    "sectionAttachments": "Attachments",
+    "portfolioHint": "Tick each property covered by the mandate. Leave the scope as the whole building, or narrow it to a single unit.",
+    "noBuildingsForOwner": "This owner has no properties yet. Add a property first.",
+    "wholeBuilding": "Whole building",
+    "onlyUnit": "Only unit:",
+    "deed": "Deed",
+    "noDeed": "No deed number",
+    "selectedCount": "{count} property/properties selected",
+    "feeType": "Fee basis",
+    "feeTypes": {
+      "percentage": "Percentage of rent collected",
+      "fixed": "Fixed annual amount"
+    },
+    "feePercentage": "Fee percentage",
+    "feeFixedAmount": "Fixed annual fee",
+    "feeCollection": "Collection method",
+    "feeCollections": {
+      "deduct_from_rent": "Deduct from collected rent",
+      "invoice_owner": "Invoice the owner"
+    },
+    "payoutCycle": "Payout to owner every",
+    "vatRate": "VAT rate",
+    "vatAmount": "VAT",
+    "totalFee": "Total incl. VAT",
+    "feePreview": "Estimated fee",
+    "annualRentBase": "Annual rent under management",
+    "feePreviewHint": "Calculated from the current rent of the units in the portfolio. Ejar records the expected annual value of the mandate.",
+    "authoritiesHint": "Ejar checks these permissions when the office signs a lease on the owner's behalf. Without \"sign leases\", every lease must be signed by the landlord.",
+    "canSignLeases": "Sign lease contracts",
+    "canCollectRent": "Collect rent",
+    "canMarketUnits": "Market and advertise units",
+    "canMaintain": "Carry out maintenance",
+    "canEvict": "Evict and file claims",
+    "canPayUtilities": "Pay utility bills",
+    "maintenanceLimit": "Maintenance limit without owner approval",
+    "maintenanceLimitHint": "Maintenance above this amount needs the owner's approval.",
+    "checkEjar": "Check Ejar readiness",
+    "registerOnEjar": "Register on Ejar",
+    "registerShort": "Register",
+    "cancelOnEjar": "Cancel on Ejar",
+    "readinessTitle": "Ejar readiness",
+    "readyMessage": "All required fields are present. This contract can be submitted to Ejar.",
+    "notReadyMessage": "{count} field(s) must be fixed before Ejar will accept this contract.",
+    "stubNotice": "Running in stub mode — no request reaches the real Ejar platform. Set EJAR_CLIENT_ID to go live.",
+    "companyReady": "The establishment profile is complete.",
+    "companyNotReady": "{count} field(s) are missing from the establishment profile.",
+    "syncResultTitle": "Ejar sync result",
+    "syncFetched": "Fetched",
+    "syncCreated": "Created",
+    "syncUpdated": "Updated",
+    "syncLinked": "Properties linked",
+    "terminate": "Terminate",
+    "terminateTitle": "Terminate management contract",
+    "terminateMessage": "Terminate contract {number}? Leases already filed under it stay on Ejar.",
+    "deleteTitle": "Delete management contract",
+    "deleteMessage": "Delete contract {number}? This cannot be undone.",
+    "ownerRequired": "Select an owner.",
+    "contractNumberRequired": "Contract number is required.",
+    "dateOrderInvalid": "End date must be after the start date.",
+    "propertiesRequired": "Add at least one property under management.",
+    "feePercentageRequired": "Enter a fee percentage greater than zero.",
+    "feeFixedRequired": "Enter a fixed fee greater than zero.",
+    "companyNameRequired": "Establishment name is required.",
+    "establishmentTitle": "Real-estate establishment",
+    "establishmentSubtitle": "المنشأة العقارية — the licensed office Ejar files your contracts under",
+    "sectionCompanyIdentity": "Establishment identity",
+    "sectionLicensing": "REGA licensing",
+    "sectionSignatory": "Authorised signatory",
+    "sectionAddress": "National address",
+    "sectionBanking": "Banking",
+    "companyName": "Establishment name",
+    "crNumber": "Commercial registration (CR)",
+    "crIssueDate": "CR issue date",
+    "crExpiryDate": "CR expiry date",
+    "vatNumber": "VAT number",
+    "licensingHint": "Ejar only accepts a contract signed by someone other than the landlord when the filing office holds a valid REGA (FAL) licence.",
+    "falManagementLicense": "FAL property-management licence",
+    "falBrokerageLicense": "FAL brokerage licence",
+    "licenseExpiry": "Expiry date",
+    "ejarEstablishmentId": "Ejar establishment ID",
+    "ejarBranchId": "Ejar branch ID",
+    "representativeName": "Signatory name",
+    "nationalAddress": "Short address",
+    "city": "City",
+    "district": "District",
+    "street": "Street",
+    "buildingNumber": "Building no.",
+    "postalCode": "Postal code",
+    "additionalNumber": "Additional no.",
+    "bankName": "Bank",
+    "iban": "IBAN",
+    "bankingHint": "The account collected rent is deposited into before payout to owners.",
+    "statuses": {
+      "draft": "Draft",
+      "active": "Active",
+      "expired": "Expired",
+      "terminated": "Terminated"
+    },
+    "ejar": {
+      "none": "Not registered",
+      "pending": "Pending",
+      "registered": "Registered",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "short": {
+      "sign": "Sign",
+      "collect": "Collect",
+      "maintain": "Maintain",
+      "evict": "Evict"
+    },
+    "entities": {
+      "company": "Establishment",
+      "owner": "Owner",
+      "tenant": "Tenant",
+      "building": "Property",
+      "unit": "Unit",
+      "contract": "Contract",
+      "management_contract": "Management contract"
+    }
   }
 }

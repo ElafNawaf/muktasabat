@@ -1,7 +1,10 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# استخدام الوحدة في منصة إيجار
+UnitUsage = Literal["residential", "commercial", "office", "warehouse", "other"]
 
 
 class UnitBase(BaseModel):
@@ -19,6 +22,14 @@ class UnitBase(BaseModel):
     electric_invoice: Optional[str] = Field(default=None, max_length=50)
     water_invoice: Optional[str] = Field(default=None, max_length=50)
     ejar_fee: float = Field(default=0, ge=0)
+
+    # ── Ejar unit record (بيانات الوحدة في منصة إيجار) ──────────────────────
+    ejar_unit_id: Optional[str] = Field(default=None, max_length=50)
+    usage_type: Optional[UnitUsage] = None
+    rooms_count: Optional[int] = Field(default=None, ge=0, le=99)
+    bathrooms_count: Optional[int] = Field(default=None, ge=0, le=99)
+    is_furnished: bool = False
+
     notes: Optional[str] = None
     notes_en: Optional[str] = None
     notes_ar: Optional[str] = None

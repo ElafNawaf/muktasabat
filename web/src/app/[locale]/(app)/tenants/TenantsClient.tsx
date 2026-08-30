@@ -296,7 +296,7 @@ export function TenantsClient({
             <FilterResultMeta
               showing={filtered.length}
               total={tenants.length}
-              label={tCommon("showingResults")}
+              label={tCommon("showingResults", { showing: filtered.length, total: tenants.length })}
             />
             {filtersActive && (
               <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />

@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { BilingualField } from "@/components/BilingualField";
 import { Modal } from "@/components/Modal";
+import { NumericInput } from "@/components/NumericInput";
 import { createExpense, updateExpense, type ExpenseInput } from "@/lib/actions";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
@@ -185,13 +186,11 @@ export function ExpenseFormModal({
             <label>
               {t("amount")} <span className="req">*</span>
             </label>
-            <input
-              className="input"
-              type="number"
+            <NumericInput
               min={1}
               step="0.01"
               value={form.amount}
-              onChange={(e) => set("amount", Number(e.target.value))}
+              onValueChange={(v) => set("amount", v ?? 1)}
               required
             />
           </div>

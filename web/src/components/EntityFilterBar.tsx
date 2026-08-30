@@ -100,7 +100,7 @@ export function FilterResultMeta({
   if (showing === total) return null;
   return (
     <span className="text-sec" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
-      {label.replace("{showing}", String(showing)).replace("{total}", String(total))}
+      {label}
     </span>
   );
 }

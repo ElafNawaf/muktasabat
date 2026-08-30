@@ -13,7 +13,8 @@
     "contracts": "العقود",
     "payments": "المدفوعات",
     "expenses": "المصروفات",
-    "users": "إدارة المستخدمين"
+    "users": "إدارة المستخدمين",
+    "managementContracts": "عقود إدارة الأملاك"
   },
   "roles": {
     "admin": "مسؤول النظام",
@@ -230,7 +231,9 @@
     "collected": "محصّل",
     "loadFailed": "تعذّر تحميل بيانات اللوحة"
   },
-  "currency": { "sar": "ر.س" },
+  "currency": {
+    "sar": "ر.س"
+  },
   "properties": {
     "title": "العقارات",
     "subtitle": "تصفّح المباني، ووسّع لاستعراض الوحدات والعقود.",
@@ -620,7 +623,8 @@
     "contractTypeLabel": "نوع العقد",
     "contractTypes": {
       "residential": "سكني",
-      "commercial": "تجاري"
+      "commercial": "تجاري",
+      "management": "إدارة"
     },
     "validityType": "صلاحية العقد",
     "validityTypes": {
@@ -673,7 +677,21 @@
     "contractNumberRequired": "رقم العقد مطلوب",
     "dateOrderInvalid": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية",
     "months": "شهر",
-    "notes": "ملاحظات"
+    "notes": "ملاحظات",
+    "ejarSignedBy": "الطرف الموقّع في إيجار",
+    "ejarSignatories": {
+      "landlord": "المالك",
+      "property_manager": "مدير الأملاك (هذا المكتب)"
+    },
+    "managementContract": "عقد إدارة الأملاك",
+    "managementContractHint": "العقد الذي يخوّل المكتب بالتوقيع نيابة عن المالك. مطلوب عندما يكون الطرف الموقّع هو مدير الأملاك.",
+    "noManagementContract": "بدون — يوقّع المالك",
+    "ejarReadiness": "الجاهزية لإيجار",
+    "ejarRegistrationFee": "رسوم تسجيل إيجار",
+    "noMandateWarning": "لا يوجد عقد إدارة أملاك ساري لهذا المالك. سجّل عقد إدارة قبل تسجيل عقد الإيجار في إيجار، أو اجعل المالك هو الطرف الموقّع.",
+    "ejarReady": "جميع الحقول المطلوبة مكتملة. يمكن إرسال عقد الإيجار إلى منصة إيجار.",
+    "ejarNotReady": "يجب استكمال {count} حقل قبل قبول عقد الإيجار في منصة إيجار.",
+    "registerOnEjar": "تسجيل في إيجار"
   },
   "paymentsPage": {
     "title": "المدفوعات",
@@ -740,9 +758,187 @@
     }
   },
   "screens": {
-    "contracts": { "title": "العقود", "subtitle": "جميع العقود السارية والسابقة." },
-    "payments": { "title": "المدفوعات", "subtitle": "جدول التحصيل والسجل." },
-    "expenses": { "title": "المصروفات", "subtitle": "التكاليف التشغيلية حسب المبنى والفئة." },
-    "users": { "title": "إدارة المستخدمين", "subtitle": "إدارة الأدوار والصلاحيات لفريقك." }
+    "contracts": {
+      "title": "العقود",
+      "subtitle": "جميع العقود السارية والسابقة."
+    },
+    "payments": {
+      "title": "المدفوعات",
+      "subtitle": "جدول التحصيل والسجل."
+    },
+    "expenses": {
+      "title": "المصروفات",
+      "subtitle": "التكاليف التشغيلية حسب المبنى والفئة."
+    },
+    "users": {
+      "title": "إدارة المستخدمين",
+      "subtitle": "إدارة الأدوار والصلاحيات لفريقك."
+    }
+  },
+  "managementContracts": {
+    "title": "عقود إدارة الأملاك",
+    "subtitle": "عقود الإدارة بين الشركة والملاك المسجّلة في منصة إيجار",
+    "newContract": "عقد إدارة جديد",
+    "establishment": "المنشأة",
+    "setUpEstablishment": "إعداد المنشأة",
+    "noCompanyWarning": "لم يتم إعداد بيانات المنشأة العقارية بعد. تسجّل منصة إيجار كل عقد باسم منشأة مرخّصة، لذا يجب استكمال البيانات قبل تسجيل أي عقد.",
+    "syncEjar": "مزامنة من إيجار",
+    "syncing": "جارٍ المزامنة…",
+    "close": "إغلاق",
+    "notes": "ملاحظات",
+    "total": "العقود",
+    "activeCount": "سارية",
+    "registeredOnEjar": "مسجّلة في إيجار",
+    "annualFees": "الأتعاب السنوية",
+    "contractNumber": "رقم العقد",
+    "ejarContractNumber": "رقم العقد في إيجار",
+    "ejarNumberPlaceholder": "اتركه فارغًا — تُصدره منصة إيجار",
+    "owner": "المالك",
+    "selectOwner": "اختر المالك",
+    "ownerHint": "لا يمكن إدراج سوى عقارات هذا المالك ضمن العقد — ترفض منصة إيجار إدراج عقار يعود لمالك آخر.",
+    "propertiesUnderManagement": "نطاق الإدارة",
+    "unitsShort": "وحدة",
+    "period": "المدة",
+    "fee": "الأتعاب",
+    "annualFee": "الأتعاب السنوية",
+    "authorities": "الصلاحيات",
+    "ejarState": "إيجار",
+    "branch": "الفرع",
+    "contractDate": "تاريخ تحرير العقد",
+    "startDate": "تاريخ البداية",
+    "endDate": "تاريخ النهاية",
+    "durationMonths": "المدة (بالأشهر)",
+    "noticePeriodDays": "مدة الإشعار بالإنهاء (أيام)",
+    "autoRenew": "تجديد تلقائي",
+    "months": "أشهر",
+    "createTitle": "عقد إدارة أملاك جديد",
+    "createSubtitle": "يخوّل المكتب بإدارة عقارات المالك وتأجيرها نيابةً عنه",
+    "editTitle": "تعديل عقد إدارة الأملاك",
+    "editSubtitle": "يسري التعديل على سجل النظام؛ أعد التسجيل في إيجار إذا تغيّرت الشروط",
+    "sectionParties": "أطراف العقد",
+    "sectionBasic": "بيانات العقد",
+    "sectionPortfolio": "العقارات المشمولة بالإدارة",
+    "sectionFee": "أتعاب الإدارة",
+    "sectionAuthorities": "نطاق الوكالة",
+    "sectionAttachments": "المرفقات",
+    "portfolioHint": "حدّد العقارات المشمولة بالعقد. اترك النطاق على كامل العقار، أو حدّده بوحدة واحدة.",
+    "noBuildingsForOwner": "لا توجد عقارات مسجّلة لهذا المالك. أضف عقارًا أولًا.",
+    "wholeBuilding": "كامل العقار",
+    "onlyUnit": "وحدة واحدة فقط:",
+    "deed": "صك",
+    "noDeed": "بدون رقم صك",
+    "selectedCount": "تم اختيار {count} عقار",
+    "feeType": "أساس احتساب الأتعاب",
+    "feeTypes": {
+      "percentage": "نسبة من الإيجار المحصّل",
+      "fixed": "مبلغ سنوي مقطوع"
+    },
+    "feePercentage": "نسبة الأتعاب",
+    "feeFixedAmount": "المبلغ السنوي المقطوع",
+    "feeCollection": "طريقة التحصيل",
+    "feeCollections": {
+      "deduct_from_rent": "خصم من الإيجار المحصّل",
+      "invoice_owner": "فاتورة على المالك"
+    },
+    "payoutCycle": "تحويل المتحصلات للمالك كل",
+    "vatRate": "نسبة ضريبة القيمة المضافة",
+    "vatAmount": "ضريبة القيمة المضافة",
+    "totalFee": "الإجمالي شامل الضريبة",
+    "feePreview": "الأتعاب التقديرية",
+    "annualRentBase": "الإيجار السنوي تحت الإدارة",
+    "feePreviewHint": "محسوبة من الإيجار الحالي للوحدات المشمولة. تسجّل منصة إيجار القيمة السنوية المتوقعة للعقد.",
+    "authoritiesHint": "تتحقق منصة إيجار من هذه الصلاحيات عند توقيع المكتب لعقد إيجار نيابة عن المالك. بدون صلاحية «توقيع عقود الإيجار» يجب أن يوقّع المالك كل عقد بنفسه.",
+    "canSignLeases": "توقيع عقود الإيجار",
+    "canCollectRent": "تحصيل الإيجارات",
+    "canMarketUnits": "تسويق الوحدات والإعلان عنها",
+    "canMaintain": "تنفيذ أعمال الصيانة",
+    "canEvict": "الإخلاء ورفع الدعاوى",
+    "canPayUtilities": "سداد فواتير الخدمات",
+    "maintenanceLimit": "سقف الصيانة بدون موافقة المالك",
+    "maintenanceLimitHint": "أي صيانة تتجاوز هذا المبلغ تحتاج موافقة المالك.",
+    "checkEjar": "فحص الجاهزية لإيجار",
+    "registerOnEjar": "تسجيل في إيجار",
+    "registerShort": "تسجيل",
+    "cancelOnEjar": "إلغاء التسجيل في إيجار",
+    "readinessTitle": "الجاهزية للتسجيل في إيجار",
+    "readyMessage": "جميع الحقول المطلوبة مكتملة. يمكن إرسال العقد إلى منصة إيجار.",
+    "notReadyMessage": "يجب استكمال {count} حقل قبل قبول العقد في منصة إيجار.",
+    "stubNotice": "النظام يعمل في وضع المحاكاة — لا يتم إرسال أي طلب لمنصة إيجار الحقيقية. اضبط EJAR_CLIENT_ID للتشغيل الفعلي.",
+    "companyReady": "بيانات المنشأة مكتملة.",
+    "companyNotReady": "ينقص بيانات المنشأة {count} حقل.",
+    "syncResultTitle": "نتيجة المزامنة مع إيجار",
+    "syncFetched": "تم جلبها",
+    "syncCreated": "تم إنشاؤها",
+    "syncUpdated": "تم تحديثها",
+    "syncLinked": "عقارات مرتبطة",
+    "terminate": "إنهاء",
+    "terminateTitle": "إنهاء عقد إدارة الأملاك",
+    "terminateMessage": "إنهاء العقد {number}؟ تبقى عقود الإيجار المسجّلة بموجبه قائمة في إيجار.",
+    "deleteTitle": "حذف عقد إدارة الأملاك",
+    "deleteMessage": "حذف العقد {number}؟ لا يمكن التراجع عن هذا الإجراء.",
+    "ownerRequired": "اختر المالك.",
+    "contractNumberRequired": "رقم العقد مطلوب.",
+    "dateOrderInvalid": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية.",
+    "propertiesRequired": "أضف عقارًا واحدًا على الأقل ضمن نطاق الإدارة.",
+    "feePercentageRequired": "أدخل نسبة أتعاب أكبر من صفر.",
+    "feeFixedRequired": "أدخل مبلغ أتعاب مقطوع أكبر من صفر.",
+    "companyNameRequired": "اسم المنشأة مطلوب.",
+    "establishmentTitle": "المنشأة العقارية",
+    "establishmentSubtitle": "المكتب المرخّص الذي تُسجَّل عقودك في إيجار باسمه",
+    "sectionCompanyIdentity": "بيانات المنشأة",
+    "sectionLicensing": "تراخيص الهيئة العامة للعقار",
+    "sectionSignatory": "المفوّض بالتوقيع",
+    "sectionAddress": "العنوان الوطني",
+    "sectionBanking": "البيانات البنكية",
+    "companyName": "اسم المنشأة",
+    "crNumber": "رقم السجل التجاري",
+    "crIssueDate": "تاريخ إصدار السجل",
+    "crExpiryDate": "تاريخ انتهاء السجل",
+    "vatNumber": "الرقم الضريبي",
+    "licensingHint": "لا تقبل منصة إيجار توقيع طرف غير المالك إلا إذا كان المكتب حاصلًا على رخصة فال سارية من الهيئة العامة للعقار.",
+    "falManagementLicense": "رخصة فال — إدارة الأملاك",
+    "falBrokerageLicense": "رخصة فال — الوساطة العقارية",
+    "licenseExpiry": "تاريخ الانتهاء",
+    "ejarEstablishmentId": "معرّف المنشأة في إيجار",
+    "ejarBranchId": "معرّف الفرع في إيجار",
+    "representativeName": "اسم المفوّض",
+    "nationalAddress": "العنوان الوطني المختصر",
+    "city": "المدينة",
+    "district": "الحي",
+    "street": "الشارع",
+    "buildingNumber": "رقم المبنى",
+    "postalCode": "الرمز البريدي",
+    "additionalNumber": "الرقم الإضافي",
+    "bankName": "البنك",
+    "iban": "رقم الآيبان",
+    "bankingHint": "الحساب الذي تُودع فيه الإيجارات المحصّلة قبل تحويلها للملاك.",
+    "statuses": {
+      "draft": "مسودة",
+      "active": "ساري",
+      "expired": "منتهي",
+      "terminated": "منهي"
+    },
+    "ejar": {
+      "none": "غير مسجّل",
+      "pending": "قيد المعالجة",
+      "registered": "مسجّل",
+      "cancelled": "ملغى",
+      "failed": "فشل"
+    },
+    "short": {
+      "sign": "توقيع",
+      "collect": "تحصيل",
+      "maintain": "صيانة",
+      "evict": "إخلاء"
+    },
+    "entities": {
+      "company": "المنشأة",
+      "owner": "المالك",
+      "tenant": "المستأجر",
+      "building": "العقار",
+      "unit": "الوحدة",
+      "contract": "العقد",
+      "management_contract": "عقد الإدارة"
+    }
   }
 }

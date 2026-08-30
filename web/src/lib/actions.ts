@@ -6,6 +6,14 @@ import { api, ApiError } from "./api";
 import type {
   Building,
   Contract,
+  EjarIdType,
+  EjarIssue,
+  EjarReadiness,
+  EjarSignatory,
+  ManagementCompany,
+  ManagementContract,
+  ManagementFeeCollection,
+  ManagementFeeType,
   ModuleId,
   Owner,
   OwnerType,
@@ -16,15 +24,29 @@ import type {
   TenantCompanionInput,
   TenantType,
   Unit,
+  UnitUsage,
 } from "./types";
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
-function err(e: unknown): { ok: false; error: string } {
+function err(e: unknown, locale = "en"): { ok: false; error: string } {
   if (e instanceof ApiError) {
     const body = e.body as { detail?: unknown } | undefined;
     const detail = body?.detail;
     if (typeof detail === "string") return { ok: false, error: detail };
+    // Ejar readiness rejections come back as { message, issues[] } so the user
+    // sees which fields to fix rather than a bare "422".
+    if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+      const d = detail as { message?: string; issues?: EjarIssue[] };
+      if (Array.isArray(d.issues) && d.issues.length > 0) {
+        const lines = d.issues
+          .slice(0, 5)
+          .map((i) => `• ${locale.startsWith("ar") ? i.message_ar : i.message_en}`);
+        const more = d.issues.length > 5 ? `\n… +${d.issues.length - 5}` : "";
+        return { ok: false, error: `${d.message ?? "Validation error"}\n${lines.join("\n")}${more}` };
+      }
+      if (d.message) return { ok: false, error: d.message };
+    }
     if (Array.isArray(detail) && detail.length > 0) {
       const first = detail[0] as { msg?: string; loc?: unknown[] };
       const loc = Array.isArray(first.loc) ? first.loc.slice(1).join(".") : "";
@@ -44,6 +66,7 @@ function refreshAll() {
     "/[locale]/(app)/tenants",
     "/[locale]/(app)/properties",
     "/[locale]/(app)/contracts",
+    "/[locale]/(app)/management-contracts",
     "/[locale]/(app)/payments",
     "/[locale]/(app)/expenses",
     "/[locale]/(app)/users",
@@ -71,6 +94,13 @@ export type OwnerInput = {
   bank_name?: string | null;
   iban?: string | null;
   agent_id?: number | null;
+  // Ejar party identity
+  id_type?: EjarIdType;
+  id_expiry_date?: string | null;
+  nationality?: string | null;
+  absher_phone?: string | null;
+  national_address?: string | null;
+  representative_name?: string | null;
   notes?: string | null;
   notes_en?: string | null;
   notes_ar?: string | null;
@@ -170,6 +200,11 @@ export type TenantInput = {
   representative_date_of_birth?: string | null;
   tax_number?: string | null;
   email?: string | null;
+  // Ejar party identity
+  id_type?: EjarIdType;
+  id_expiry_date?: string | null;
+  nationality?: string | null;
+  national_address?: string | null;
   notes?: string | null;
   notes_en?: string | null;
   notes_ar?: string | null;
@@ -234,11 +269,17 @@ export type BuildingInput = {
   district_ar?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  // العنوان الوطني — required by Ejar
+  national_address?: string | null;
+  postal_code?: string | null;
+  building_number?: string | null;
+  additional_number?: string | null;
   // Deed
   deed_number?: string | null;
   deed_document_type?: string | null;
   deed_date?: string | null;
   deed_document_number?: string | null;
+  ejar_property_id?: string | null;
   // Property data
   property_type?: string | null;
   residence_type?: string | null;
@@ -298,6 +339,12 @@ export type UnitInput = {
   electric_invoice?: string | null;
   water_invoice?: string | null;
   ejar_fee: number;
+  // Ejar unit record
+  ejar_unit_id?: string | null;
+  usage_type?: UnitUsage | null;
+  rooms_count?: number | null;
+  bathrooms_count?: number | null;
+  is_furnished?: boolean;
   notes?: string | null;
   notes_en?: string | null;
   notes_ar?: string | null;
@@ -339,11 +386,11 @@ export type PaymentCycle = 1 | 3 | 6 | 12;
 
 export type ContractInput = {
   unit_id: number;
-  tenant_id: number;
+  tenant_id?: number | null;
   contract_number: string;
   // Basic
   branch?: string | null;
-  contract_type?: "residential" | "commercial";
+  contract_type?: "residential" | "commercial" | "management";
   validity_type?: "fixed" | "open" | null;
   start_date: string; // YYYY-MM-DD
   end_date: string;
@@ -368,7 +415,13 @@ export type ContractInput = {
   services_amount?: number;
   insurance_amount?: number;
   vat_rate?: number;
+  agent_id?: number | null;
   agent_percentage?: number;
+  management_percentage?: number;
+  // Ejar
+  management_contract_id?: number | null;
+  ejar_signed_by?: EjarSignatory;
+  ejar_registration_fee?: number;
   notes?: string | null;
 };
 
@@ -427,8 +480,9 @@ export async function syncEjarContracts(): Promise<ActionResult<EjarSyncResult>>
 
 export type ContractUpdateInput = {
   contract_number: string;
+  tenant_id?: number | null;
   branch?: string | null;
-  contract_type?: "residential" | "commercial";
+  contract_type?: "residential" | "commercial" | "management";
   validity_type?: "fixed" | "open" | null;
   start_date: string;
   end_date: string;
@@ -452,7 +506,13 @@ export type ContractUpdateInput = {
   services_amount?: number;
   insurance_amount?: number;
   vat_rate?: number;
+  agent_id?: number | null;
   agent_percentage?: number;
+  management_percentage?: number;
+  // Ejar
+  management_contract_id?: number | null;
+  ejar_signed_by?: EjarSignatory;
+  ejar_registration_fee?: number;
   status: "active" | "expired" | "terminated";
   notes?: string | null;
 };
@@ -667,6 +727,254 @@ export async function translateText(
         unchanged: data.translated_text.trim() === text.trim(),
       },
     };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Ejar — establishment profile & property management contracts
+// ══════════════════════════════════════════════════════════════════════════════
+
+export type ManagementCompanyInput = {
+  name: string;
+  name_en?: string | null;
+  name_ar?: string | null;
+  cr_number?: string | null;
+  cr_issue_date?: string | null;
+  cr_expiry_date?: string | null;
+  vat_number?: string | null;
+  fal_license_number?: string | null;
+  fal_license_expiry?: string | null;
+  fal_management_license_number?: string | null;
+  fal_management_license_expiry?: string | null;
+  ejar_establishment_id?: string | null;
+  ejar_branch_id?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  city?: string | null;
+  district?: string | null;
+  street?: string | null;
+  national_address?: string | null;
+  postal_code?: string | null;
+  building_number?: string | null;
+  additional_number?: string | null;
+  representative_name?: string | null;
+  representative_national_id?: string | null;
+  representative_phone?: string | null;
+  representative_email?: string | null;
+  bank_name?: string | null;
+  iban?: string | null;
+  is_active?: boolean;
+  notes?: string | null;
+};
+
+export async function saveManagementCompany(
+  input: ManagementCompanyInput,
+): Promise<ActionResult<ManagementCompany>> {
+  try {
+    const data = await api.put<ManagementCompany>("/api/v1/management/company", input);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export type ManagementPropertyInput = {
+  building_id: number;
+  /** null = the whole building is under management */
+  unit_id?: number | null;
+  fee_percentage_override?: number | null;
+};
+
+export type ManagementContractInput = {
+  owner_id: number;
+  company_id?: number | null;
+  contract_number: string;
+  ejar_contract_number?: string | null;
+  branch?: string | null;
+  contract_date?: string | null;
+  start_date: string;
+  end_date: string;
+  duration_months?: number;
+  auto_renew?: boolean;
+  notice_period_days?: number;
+  fee_type?: ManagementFeeType;
+  fee_percentage?: number;
+  fee_fixed_amount?: number;
+  fee_collection_method?: ManagementFeeCollection;
+  vat_rate?: number;
+  payout_cycle_months?: number;
+  can_market_units?: boolean;
+  can_sign_leases?: boolean;
+  can_collect_rent?: boolean;
+  can_evict?: boolean;
+  can_maintain?: boolean;
+  can_pay_utilities?: boolean;
+  maintenance_limit_amount?: number;
+  notes?: string | null;
+  properties: ManagementPropertyInput[];
+};
+
+export type ManagementContractUpdateInput = ManagementContractInput & {
+  status: "draft" | "active" | "expired" | "terminated";
+};
+
+export async function createManagementContract(
+  input: ManagementContractInput,
+): Promise<ActionResult<ManagementContract>> {
+  try {
+    const data = await api.post<ManagementContract>("/api/v1/management/contracts", input);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function updateManagementContract(
+  id: number,
+  input: ManagementContractUpdateInput,
+): Promise<ActionResult<ManagementContract>> {
+  try {
+    const data = await api.put<ManagementContract>(
+      `/api/v1/management/contracts/${id}`,
+      input,
+    );
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function terminateManagementContract(
+  id: number,
+): Promise<ActionResult<ManagementContract>> {
+  try {
+    const data = await api.post<ManagementContract>(
+      `/api/v1/management/contracts/${id}/terminate`,
+    );
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function deleteManagementContract(id: number): Promise<ActionResult<null>> {
+  try {
+    await api.delete(`/api/v1/management/contracts/${id}`);
+    refreshAll();
+    return { ok: true, data: null };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+// ── Ejar operations ─────────────────────────────────────────────────────────
+
+export async function validateManagementContractOnEjar(
+  id: number,
+): Promise<ActionResult<EjarReadiness>> {
+  try {
+    const data = await api.get<EjarReadiness>(
+      `/api/v1/management/contracts/${id}/ejar/validate`,
+    );
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function registerManagementContractOnEjar(
+  id: number,
+): Promise<ActionResult<ManagementContract>> {
+  try {
+    const data = await api.post<ManagementContract>(
+      `/api/v1/management/contracts/${id}/ejar/register`,
+    );
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function cancelManagementContractOnEjar(
+  id: number,
+): Promise<ActionResult<ManagementContract>> {
+  try {
+    const data = await api.post<ManagementContract>(
+      `/api/v1/management/contracts/${id}/ejar/cancel`,
+    );
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function validateCompanyOnEjar(): Promise<ActionResult<EjarReadiness>> {
+  try {
+    const data = await api.get<EjarReadiness>("/api/v1/management/company/ejar/validate");
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function validateContractOnEjar(
+  id: number,
+): Promise<ActionResult<EjarReadiness>> {
+  try {
+    const data = await api.get<EjarReadiness>(`/api/v1/contracts/${id}/ejar/validate`);
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function registerContractOnEjar(id: number): Promise<ActionResult<Contract>> {
+  try {
+    const data = await api.post<Contract>(`/api/v1/contracts/${id}/ejar/register`);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export async function cancelContractOnEjar(id: number): Promise<ActionResult<Contract>> {
+  try {
+    const data = await api.post<Contract>(`/api/v1/contracts/${id}/ejar/cancel`);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
+export type ManagementSyncResult = {
+  fetched: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  owners_created: number;
+  buildings_linked: number;
+  is_stub_mode: boolean;
+  errors: string[];
+};
+
+export async function syncEjarManagementContracts(): Promise<
+  ActionResult<ManagementSyncResult>
+> {
+  try {
+    const data = await api.post<ManagementSyncResult>("/api/v1/management/ejar/sync");
+    refreshAll();
+    return { ok: true, data };
   } catch (e) {
     return err(e);
   }

@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
         "http://localhost:8080",
     ]
 
@@ -43,15 +45,18 @@ class Settings(BaseSettings):
     # Empty → /translate endpoint returns the original text (no-op).
     translate_region: str = os.environ.get("TRANSLATE_REGION", "")
 
-    # --- S3 (image uploads) ---
-    # When s3_bucket is empty, image upload endpoints return 503; useful in dev
-    # if you don't want to provision a bucket yet.
+    # --- File storage ---
+    # When s3_bucket is set, uploads go to S3 (or S3-compatible). When empty,
+    # files are stored under local_upload_dir and served at /uploads/...
     s3_bucket: str = os.environ.get("S3_BUCKET", "")
     s3_region: str = os.environ.get("S3_REGION", "")
     s3_endpoint_url: str = os.environ.get("S3_ENDPOINT_URL", "")  # for MinIO / R2
-    # Public-facing base URL for uploaded objects. Defaults to S3 path-style URL.
-    # Override when using CloudFront in front of the bucket.
+    # Public-facing base URL for uploaded objects. Defaults to https://<bucket>.s3.<region>.amazonaws.com/<key>
     s3_public_base_url: str = os.environ.get("S3_PUBLIC_BASE_URL", "")
+    # Local fallback directory (relative to repo root) when S3_BUCKET is empty.
+    local_upload_dir: str = os.environ.get("LOCAL_UPLOAD_DIR", "uploads")
+    # Public base URL of this API — used to build /uploads/... links in local mode.
+    api_public_base_url: str = os.environ.get("API_PUBLIC_BASE_URL", "http://127.0.0.1:8000")
 
     # --- Ejar Integration (منصة إيجار) ---
     # Credentials issued by REGA after approval. Leave empty to run in STUB mode

@@ -8,6 +8,7 @@ import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { DocumentUploader } from "@/components/DocumentUploader";
 import { MapPicker } from "@/components/MapPicker";
 import { Modal } from "@/components/Modal";
+import { NumericInput } from "@/components/NumericInput";
 import { createBuilding, updateBuilding, type BuildingInput } from "@/lib/actions";
 import { PRIMARY_BUILDING_TYPES, RESIDENCE_TYPES } from "@/lib/building-types";
 import type { Building, Owner } from "@/lib/types";
@@ -426,32 +427,29 @@ export function BuildingFormModal({
           <div className="field-row">
             <div className="field" style={{ flex: 1 }}>
               <label>{t("officesCount")}</label>
-              <input
-                className="input"
-                type="number"
+              <NumericInput
+                decimal={false}
                 min={0}
                 value={form.offices_count ?? 0}
-                onChange={(e) => set("offices_count", Number(e.target.value))}
+                onValueChange={(v) => set("offices_count", v ?? 0)}
               />
             </div>
             <div className="field" style={{ flex: 1 }}>
               <label>{t("commercialShopsCount")}</label>
-              <input
-                className="input"
-                type="number"
+              <NumericInput
+                decimal={false}
                 min={0}
                 value={form.commercial_shops_count ?? 0}
-                onChange={(e) => set("commercial_shops_count", Number(e.target.value))}
+                onValueChange={(v) => set("commercial_shops_count", v ?? 0)}
               />
             </div>
             <div className="field" style={{ flex: 1 }}>
               <label>{t("apartmentsCount")}</label>
-              <input
-                className="input"
-                type="number"
+              <NumericInput
+                decimal={false}
                 min={0}
                 value={form.apartments_count ?? 0}
-                onChange={(e) => set("apartments_count", Number(e.target.value))}
+                onValueChange={(v) => set("apartments_count", v ?? 0)}
               />
             </div>
           </div>

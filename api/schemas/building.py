@@ -32,12 +32,19 @@ class BuildingBase(BaseModel):
     district_ar: Optional[str] = Field(default=None, max_length=100)
     latitude: Optional[float] = Field(default=None, ge=-90, le=90)
     longitude: Optional[float] = Field(default=None, ge=-180, le=180)
+    # العنوان الوطني — required by Ejar when registering the property
+    national_address: Optional[str] = Field(default=None, max_length=120)
+    postal_code: Optional[str] = Field(default=None, max_length=10)
+    building_number: Optional[str] = Field(default=None, max_length=10)
+    additional_number: Optional[str] = Field(default=None, max_length=10)
 
     # ── Deed information (معلومات الصك) ─────────────────────────────────────
     deed_number: Optional[str] = Field(default=None, max_length=50)
     deed_document_type: Optional[str] = Field(default=None, max_length=50)
     deed_date: Optional[date] = None
     deed_document_number: Optional[str] = Field(default=None, max_length=50)
+    # معرف العقار في منصة إيجار
+    ejar_property_id: Optional[str] = Field(default=None, max_length=50)
 
     # ── Property data (بيانات العقار) ────────────────────────────────────────
     property_type: Optional[str] = Field(default=None, max_length=50)

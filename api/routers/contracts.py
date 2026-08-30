@@ -7,19 +7,74 @@ from sqlalchemy import select
 
 from api.contract_totals import compute_contract_totals
 from api.deps import CurrentUser, DbSession
-from api.models import Contract, ContractAttachment, Owner, Payment, Tenant, Unit
+from api.models import (
+    Contract,
+    ContractAttachment,
+    ManagementContract,
+    Payment,
+    Tenant,
+    Unit,
+)
 from api.permissions import Perm
 from api.schemas.contract import (
+    LEASE_CONTRACT_TYPES,
     ContractAttachmentRead,
     ContractCreateRequest,
     ContractRead,
     ContractUpdateRequest,
 )
-from api.services.ejar import EjarContractPayload, get_ejar_service
+from api.schemas.management import EjarIssueRead, EjarReadinessResponse
+from api.services.ejar import get_ejar_service
+from api.services.ejar_mapping import (
+    blocking,
+    build_lease_payload,
+    check_lease_readiness,
+    issues_as_dicts,
+)
 from api.services.ejar_sync import sync_contracts
 from api.storage import StorageNotConfigured, delete_object, upload_document
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
+
+
+def _validate_management_link(db, payload, unit: Unit | None) -> None:
+    """Check the management contract a lease is filed under, when one is given.
+
+    Ejar only lets the office sign for the owner under a management mandate that
+    actually covers the property, so a mismatch is rejected here rather than by
+    the platform.
+    """
+    if payload.management_contract_id is None:
+        return
+
+    mandate = db.get(ManagementContract, payload.management_contract_id)
+    if mandate is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Management contract not found")
+
+    if unit is None:
+        return
+
+    building = unit.building
+    if building is None:
+        return
+
+    if building.owner_id != mandate.owner_id:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "The management contract belongs to a different owner than this property",
+        )
+
+    if mandate.properties:
+        covered = any(
+            entry.building_id == building.id
+            and (entry.unit_id is None or entry.unit_id == unit.id)
+            for entry in mandate.properties
+        )
+        if not covered:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "This unit is not part of the selected management contract's portfolio",
+            )
 
 
 def _apply_contract_totals(contract: Contract, payload) -> None:
@@ -55,21 +110,30 @@ def create_contract(
     db: DbSession,
     _user: CurrentUser,
 ):
+    is_lease = payload.contract_type in LEASE_CONTRACT_TYPES
+
     unit = db.get(Unit, payload.unit_id)
     if unit is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unit not found")
-    if not unit.is_available:
+    # A management contract does not occupy the unit, so availability only
+    # matters for leases.
+    if is_lease and not unit.is_available:
         raise HTTPException(status.HTTP_409_CONFLICT, "Unit is not available")
 
-    if db.get(Tenant, payload.tenant_id) is None:
+    if is_lease and db.get(Tenant, payload.tenant_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tenant not found")
 
     if db.scalar(select(Contract).where(Contract.contract_number == payload.contract_number)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Contract number already exists")
 
+    _validate_management_link(db, payload, unit)
+
     contract = Contract(
         unit_id=payload.unit_id,
-        tenant_id=payload.tenant_id,
+        tenant_id=payload.tenant_id if is_lease else None,
+        management_contract_id=payload.management_contract_id,
+        ejar_signed_by=payload.ejar_signed_by,
+        ejar_registration_fee=payload.ejar_registration_fee,
         contract_number=payload.contract_number,
         branch=payload.branch,
         contract_type=payload.contract_type,
@@ -95,15 +159,19 @@ def create_contract(
         water_meter_number=payload.water_meter_number,
         services_amount=payload.services_amount,
         insurance_amount=payload.insurance_amount,
+        agent_id=payload.agent_id,
         agent_percentage=payload.agent_percentage,
+        management_percentage=payload.management_percentage,
         notes=payload.notes,
     )
     _apply_contract_totals(contract, payload)
     db.add(contract)
-    unit.is_available = False
+    if is_lease:
+        unit.is_available = False
     db.flush()
 
-    _generate_payments(db, contract)
+    if is_lease:
+        _generate_payments(db, contract)
     db.commit()
     db.refresh(contract)
     return contract
@@ -120,6 +188,15 @@ def update_contract(
     if contract is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
 
+    unit = db.get(Unit, contract.unit_id)
+    _validate_management_link(db, payload, unit)
+
+    contract.management_contract_id = payload.management_contract_id
+    contract.ejar_signed_by = payload.ejar_signed_by
+    contract.ejar_registration_fee = payload.ejar_registration_fee
+    contract.agent_id = payload.agent_id
+    contract.agent_percentage = payload.agent_percentage
+    contract.management_percentage = payload.management_percentage
     contract.contract_number = payload.contract_number
     contract.branch = payload.branch
     contract.contract_type = payload.contract_type
@@ -341,43 +418,29 @@ async def ejar_register_contract(
             f"Contract already registered on Ejar (ref: {contract.ejar_contract_number})",
         )
 
-    # Gather required data from related records
-    unit = db.get(Unit, contract.unit_id)
-    tenant = db.get(Tenant, contract.tenant_id)
-    if unit is None or tenant is None:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unit or tenant record missing")
+    # Validate first: Ejar answers a malformed submission with an opaque error,
+    # so the caller gets a precise field list from us instead.
+    errors = blocking(check_lease_readiness(db, contract))
+    if errors:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            {
+                "message": "Contract is not ready for Ejar registration",
+                "issues": issues_as_dicts(errors),
+            },
+        )
 
-    building = unit.building if unit else None
-    owner: Owner | None = building.owner if building else None
-
-    if owner is None:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Building owner record missing")
-
-    payload = EjarContractPayload(
-        landlord_national_id=owner.national_id or "",
-        landlord_name=owner.name,
-        tenant_national_id=tenant.national_id,
-        tenant_name=tenant.name,
-        tenant_phone=tenant.phone,
-        property_type=building.property_type or "residential",
-        building_deed_number=building.deed_number or "",
-        unit_number=unit.number,
-        city=building.city or "",
-        district=building.district or "",
-        contract_type=contract.contract_type,
-        start_date=contract.start_date.isoformat(),
-        end_date=contract.end_date.isoformat(),
-        total_rent_amount=contract.total_rent_amount or contract.rent_amount,
-        payment_cycle=contract.payment_cycle,
-        ejar_contract_number=contract.ejar_contract_number,
-        notes=contract.notes,
-    )
+    try:
+        payload = build_lease_payload(db, contract)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
 
     ejar = get_ejar_service()
     result = await ejar.register_contract(payload)
 
     if not result.success:
         contract.ejar_status = "failed"
+        contract.ejar_last_error = result.error_message
         contract.ejar_response_data = result.raw
         db.commit()
         raise HTTPException(
@@ -387,11 +450,45 @@ async def ejar_register_contract(
 
     contract.ejar_status = "registered"
     contract.ejar_contract_number = result.ejar_contract_number
+    contract.ejar_reference = result.ejar_reference
     contract.ejar_registered_at = result.registered_at
+    contract.ejar_last_error = None
     contract.ejar_response_data = result.raw
+    # Record which mandate the lease was actually filed under, so the link
+    # survives even when it was resolved implicitly.
+    if contract.management_contract_id is None and payload.management_contract_number:
+        mandate = db.scalar(
+            select(ManagementContract).where(
+                ManagementContract.ejar_contract_number == payload.management_contract_number
+            )
+        ) or db.scalar(
+            select(ManagementContract).where(
+                ManagementContract.contract_number == payload.management_contract_number
+            )
+        )
+        if mandate is not None:
+            contract.management_contract_id = mandate.id
     db.commit()
     db.refresh(contract)
     return contract
+
+
+@router.get("/{contract_id}/ejar/validate", response_model=EjarReadinessResponse)
+def ejar_validate_contract(contract_id: int, db: DbSession, _user: CurrentUser):
+    """Report which fields Ejar would reject this lease for, without submitting."""
+    contract = db.get(Contract, contract_id)
+    if contract is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+
+    issues = check_lease_readiness(db, contract)
+    errors = blocking(issues)
+    return EjarReadinessResponse(
+        ready=not errors,
+        is_stub_mode=get_ejar_service().is_stub,
+        error_count=len(errors),
+        warning_count=len(issues) - len(errors),
+        issues=[EjarIssueRead(**i) for i in issues_as_dicts(issues)],
+    )
 
 
 @router.post("/{contract_id}/ejar/cancel", response_model=ContractRead)
@@ -411,7 +508,9 @@ async def ejar_cancel_contract(
             "Contract is not registered on Ejar — cannot cancel",
         )
 
-    ejar_ref = (contract.ejar_response_data or {}).get("reference", contract.ejar_contract_number)
+    ejar_ref = contract.ejar_reference or (contract.ejar_response_data or {}).get(
+        "reference", contract.ejar_contract_number
+    )
     ejar = get_ejar_service()
     ok = await ejar.cancel_contract(ejar_reference=ejar_ref or "")
 
@@ -445,7 +544,9 @@ async def ejar_get_status(
             is_stub_mode=ejar.is_stub,
         )
 
-    ejar_ref = (contract.ejar_response_data or {}).get("reference", contract.ejar_contract_number)
+    ejar_ref = contract.ejar_reference or (contract.ejar_response_data or {}).get(
+        "reference", contract.ejar_contract_number
+    )
     result = await ejar.get_status(ejar_reference=ejar_ref or "")
 
     # Sync status back to our DB

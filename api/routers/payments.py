@@ -99,8 +99,21 @@ def _create_payment_splits(db, payment: Payment) -> None:
     unit = payment.contract.unit
     contract = payment.contract
     amount = payment.amount
-    mgmt_pct = unit.management_percentage or 0
-    agent_pct = contract.agent_percentage if contract.agent_percentage else (unit.agent_percentage or 0)
+    mgmt_pct = (
+        contract.management_percentage
+        if contract.management_percentage
+        else (unit.management_percentage or 0)
+    )
+    agent_pct = (
+        contract.agent_percentage
+        if contract.agent_percentage
+        else (unit.agent_percentage or 0)
+    )
+    agent_label = ""
+    if contract.agent_id and contract.agent is not None:
+        agent_label = contract.agent.name
+    elif unit.agent_name:
+        agent_label = unit.agent_name
 
     mgmt_fee = round(amount * mgmt_pct / 100, 2)
     agent_fee = round(amount * agent_pct / 100, 2)
@@ -115,7 +128,7 @@ def _create_payment_splits(db, payment: Payment) -> None:
     if agent_fee > 0:
         db.add(PaymentSplit(
             payment_id=payment.id, split_type="agent_fee",
-            amount=agent_fee, description=f"{agent_pct}% agent fee ({unit.agent_name or ''})",
+            amount=agent_fee, description=f"{agent_pct}% agent fee ({agent_label})",
         ))
     if ejar > 0:
         db.add(PaymentSplit(

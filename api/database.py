@@ -164,6 +164,8 @@ def ensure_contract_extended_columns(engine) -> None:
         ("vat_amount", "FLOAT DEFAULT 0 NOT NULL"),
         ("total_amount", "FLOAT DEFAULT 0 NOT NULL"),
         ("agent_percentage", "FLOAT DEFAULT 0 NOT NULL"),
+        ("management_percentage", "FLOAT DEFAULT 0 NOT NULL"),
+        ("agent_id", "INTEGER"),
         ("ejar_status", "VARCHAR(20)"),
         ("ejar_registered_at", datetime_type),
         ("ejar_response_data", json_type),
@@ -187,14 +189,32 @@ def ensure_contract_extended_columns(engine) -> None:
             conn.execute(
                 text(
                     "UPDATE contracts SET vat_rate = 15, "
-                    "vat_amount = ROUND("
+                    "vat_amount = ROUND(CAST("
                     "(COALESCE(total_rent_amount, 0) + COALESCE(insurance_amount, 0) + "
-                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 0.15, 2), "
-                    "total_amount = ROUND("
+                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 0.15 AS NUMERIC), 2), "
+                    "total_amount = ROUND(CAST("
                     "(COALESCE(total_rent_amount, 0) + COALESCE(insurance_amount, 0) + "
-                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 1.15, 2)"
+                    "COALESCE(electricity_amount, 0) + COALESCE(water_amount, 0)) * 1.15 AS NUMERIC), 2)"
                 )
             )
+
+
+def ensure_contract_tenant_nullable(engine) -> None:
+    """Allow NULL tenant_id for management (owner↔company) contracts."""
+    insp = inspect(engine)
+    if not insp.has_table("contracts"):
+        return
+    cols = {c["name"]: c for c in insp.get_columns("contracts")}
+    tenant = cols.get("tenant_id")
+    if tenant is None or tenant.get("nullable", False):
+        return
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE contracts ALTER COLUMN tenant_id DROP NOT NULL"))
+        return
+    # SQLite cannot ALTER nullability in place. Leave existing DBs as-is;
+    # new create_all schemas already use nullable tenant_id from the model.
+    # Management contracts without a tenant require a fresh DB or Postgres.
 
 
 def ensure_tenant_extended_columns(engine) -> None:
@@ -270,6 +290,95 @@ def ensure_owner_agent_id_column(engine) -> None:
     with engine.begin() as conn:
         for stmt in stmts:
             conn.execute(text(stmt))
+
+
+def _add_missing_columns(engine, table: str, additions: list[tuple[str, str]]) -> None:
+    """ALTER TABLE … ADD COLUMN for every column not already present.
+
+    ``create_all`` only creates missing *tables*, so new columns on an existing
+    table have to be added by hand. Both SQLite and PostgreSQL support the
+    simple ``ADD COLUMN`` form used here.
+    """
+    insp = inspect(engine)
+    if not insp.has_table(table):
+        return
+    existing = {c["name"] for c in insp.get_columns(table)}
+    stmts = [
+        f"ALTER TABLE {table} ADD COLUMN {name} {col_type}"
+        for name, col_type in additions
+        if name not in existing
+    ]
+    if not stmts:
+        return
+    with engine.begin() as conn:
+        for stmt in stmts:
+            conn.execute(text(stmt))
+
+
+def ensure_ejar_party_columns(engine) -> None:
+    """Add the Ejar party-identity columns to owners and tenants.
+
+    Ejar identifies every contract party by ID type + number + nationality and
+    verifies them through Absher, so those columns must exist on both sides
+    before a contract can be submitted.
+    """
+    party_columns: list[tuple[str, str]] = [
+        ("id_type", "VARCHAR(20) DEFAULT 'national_id' NOT NULL"),
+        ("id_expiry_date", "DATE"),
+        ("nationality", "VARCHAR(60)"),
+        ("national_address", "VARCHAR(120)"),
+        ("ejar_party_id", "VARCHAR(50)"),
+    ]
+    _add_missing_columns(
+        engine,
+        "owners",
+        party_columns
+        + [("absher_phone", "VARCHAR(20)"), ("representative_name", "VARCHAR(150)")],
+    )
+    # tenants already carry absher_phone / representative_name
+    _add_missing_columns(engine, "tenants", party_columns)
+
+
+def ensure_ejar_property_columns(engine) -> None:
+    """Add the Ejar property / unit identifiers to buildings and units."""
+    _add_missing_columns(
+        engine,
+        "buildings",
+        [
+            ("national_address", "VARCHAR(120)"),
+            ("postal_code", "VARCHAR(10)"),
+            ("additional_number", "VARCHAR(10)"),
+            ("building_number", "VARCHAR(10)"),
+            ("ejar_property_id", "VARCHAR(50)"),
+        ],
+    )
+    false_literal = "0" if engine.dialect.name == "sqlite" else "false"
+    _add_missing_columns(
+        engine,
+        "units",
+        [
+            ("ejar_unit_id", "VARCHAR(50)"),
+            ("usage_type", "VARCHAR(30)"),
+            ("rooms_count", "INTEGER"),
+            ("bathrooms_count", "INTEGER"),
+            ("is_furnished", f"BOOLEAN DEFAULT {false_literal} NOT NULL"),
+        ],
+    )
+
+
+def ensure_contract_ejar_columns(engine) -> None:
+    """Add the management-contract link and extended Ejar columns to contracts."""
+    _add_missing_columns(
+        engine,
+        "contracts",
+        [
+            ("management_contract_id", "INTEGER"),
+            ("ejar_reference", "VARCHAR(64)"),
+            ("ejar_last_error", "TEXT"),
+            ("ejar_registration_fee", "FLOAT DEFAULT 0 NOT NULL"),
+            ("ejar_signed_by", "VARCHAR(20) DEFAULT 'property_manager' NOT NULL"),
+        ],
+    )
 
 
 def get_db():

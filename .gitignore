@@ -34,3 +34,6 @@ node_modules/
 out/
 *.tsbuildinfo
 next-env.d.ts
+
+# Local upload fallback (when S3_BUCKET is unset)
+uploads/

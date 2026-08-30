@@ -125,7 +125,7 @@ export function AgentsClient({
             <FilterResultMeta
               showing={filtered.length}
               total={agents.length}
-              label={tCommon("showingResults")}
+              label={tCommon("showingResults", { showing: filtered.length, total: agents.length })}
             />
             {filtersActive && (
               <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />

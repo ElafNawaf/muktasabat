@@ -93,8 +93,8 @@ export function MapPicker({
           <label style={{ fontSize: 11 }}>{t("latitude")}</label>
           <input
             className="input input-mono"
-            type="number"
-            step="any"
+            type="text"
+            inputMode="decimal"
             value={latStr}
             onChange={(e) => setLatStr(e.target.value)}
             onBlur={onManual}
@@ -106,8 +106,8 @@ export function MapPicker({
           <label style={{ fontSize: 11 }}>{t("longitude")}</label>
           <input
             className="input input-mono"
-            type="number"
-            step="any"
+            type="text"
+            inputMode="decimal"
             value={lngStr}
             onChange={(e) => setLngStr(e.target.value)}
             onBlur={onManual}

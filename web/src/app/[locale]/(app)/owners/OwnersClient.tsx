@@ -235,7 +235,7 @@ export function OwnersClient({
             <FilterResultMeta
               showing={filtered.length}
               total={owners.length}
-              label={tCommon("showingResults")}
+              label={tCommon("showingResults", { showing: filtered.length, total: owners.length })}
             />
             {filtersActive && (
               <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />

@@ -21,6 +21,29 @@ export type Agent = {
 
 export type OwnerType = "individual" | "company";
 
+/** نوع الهوية — Ejar identifies every contract party by ID type + number. */
+export type EjarIdType =
+  | "national_id"
+  | "iqama"
+  | "gcc_id"
+  | "passport"
+  | "visitor"
+  | "cr"
+  | "endowment";
+
+export const EJAR_ID_TYPES: EjarIdType[] = [
+  "national_id",
+  "iqama",
+  "gcc_id",
+  "passport",
+  "visitor",
+  "cr",
+  "endowment",
+];
+
+/** ID types Ejar requires an expiry date and nationality for. */
+export const EXPIRING_ID_TYPES: EjarIdType[] = ["iqama", "passport", "visitor", "gcc_id"];
+
 export type Owner = {
   id: number;
   agent_id: number | null;
@@ -38,6 +61,14 @@ export type Owner = {
   representative_phone: string | null;
   bank_name: string | null;
   iban: string | null;
+  // Ejar party identity
+  id_type: EjarIdType;
+  id_expiry_date: string | null;
+  nationality: string | null;
+  absher_phone: string | null;
+  national_address: string | null;
+  representative_name: string | null;
+  ejar_party_id: string | null;
   notes: string | null;
   notes_en: string | null;
   notes_ar: string | null;
@@ -86,11 +117,16 @@ export type Building = {
   district_ar: string | null;
   latitude: number | null;
   longitude: number | null;
+  national_address: string | null;
+  postal_code: string | null;
+  building_number: string | null;
+  additional_number: string | null;
   // Deed
   deed_number: string | null;
   deed_document_type: string | null;
   deed_date: string | null;
   deed_document_number: string | null;
+  ejar_property_id: string | null;
   // Property data
   property_type: string | null;
   residence_type: string | null;
@@ -105,6 +141,16 @@ export type Building = {
   images: EntityImage[];
   documents: EntityDocument[];
 };
+
+export type UnitUsage = "residential" | "commercial" | "office" | "warehouse" | "other";
+
+export const UNIT_USAGES: UnitUsage[] = [
+  "residential",
+  "commercial",
+  "office",
+  "warehouse",
+  "other",
+];
 
 export type Unit = {
   id: number;
@@ -122,6 +168,12 @@ export type Unit = {
   electric_invoice: string | null;
   water_invoice: string | null;
   ejar_fee: number;
+  // Ejar unit record
+  ejar_unit_id: string | null;
+  usage_type: UnitUsage | null;
+  rooms_count: number | null;
+  bathrooms_count: number | null;
+  is_furnished: boolean;
   is_available: boolean;
   notes: string | null;
   notes_en: string | null;
@@ -162,6 +214,12 @@ export type Tenant = {
   representative_date_of_birth: string | null;
   tax_number: string | null;
   email: string | null;
+  // Ejar party identity
+  id_type: EjarIdType;
+  id_expiry_date: string | null;
+  nationality: string | null;
+  national_address: string | null;
+  ejar_party_id: string | null;
   notes: string | null;
   notes_en: string | null;
   notes_ar: string | null;
@@ -173,6 +231,8 @@ export type Contract = {
   id: number;
   unit_id: number;
   tenant_id: number;
+  /** عقد إدارة الأملاك المخوِّل بتوقيع هذا العقد */
+  management_contract_id: number | null;
   contract_number: string;
   // Basic
   branch: string | null;
@@ -203,14 +263,136 @@ export type Contract = {
   vat_rate: number;
   vat_amount: number;
   total_amount: number;
+  agent_id: number | null;
   agent_percentage: number;
+  management_percentage: number;
   status: "active" | "expired" | "terminated";
   notes: string | null;
   ejar_status: string | null;
+  ejar_reference: string | null;
   ejar_registered_at: string | null;
+  ejar_last_error: string | null;
+  ejar_registration_fee: number;
+  ejar_signed_by: EjarSignatory;
   created_at: string;
   attachments: EntityDocument[];
 };
+
+/** الطرف الموقّع على العقد في منصة إيجار */
+export type EjarSignatory = "landlord" | "property_manager";
+
+// ── Ejar establishment + property management contracts ──────────────────────
+
+/** المنشأة العقارية — the licensed office that files contracts on Ejar. */
+export type ManagementCompany = {
+  id: number;
+  name: string;
+  name_en: string | null;
+  name_ar: string | null;
+  cr_number: string | null;
+  cr_issue_date: string | null;
+  cr_expiry_date: string | null;
+  vat_number: string | null;
+  fal_license_number: string | null;
+  fal_license_expiry: string | null;
+  fal_management_license_number: string | null;
+  fal_management_license_expiry: string | null;
+  ejar_establishment_id: string | null;
+  ejar_branch_id: string | null;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
+  district: string | null;
+  street: string | null;
+  national_address: string | null;
+  postal_code: string | null;
+  building_number: string | null;
+  additional_number: string | null;
+  representative_name: string | null;
+  representative_national_id: string | null;
+  representative_phone: string | null;
+  representative_email: string | null;
+  bank_name: string | null;
+  iban: string | null;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ManagementFeeType = "percentage" | "fixed";
+export type ManagementFeeCollection = "deduct_from_rent" | "invoice_owner";
+export type ManagementContractStatus = "draft" | "active" | "expired" | "terminated";
+
+export type ManagementProperty = {
+  id: number;
+  building_id: number;
+  unit_id: number | null;
+  fee_percentage_override: number | null;
+};
+
+/** عقد إدارة الأملاك — the owner↔company mandate registered on Ejar. */
+export type ManagementContract = {
+  id: number;
+  owner_id: number;
+  company_id: number | null;
+  contract_number: string;
+  ejar_contract_number: string | null;
+  branch: string | null;
+  contract_date: string | null;
+  start_date: string;
+  end_date: string;
+  duration_months: number;
+  auto_renew: boolean;
+  notice_period_days: number;
+  fee_type: ManagementFeeType;
+  fee_percentage: number;
+  fee_fixed_amount: number;
+  fee_collection_method: ManagementFeeCollection;
+  vat_rate: number;
+  estimated_annual_fee: number;
+  vat_amount: number;
+  total_fee_amount: number;
+  payout_cycle_months: number;
+  can_market_units: boolean;
+  can_sign_leases: boolean;
+  can_collect_rent: boolean;
+  can_evict: boolean;
+  can_maintain: boolean;
+  can_pay_utilities: boolean;
+  maintenance_limit_amount: number;
+  status: ManagementContractStatus;
+  notes: string | null;
+  ejar_status: string | null;
+  ejar_reference: string | null;
+  ejar_registered_at: string | null;
+  ejar_last_error: string | null;
+  created_at: string;
+  properties: ManagementProperty[];
+  attachments: EntityDocument[];
+};
+
+/** One field Ejar would reject a contract for. */
+export type EjarIssue = {
+  entity: string;
+  entity_id: number | null;
+  field: string;
+  message_en: string;
+  message_ar: string;
+  severity: "error" | "warning";
+};
+
+export type EjarReadiness = {
+  ready: boolean;
+  is_stub_mode: boolean;
+  error_count: number;
+  warning_count: number;
+  issues: EjarIssue[];
+};
+
+/** Pick the message matching the active locale. */
+export function issueMessage(issue: EjarIssue, locale: string): string {
+  return locale.startsWith("ar") ? issue.message_ar : issue.message_en;
+}
 
 export type PermissionAction = "view" | "create" | "edit" | "delete" | "approve";
 export type ModuleId =

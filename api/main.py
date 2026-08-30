@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select, update
 
 from api.config import get_settings
@@ -14,7 +15,11 @@ from api.database import (
     ensure_building_assignee_column,
     ensure_building_extended_columns,
     ensure_building_location_columns,
+    ensure_contract_ejar_columns,
     ensure_contract_extended_columns,
+    ensure_contract_tenant_nullable,
+    ensure_ejar_party_columns,
+    ensure_ejar_property_columns,
     ensure_owner_agent_id_column,
     ensure_tenant_extended_columns,
     migrate_tenant_escorts_to_companions,
@@ -23,6 +28,7 @@ from api.database import (
 )
 from api.logging_config import setup_logging
 from api.request_logging import RequestLoggingMiddleware
+from api.storage import local_upload_root, uses_local_storage
 from api.routers import (
     agents,
     analytics,
@@ -31,6 +37,7 @@ from api.routers import (
     contracts,
     employees,
     expenses,
+    management,
     owners,
     payments,
     roles,
@@ -59,9 +66,15 @@ async def lifespan(app: FastAPI):
     ensure_building_location_columns(engine)
     ensure_building_extended_columns(engine)
     ensure_contract_extended_columns(engine)
+    ensure_contract_tenant_nullable(engine)
     ensure_tenant_extended_columns(engine)
     migrate_tenant_escorts_to_companions(engine)
     ensure_owner_agent_id_column(engine)
+    # Ejar (منصة إيجار) — party identity, property identifiers and the
+    # management-contract link the platform requires on every submission.
+    ensure_ejar_party_columns(engine)
+    ensure_ejar_property_columns(engine)
+    ensure_contract_ejar_columns(engine)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -158,9 +171,17 @@ app.include_router(buildings.router, prefix=API_V1)
 app.include_router(units.router, prefix=API_V1)
 app.include_router(tenants.router, prefix=API_V1)
 app.include_router(contracts.router, prefix=API_V1)
+app.include_router(management.router, prefix=API_V1)
 app.include_router(payments.router, prefix=API_V1)
 app.include_router(employees.router, prefix=API_V1)
 app.include_router(expenses.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)
+
+# Serve local uploads (used when S3 is unset or AWS credentials are missing).
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(local_upload_root())),
+    name="uploads",
+)

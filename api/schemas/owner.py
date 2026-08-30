@@ -4,6 +4,10 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 OwnerType = Literal["individual", "company"]
+# نوع الهوية في منصة إيجار
+EjarIdType = Literal[
+    "national_id", "iqama", "gcc_id", "passport", "visitor", "cr", "endowment"
+]
 
 
 class OwnerBase(BaseModel):
@@ -21,6 +25,16 @@ class OwnerBase(BaseModel):
     representative_phone: Optional[str] = Field(default=None, max_length=20)
     bank_name: Optional[str] = Field(default=None, max_length=100)
     iban: Optional[str] = Field(default=None, max_length=34)
+
+    # ── Ejar party identity (هوية الطرف في منصة إيجار) ──────────────────────
+    id_type: EjarIdType = "national_id"
+    id_expiry_date: Optional[date] = None
+    nationality: Optional[str] = Field(default=None, max_length=60)
+    absher_phone: Optional[str] = Field(default=None, max_length=20)
+    national_address: Optional[str] = Field(default=None, max_length=120)
+    representative_name: Optional[str] = Field(default=None, max_length=150)
+    ejar_party_id: Optional[str] = Field(default=None, max_length=50)
+
     notes: Optional[str] = None
     notes_en: Optional[str] = None
     notes_ar: Optional[str] = None

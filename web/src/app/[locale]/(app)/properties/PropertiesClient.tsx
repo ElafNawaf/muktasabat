@@ -305,7 +305,8 @@ export function PropertiesClient({
     id == null ? null : users.find((u) => u.id === id) ?? null;
   const activeContractFor = (uid: number) =>
     contracts.find((c) => c.unit_id === uid && c.status === "active");
-  const tenantOf = (id: number) => tenants.find((tn) => tn.id === id);
+  const tenantOf = (id: number | null | undefined) =>
+    id != null ? tenants.find((tn) => tn.id === id) : undefined;
 
   const typeLabel = (type: string | null) => {
     const key = type ?? "apartment";
@@ -383,7 +384,7 @@ export function PropertiesClient({
             <FilterResultMeta
               showing={visibleBuildings.length}
               total={buildings.length}
-              label={tCommon("showingResults")}
+              label={tCommon("showingResults", { showing: visibleBuildings.length, total: buildings.length })}
             />
             {filtersActive && (
               <FilterClearButton label={tCommon("clearFilters")} onClick={clearFilters} />

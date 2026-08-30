@@ -14,12 +14,23 @@ import {
   type PaymentCycle,
 } from "@/lib/actions";
 import { formatSAR } from "@/lib/format";
-import { localized, type Building, type Contract, type Tenant, type Unit } from "@/lib/types";
+import {
+  localized,
+  type Agent,
+  type Building,
+  type Contract,
+  type EjarSignatory,
+  type ManagementContract,
+  type Owner,
+  type Tenant,
+  type Unit,
+} from "@/lib/types";
 
 const CYCLES: PaymentCycle[] = [1, 3, 6, 12];
-const CONTRACT_TYPES = ["residential", "commercial"] as const;
+const CONTRACT_TYPES = ["residential", "commercial", "management"] as const;
 const VALIDITY_TYPES = ["fixed", "open"] as const;
 const PAYMENT_TYPES = ["monthly", "quarterly", "semi-annual", "annual", "full"] as const;
+const SIGNATORIES: EjarSignatory[] = ["property_manager", "landlord"];
 
 export function ContractFormModal({
   open,
@@ -27,7 +38,10 @@ export function ContractFormModal({
   units,
   tenants,
   buildings,
+  owners,
+  agents,
   contracts,
+  managementContracts = [],
   locale,
   editing,
 }: {
@@ -36,7 +50,10 @@ export function ContractFormModal({
   units: Unit[];
   tenants: Tenant[];
   buildings: Building[];
+  owners: Owner[];
+  agents: Agent[];
   contracts: Contract[];
+  managementContracts?: ManagementContract[];
   locale: string;
   editing?: Contract | null;
 }) {
@@ -46,16 +63,33 @@ export function ContractFormModal({
   const tCurrency = useTranslations("currency");
 
   const occupiedUnitIds = new Set(
-    contracts.filter((c) => c.status === "active").map((c) => c.unit_id),
+    contracts
+      .filter((c) => c.status === "active" && c.contract_type !== "management")
+      .map((c) => c.unit_id),
   );
   const availableUnits = units.filter(
     (u) => !occupiedUnitIds.has(u.id) || u.id === editing?.unit_id,
   );
 
   const buildingsWithUnits = useMemo(() => {
-    const ids = new Set(availableUnits.map((u) => u.building_id));
+    const ids = new Set(units.map((u) => u.building_id));
     return buildings.filter((b) => ids.has(b.id));
-  }, [availableUnits, buildings]);
+  }, [units, buildings]);
+
+  const ownerOfBuilding = (buildingId: number | "") => {
+    if (!buildingId) return null;
+    const b = buildings.find((x) => x.id === buildingId);
+    return b ? owners.find((o) => o.id === b.owner_id) ?? null : null;
+  };
+
+  const feesFromBuilding = (buildingId: number | "", unit?: Unit | null) => {
+    const owner = ownerOfBuilding(buildingId);
+    return {
+      agent_id: owner?.agent_id ?? null,
+      agent_percentage: unit?.agent_percentage ?? 0,
+      management_percentage: unit?.management_percentage ?? 0,
+    };
+  };
 
   const initialBuildingId = useMemo(() => {
     if (editing) {
@@ -111,6 +145,9 @@ export function ContractFormModal({
           insurance_amount: editing.insurance_amount,
           vat_rate: editing.vat_rate ?? 15,
           agent_percentage: editing.agent_percentage ?? 0,
+          management_contract_id: editing.management_contract_id,
+          ejar_signed_by: editing.ejar_signed_by ?? "property_manager",
+          ejar_registration_fee: editing.ejar_registration_fee ?? 0,
           notes: editing.notes ?? "",
         }
       : {
@@ -143,6 +180,9 @@ export function ContractFormModal({
           insurance_amount: 0,
           vat_rate: 15,
           agent_percentage: initialUnitsForBuilding[0]?.agent_percentage ?? 0,
+          management_contract_id: null,
+          ejar_signed_by: "property_manager",
+          ejar_registration_fee: 0,
           notes: "",
         },
   );
@@ -256,6 +296,9 @@ export function ContractFormModal({
       water_meter_number: form.water_meter_number?.toString().trim() || null,
       vat_rate: Number(form.vat_rate ?? 15) || 0,
       agent_percentage: Number(form.agent_percentage) || 0,
+      management_contract_id: form.management_contract_id ?? null,
+      ejar_signed_by: form.ejar_signed_by ?? "property_manager",
+      ejar_registration_fee: Number(form.ejar_registration_fee) || 0,
       notes: form.notes?.toString().trim() || null,
     };
     start(async () => {
@@ -282,6 +325,17 @@ export function ContractFormModal({
     selectedBuildingId !== ""
       ? buildings.find((b) => b.id === selectedBuildingId)
       : buildingOf(form.unit_id);
+
+  // Only mandates from this property's owner can authorise the lease — Ejar
+  // checks the mandate covers the landlord before accepting a manager-signed
+  // contract.
+  const ownerMandates = useMemo(() => {
+    const ownerId = selectedBuilding?.owner_id;
+    if (ownerId == null) return [];
+    return managementContracts.filter(
+      (m) => m.owner_id === ownerId && m.status === "active",
+    );
+  }, [managementContracts, selectedBuilding]);
 
   return (
     <Modal
@@ -786,6 +840,65 @@ export function ContractFormModal({
               )}
             </div>
           </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title={t("ejarReadiness")} icon="verified" defaultOpen>
+          <div className="field-row">
+            <div className="field" style={{ flex: 1 }}>
+              <label>{t("ejarSignedBy")}</label>
+              <select
+                className="select"
+                value={form.ejar_signed_by ?? "property_manager"}
+                onChange={(e) => set("ejar_signed_by", e.target.value as EjarSignatory)}
+              >
+                {SIGNATORIES.map((sig) => (
+                  <option key={sig} value={sig}>
+                    {t(`ejarSignatories.${sig}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field" style={{ flex: 1.6 }}>
+              <label>{t("managementContract")}</label>
+              <select
+                className="select"
+                value={form.management_contract_id ?? ""}
+                onChange={(e) =>
+                  set(
+                    "management_contract_id",
+                    e.target.value === "" ? null : Number(e.target.value),
+                  )
+                }
+                disabled={form.ejar_signed_by === "landlord"}
+              >
+                <option value="">{t("noManagementContract")}</option>
+                {ownerMandates.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.ejar_contract_number || m.contract_number}
+                    {m.ejar_status === "registered" ? " ✓" : ""}
+                  </option>
+                ))}
+              </select>
+              <div className="text-sec" style={{ fontSize: 11.5, marginTop: 4 }}>
+                {t("managementContractHint")}
+              </div>
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label>{t("ejarRegistrationFee")} (SAR)</label>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                value={form.ejar_registration_fee ?? 0}
+                onChange={(e) => set("ejar_registration_fee", Number(e.target.value))}
+              />
+            </div>
+          </div>
+          {form.ejar_signed_by === "property_manager" && ownerMandates.length === 0 && (
+            <div className="badge badge-warning" style={{ padding: "8px 12px", fontSize: 12 }}>
+              {t("noMandateWarning")}
+            </div>
+          )}
         </CollapsibleSection>
 
         <CollapsibleSection title={t("sectionAttachments")} icon="folder" defaultOpen={false}>

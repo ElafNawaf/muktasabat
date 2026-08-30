@@ -43,12 +43,190 @@ from api.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+
+def _extract_error_message(data: dict[str, Any]) -> str:
+    """Pull a human-readable reason out of an Ejar error body.
+
+    Ejar returns validation problems in several shapes depending on the
+    endpoint, so try the common ones before falling back.
+    """
+    for key in ("message", "errorMessage", "detail", "error"):
+        value = data.get(key)
+        if isinstance(value, str) and value:
+            return value
+    errors = data.get("errors")
+    if isinstance(errors, list) and errors:
+        parts = [
+            e.get("message") or e.get("description") or str(e) if isinstance(e, dict) else str(e)
+            for e in errors
+        ]
+        return "; ".join(p for p in parts if p)
+    if isinstance(errors, dict) and errors:
+        return "; ".join(f"{k}: {v}" for k, v in errors.items())
+    return "Unknown Ejar error"
+
+# ── Vocabularies (قوائم إيجار الثابتة) ────────────────────────────────────────
+
+# نوع الهوية — Ejar identifies every party by ID type + number.
+EJAR_ID_TYPES = (
+    "national_id",   # هوية وطنية
+    "iqama",         # إقامة
+    "gcc_id",        # هوية خليجية
+    "passport",      # جواز سفر
+    "visitor",       # هوية زائر
+    "cr",            # سجل تجاري (منشأة)
+    "endowment",     # صك وقف
+)
+
+# صفة الطرف الموقّع على عقد الإيجار
+EJAR_SIGNATORY_ROLES = ("landlord", "property_manager")
+
+# أنواع عقود إيجار
+EJAR_LEASE_CONTRACT_TYPES = ("residential", "commercial")
+
+# طرق احتساب أتعاب إدارة الأملاك
+EJAR_MANAGEMENT_FEE_TYPES = ("percentage", "fixed")
+
+
 # ── Data transfer objects ──────────────────────────────────────────────────────
 
 
 @dataclass
+class EjarParty:
+    """A contract party as Ejar models it (طرف العقد).
+
+    Ejar does not accept a bare name + number: it needs the ID *type* so it can
+    route verification (Absher for national IDs and iqamas, Wathq for a
+    commercial registration), plus nationality for non-Saudi parties.
+    """
+
+    name: str
+    id_number: str                     # رقم الهوية / السجل التجاري
+    id_type: str = "national_id"       # one of EJAR_ID_TYPES
+    phone: Optional[str] = None        # جوال أبشر
+    email: Optional[str] = None
+    nationality: Optional[str] = None  # الجنسية
+    date_of_birth: Optional[str] = None      # ISO 8601 — required for individuals
+    id_expiry_date: Optional[str] = None     # ISO 8601 — required for iqama/passport
+    national_address: Optional[str] = None   # العنوان الوطني المختصر
+    representative_name: Optional[str] = None        # ممثل المنشأة
+    representative_id_number: Optional[str] = None
+    ejar_party_id: Optional[str] = None      # معرّف الطرف لدى إيجار، إن وُجد
+
+    def to_api(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "idType": self.id_type,
+            "idNumber": self.id_number,
+            "phone": self.phone,
+            "email": self.email,
+            "nationality": self.nationality,
+            "dateOfBirth": self.date_of_birth,
+            "idExpiryDate": self.id_expiry_date,
+            "nationalAddress": self.national_address,
+            "representativeName": self.representative_name,
+            "representativeIdNumber": self.representative_id_number,
+            "partyId": self.ejar_party_id,
+        }
+
+
+@dataclass
+class EjarEstablishment:
+    """The brokerage / property-management office filing the contract.
+
+    Ejar will only accept a contract signed by someone other than the landlord
+    when the filing establishment holds a valid REGA "FAL" licence, so the
+    licence number travels with every submission.
+    """
+
+    name: str
+    cr_number: str                          # السجل التجاري
+    fal_license_number: str                 # رقم رخصة فال
+    fal_license_expiry: Optional[str] = None
+    vat_number: Optional[str] = None
+    ejar_establishment_id: Optional[str] = None
+    ejar_branch_id: Optional[str] = None
+    representative_name: Optional[str] = None
+    representative_id_number: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    national_address: Optional[str] = None
+    iban: Optional[str] = None
+
+    def to_api(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "crNumber": self.cr_number,
+            "falLicenseNumber": self.fal_license_number,
+            "falLicenseExpiry": self.fal_license_expiry,
+            "vatNumber": self.vat_number,
+            "establishmentId": self.ejar_establishment_id,
+            "branchId": self.ejar_branch_id,
+            "representativeName": self.representative_name,
+            "representativeIdNumber": self.representative_id_number,
+            "phone": self.phone,
+            "email": self.email,
+            "nationalAddress": self.national_address,
+            "iban": self.iban,
+        }
+
+
+@dataclass
+class EjarPropertyRef:
+    """The property + unit a lease is written against (العقار والوحدة)."""
+
+    property_type: str                       # نوع العقار
+    deed_number: str                         # رقم الصك
+    unit_number: str                         # رقم الوحدة
+    city: str
+    district: str
+    street: Optional[str] = None
+    national_address: Optional[str] = None   # العنوان الوطني المختصر
+    postal_code: Optional[str] = None
+    building_number: Optional[str] = None
+    additional_number: Optional[str] = None
+    ejar_property_id: Optional[str] = None   # معرّف العقار في إيجار
+    ejar_unit_id: Optional[str] = None       # معرّف الوحدة في إيجار
+    unit_usage: Optional[str] = None         # استخدام الوحدة
+    area_sqm: Optional[float] = None
+    rooms_count: Optional[int] = None
+    bathrooms_count: Optional[int] = None
+    is_furnished: bool = False
+    electricity_meter_number: Optional[str] = None
+    water_meter_number: Optional[str] = None
+
+    def to_api(self) -> dict[str, Any]:
+        return {
+            "propertyType": self.property_type,
+            "deedNumber": self.deed_number,
+            "unitNumber": self.unit_number,
+            "city": self.city,
+            "district": self.district,
+            "street": self.street,
+            "nationalAddress": self.national_address,
+            "postalCode": self.postal_code,
+            "buildingNumber": self.building_number,
+            "additionalNumber": self.additional_number,
+            "propertyId": self.ejar_property_id,
+            "unitId": self.ejar_unit_id,
+            "unitUsage": self.unit_usage,
+            "areaSqm": self.area_sqm,
+            "roomsCount": self.rooms_count,
+            "bathroomsCount": self.bathrooms_count,
+            "isFurnished": self.is_furnished,
+            "electricityMeterNumber": self.electricity_meter_number,
+            "waterMeterNumber": self.water_meter_number,
+        }
+
+
+@dataclass
 class EjarContractPayload:
-    """Fields sent to the Ejar API when registering a contract."""
+    """Fields sent to the Ejar API when registering a lease contract (عقد إيجار).
+
+    The first block keeps the original flat fields so existing callers keep
+    working; the ``party`` / ``property_ref`` / ``establishment`` objects carry
+    the additional detail Ejar requires and win over the flat values when set.
+    """
 
     # Landlord / owner
     landlord_national_id: str          # هوية المالك
@@ -76,6 +254,182 @@ class EjarContractPayload:
     # Optional
     ejar_contract_number: Optional[str] = None  # pre-existing Ejar ref if any
     notes: Optional[str] = None
+
+    # ── Ejar-required detail (تفاصيل مطلوبة في إيجار) ────────────────────────
+    landlord: Optional[EjarParty] = None
+    tenant: Optional[EjarParty] = None
+    property_ref: Optional[EjarPropertyRef] = None
+    establishment: Optional[EjarEstablishment] = None
+    # الطرف الموقّع: "landlord" | "property_manager"
+    signed_by: str = "property_manager"
+    # رقم عقد إدارة الأملاك المخوِّل — required when signed_by == property_manager
+    management_contract_number: Optional[str] = None
+    # عدد الدفعات و مبلغ الدفعة
+    payment_count: int = 1
+    installment_amount: float = 0
+    # التأمين — refundable security deposit
+    security_deposit: float = 0
+    # رسوم الخدمات والصيانة السنوية
+    services_amount: float = 0
+    # ضريبة القيمة المضافة
+    vat_rate: float = 15
+    vat_amount: float = 0
+    total_amount: float = 0
+    # مسؤولية الفواتير
+    electricity_on_tenant: bool = True
+    water_on_tenant: bool = True
+    # المرافقون — Ejar records residents living with the tenant
+    companions: list[dict[str, Any]] = field(default_factory=list)
+
+    def to_api(self) -> dict[str, Any]:
+        """Serialise to the Ejar lease-registration request body."""
+        landlord = self.landlord or EjarParty(
+            name=self.landlord_name, id_number=self.landlord_national_id
+        )
+        tenant = self.tenant or EjarParty(
+            name=self.tenant_name,
+            id_number=self.tenant_national_id,
+            phone=self.tenant_phone,
+        )
+        prop = self.property_ref or EjarPropertyRef(
+            property_type=self.property_type,
+            deed_number=self.building_deed_number,
+            unit_number=self.unit_number,
+            city=self.city,
+            district=self.district,
+        )
+        return {
+            "contractType": self.contract_type,
+            "ejarContractNumber": self.ejar_contract_number,
+            "signedBy": self.signed_by,
+            "managementContractNumber": self.management_contract_number,
+            "landlord": landlord.to_api(),
+            "tenant": tenant.to_api(),
+            "property": prop.to_api(),
+            "establishment": self.establishment.to_api() if self.establishment else None,
+            "terms": {
+                "startDate": self.start_date,
+                "endDate": self.end_date,
+                "totalRentAmount": self.total_rent_amount,
+                "paymentCycle": self.payment_cycle,
+                "paymentCount": self.payment_count,
+                "installmentAmount": self.installment_amount,
+                "securityDeposit": self.security_deposit,
+                "servicesAmount": self.services_amount,
+                "vatRate": self.vat_rate,
+                "vatAmount": self.vat_amount,
+                "totalAmount": self.total_amount,
+                "electricityOnTenant": self.electricity_on_tenant,
+                "waterOnTenant": self.water_on_tenant,
+            },
+            "companions": self.companions,
+            "notes": self.notes,
+        }
+
+
+@dataclass
+class EjarManagementContractPayload:
+    """Fields sent to Ejar when registering a property management contract.
+
+    عقد إدارة الأملاك — the mandate between the owner (المالك) and this
+    establishment. Registering it on Ejar is what makes the office able to sign
+    leases on the owner's behalf; without it Ejar rejects any lease where
+    ``signedBy`` is not the landlord.
+    """
+
+    owner: EjarParty
+    establishment: EjarEstablishment
+
+    # Contract terms (شروط العقد)
+    contract_number: str               # رقم العقد الداخلي
+    start_date: str                    # ISO 8601
+    end_date: str
+    fee_type: str = "percentage"       # one of EJAR_MANAGEMENT_FEE_TYPES
+    fee_percentage: float = 0          # نسبة الأتعاب من الإيجار المحصّل
+    fee_fixed_amount: float = 0        # المبلغ المقطوع السنوي
+    fee_collection_method: str = "deduct_from_rent"
+    vat_rate: float = 15
+    estimated_annual_fee: float = 0
+    auto_renew: bool = False
+    notice_period_days: int = 30
+    payout_cycle_months: int = 1
+
+    # Scope of authority (نطاق الوكالة)
+    can_market_units: bool = True
+    can_sign_leases: bool = True
+    can_collect_rent: bool = True
+    can_evict: bool = False
+    can_maintain: bool = True
+    can_pay_utilities: bool = False
+    maintenance_limit_amount: float = 0
+
+    # Managed portfolio (العقارات المشمولة)
+    properties: list[dict[str, Any]] = field(default_factory=list)
+
+    ejar_contract_number: Optional[str] = None
+    notes: Optional[str] = None
+
+    def to_api(self) -> dict[str, Any]:
+        return {
+            "contractNumber": self.contract_number,
+            "ejarContractNumber": self.ejar_contract_number,
+            "owner": self.owner.to_api(),
+            "establishment": self.establishment.to_api(),
+            "terms": {
+                "startDate": self.start_date,
+                "endDate": self.end_date,
+                "autoRenew": self.auto_renew,
+                "noticePeriodDays": self.notice_period_days,
+                "payoutCycleMonths": self.payout_cycle_months,
+            },
+            "fee": {
+                "type": self.fee_type,
+                "percentage": self.fee_percentage,
+                "fixedAmount": self.fee_fixed_amount,
+                "collectionMethod": self.fee_collection_method,
+                "vatRate": self.vat_rate,
+                "estimatedAnnualFee": self.estimated_annual_fee,
+            },
+            "authorities": {
+                "marketUnits": self.can_market_units,
+                "signLeases": self.can_sign_leases,
+                "collectRent": self.can_collect_rent,
+                "evict": self.can_evict,
+                "maintain": self.can_maintain,
+                "payUtilities": self.can_pay_utilities,
+                "maintenanceLimitAmount": self.maintenance_limit_amount,
+            },
+            "properties": self.properties,
+            "notes": self.notes,
+        }
+
+
+@dataclass
+class EjarManagementContractSummary:
+    """A management contract as returned by Ejar when listing the account."""
+
+    ejar_contract_number: str
+    ejar_reference: str
+    status: str                        # "active" | "expired" | "cancelled" | "pending"
+    start_date: str
+    end_date: str
+
+    owner_name: str
+    owner_id_number: str
+    owner_id_type: str = "national_id"
+    owner_phone: str = ""
+
+    fee_type: str = "percentage"
+    fee_percentage: float = 0
+    fee_fixed_amount: float = 0
+
+    can_sign_leases: bool = True
+    can_collect_rent: bool = True
+
+    # Portfolio entries: {"deedNumber", "buildingName", "unitNumber", "city", "district"}
+    properties: list[dict[str, Any]] = field(default_factory=list)
+
+    raw: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -225,6 +579,59 @@ class EjarService:
         token = await self._get_token()
         return await self._live_status(ejar_reference, token)
 
+    # ── Property management contracts (عقود إدارة الأملاك) ────────────────────
+
+    async def register_management_contract(
+        self, payload: EjarManagementContractPayload
+    ) -> EjarRegistrationResult:
+        """Register a property management contract (عقد إدارة أملاك) on Ejar."""
+        if self._stub:
+            return self._stub_register_management(payload)
+        token = await self._get_token()
+        return await self._live_register_management(payload, token)
+
+    async def cancel_management_contract(self, ejar_reference: str) -> bool:
+        """Cancel a registered management contract. Returns True on success."""
+        if self._stub:
+            logger.info("EjarService STUB: cancel_management_contract(%s)", ejar_reference)
+            return True
+        token = await self._get_token()
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{self._base_url}/management-contracts/{ejar_reference}/cancel",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if not resp.is_success:
+            logger.error("Ejar management cancel failed %s: %s", resp.status_code, resp.text)
+        return resp.is_success
+
+    async def get_management_status(self, ejar_reference: str) -> EjarStatusResult:
+        """Fetch the current status of a management contract from Ejar."""
+        if self._stub:
+            return EjarStatusResult(
+                ejar_reference=ejar_reference, status="active", raw={"stub": True}
+            )
+        token = await self._get_token()
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{self._base_url}/management-contracts/{ejar_reference}/status",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        resp.raise_for_status()
+        data: dict[str, Any] = resp.json()
+        return EjarStatusResult(
+            ejar_reference=ejar_reference,
+            status=data.get("status", "unknown"),
+            raw=data,
+        )
+
+    async def list_management_contracts(self) -> list[EjarManagementContractSummary]:
+        """Fetch every management contract registered for this establishment."""
+        if self._stub:
+            return self._stub_list_management_contracts()
+        token = await self._get_token()
+        return await self._live_list_management_contracts(token)
+
     async def list_contracts(self) -> list[EjarContractSummary]:
         """Fetch every contract registered for the account on the Ejar platform.
 
@@ -264,6 +671,67 @@ class EjarService:
                 "status": "registered",
             },
         )
+
+    def _stub_register_management(
+        self, payload: EjarManagementContractPayload
+    ) -> EjarRegistrationResult:
+        """Simulate a successful Ejar management-contract registration."""
+        fake_ref = f"STUB-MGT-{uuid.uuid4().hex[:8].upper()}"
+        fake_number = payload.ejar_contract_number or f"EJM-{uuid.uuid4().hex[:10].upper()}"
+        logger.info(
+            "EjarService STUB: register_management_contract → %s / %s (%d properties)",
+            fake_number,
+            fake_ref,
+            len(payload.properties),
+        )
+        return EjarRegistrationResult(
+            success=True,
+            ejar_contract_number=fake_number,
+            ejar_reference=fake_ref,
+            registered_at=datetime.utcnow(),
+            raw={
+                "stub": True,
+                "ejarContractNumber": fake_number,
+                "reference": fake_ref,
+                "status": "registered",
+                "request": payload.to_api(),
+            },
+        )
+
+    def _stub_list_management_contracts(self) -> list[EjarManagementContractSummary]:
+        """Return a deterministic sample management contract for development.
+
+        The owner matches the landlord in ``_stub_list_contracts`` so a sync of
+        both endpoints links the sample leases to this mandate.
+        """
+        logger.info("EjarService STUB: list_management_contracts → sample data")
+        return [
+            EjarManagementContractSummary(
+                ejar_contract_number="EJM-2001STUB",
+                ejar_reference="STUB-MGT-2001",
+                status="active",
+                start_date="2025-01-01",
+                end_date="2027-01-01",
+                owner_name="عبدالله المالك",
+                owner_id_number="1010101010",
+                owner_id_type="national_id",
+                owner_phone="0500000010",
+                fee_type="percentage",
+                fee_percentage=5.0,
+                can_sign_leases=True,
+                can_collect_rent=True,
+                properties=[
+                    {
+                        "deedNumber": "DEED-9001",
+                        "buildingName": "عمارة النخيل",
+                        "unitNumber": None,
+                        "city": "الرياض",
+                        "district": "النخيل",
+                    }
+                ],
+                raw={"stub": True},
+            )
+        ]
 
     def _stub_list_contracts(self) -> list[EjarContractSummary]:
         """Return a deterministic set of sample Ejar contracts for development."""
@@ -364,35 +832,38 @@ class EjarService:
     async def _live_register(
         self, payload: EjarContractPayload, token: str
     ) -> EjarRegistrationResult:
-        body = {
-            "landlordNationalId": payload.landlord_national_id,
-            "landlordName": payload.landlord_name,
-            "tenantNationalId": payload.tenant_national_id,
-            "tenantName": payload.tenant_name,
-            "tenantPhone": payload.tenant_phone,
-            "propertyType": payload.property_type,
-            "deedNumber": payload.building_deed_number,
-            "unitNumber": payload.unit_number,
-            "city": payload.city,
-            "district": payload.district,
-            "contractType": payload.contract_type,
-            "startDate": payload.start_date,
-            "endDate": payload.end_date,
-            "totalRentAmount": payload.total_rent_amount,
-            "paymentCycle": payload.payment_cycle,
-            "notes": payload.notes,
-        }
+        return await self._post_register(
+            path="/contracts/register", body=payload.to_api(), token=token, label="lease"
+        )
+
+    async def _live_register_management(
+        self, payload: EjarManagementContractPayload, token: str
+    ) -> EjarRegistrationResult:
+        return await self._post_register(
+            path="/management-contracts/register",
+            body=payload.to_api(),
+            token=token,
+            label="management",
+        )
+
+    async def _post_register(
+        self, *, path: str, body: dict[str, Any], token: str, label: str
+    ) -> EjarRegistrationResult:
+        """POST a registration request and normalise the Ejar response."""
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
-                f"{self._base_url}/contracts/register",
+                f"{self._base_url}{path}",
                 json=body,
                 headers={"Authorization": f"Bearer {token}"},
             )
 
-        data: dict[str, Any] = resp.json()
+        try:
+            data: dict[str, Any] = resp.json()
+        except ValueError:
+            data = {"raw": resp.text}
 
         if not resp.is_success:
-            logger.error("Ejar register failed %s: %s", resp.status_code, data)
+            logger.error("Ejar %s register failed %s: %s", label, resp.status_code, data)
             return EjarRegistrationResult(
                 success=False,
                 ejar_contract_number="",
@@ -400,15 +871,93 @@ class EjarService:
                 registered_at=datetime.utcnow(),
                 raw=data,
                 error_code=str(resp.status_code),
-                error_message=data.get("message", "Unknown Ejar error"),
+                error_message=_extract_error_message(data),
             )
 
         return EjarRegistrationResult(
             success=True,
-            ejar_contract_number=data["ejarContractNumber"],
-            ejar_reference=data["reference"],
+            ejar_contract_number=str(
+                data.get("ejarContractNumber") or data.get("contractNumber") or ""
+            ),
+            ejar_reference=str(data.get("reference") or data.get("id") or ""),
             registered_at=datetime.utcnow(),
             raw=data,
+        )
+
+    async def _live_list_management_contracts(
+        self, token: str
+    ) -> list[EjarManagementContractSummary]:
+        """Fetch all management contracts, following pagination until exhausted."""
+        results: list[EjarManagementContractSummary] = []
+        page = 1
+        page_size = 100
+        async with httpx.AsyncClient(timeout=30) as client:
+            while True:
+                resp = await client.get(
+                    f"{self._base_url}/management-contracts",
+                    params={"page": page, "pageSize": page_size},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                resp.raise_for_status()
+                data: dict[str, Any] = resp.json()
+                items = data.get("items") or data.get("data") or data.get("contracts") or []
+                for item in items:
+                    try:
+                        results.append(self._normalize_management_contract(item))
+                    except Exception:  # noqa: BLE001 — one bad row must not abort the sync
+                        logger.exception("Ejar: failed to normalize management contract")
+                has_more = data.get("hasMore")
+                if has_more is None:
+                    has_more = len(items) == page_size
+                if not items or not has_more:
+                    break
+                page += 1
+        return results
+
+    @staticmethod
+    def _normalize_management_contract(
+        item: dict[str, Any],
+    ) -> EjarManagementContractSummary:
+        """Map a raw Ejar management contract to our normalized summary."""
+
+        def pick(*keys: str, default: Any = "") -> Any:
+            for k in keys:
+                if item.get(k) not in (None, ""):
+                    return item[k]
+            return default
+
+        owner = item.get("owner") or item.get("landlord") or {}
+        fee = item.get("fee") or {}
+        terms = item.get("terms") or {}
+        authorities = item.get("authorities") or {}
+
+        def sub(obj: dict[str, Any], *keys: str, default: Any = "") -> Any:
+            for k in keys:
+                if isinstance(obj, dict) and obj.get(k) not in (None, ""):
+                    return obj[k]
+            return default
+
+        return EjarManagementContractSummary(
+            ejar_contract_number=str(
+                pick("ejarContractNumber", "contractNumber", "number")
+            ),
+            ejar_reference=str(pick("reference", "id", "uuid")),
+            status=str(pick("status", default="active")).lower(),
+            start_date=str(sub(terms, "startDate") or pick("startDate", default="")),
+            end_date=str(sub(terms, "endDate") or pick("endDate", default="")),
+            owner_name=str(sub(owner, "name") or pick("ownerName")),
+            owner_id_number=str(
+                sub(owner, "idNumber", "nationalId", "id") or pick("ownerNationalId")
+            ),
+            owner_id_type=str(sub(owner, "idType", default="national_id")).lower(),
+            owner_phone=str(sub(owner, "phone", "mobile", default="")),
+            fee_type=str(sub(fee, "type", default="percentage")).lower(),
+            fee_percentage=float(sub(fee, "percentage", default=0) or 0),
+            fee_fixed_amount=float(sub(fee, "fixedAmount", default=0) or 0),
+            can_sign_leases=bool(sub(authorities, "signLeases", default=True)),
+            can_collect_rent=bool(sub(authorities, "collectRent", default=True)),
+            properties=list(item.get("properties") or []),
+            raw=item,
         )
 
     async def _live_cancel(self, ejar_reference: str, token: str) -> bool:

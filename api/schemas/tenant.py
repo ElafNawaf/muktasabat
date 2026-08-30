@@ -4,6 +4,10 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 TenantType = Literal["individual", "company"]
+# نوع الهوية في منصة إيجار
+EjarIdType = Literal[
+    "national_id", "iqama", "gcc_id", "passport", "visitor", "cr", "endowment"
+]
 
 
 class TenantCompanionBase(BaseModel):
@@ -34,6 +38,14 @@ class TenantBase(BaseModel):
     representative_date_of_birth: Optional[date] = None
     tax_number: Optional[str] = Field(default=None, max_length=30)
     email: Optional[EmailStr] = None
+
+    # ── Ejar party identity (هوية الطرف في منصة إيجار) ──────────────────────
+    id_type: EjarIdType = "national_id"
+    id_expiry_date: Optional[date] = None
+    nationality: Optional[str] = Field(default=None, max_length=60)
+    national_address: Optional[str] = Field(default=None, max_length=120)
+    ejar_party_id: Optional[str] = Field(default=None, max_length=50)
+
     notes: Optional[str] = None
     notes_en: Optional[str] = None
     notes_ar: Optional[str] = None

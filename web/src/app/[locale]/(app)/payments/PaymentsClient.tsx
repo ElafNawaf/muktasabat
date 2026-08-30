@@ -63,7 +63,8 @@ export function PaymentsClient({
 
   const contractOf = (id: number) => contracts.find((c) => c.id === id);
   const unitOf = (id: number) => units.find((u) => u.id === id);
-  const tenantOf = (id: number) => tenants.find((tn) => tn.id === id);
+  const tenantOf = (id: number | null | undefined) =>
+    id != null ? tenants.find((tn) => tn.id === id) : undefined;
   const buildingOf = (id: number) => buildings.find((b) => b.id === id);
 
   const today = new Date().toISOString().slice(0, 10);

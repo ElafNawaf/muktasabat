@@ -9,10 +9,11 @@ import { forwardHeaders } from "@/lib/forward";
  *
  * Maps the (kind, relation) pair to a FastAPI sub-resource:
  *
- *   buildings / images       → /buildings/{id}/images
- *   buildings / documents    → /buildings/{id}/documents
- *   units     / images       → /units/{id}/images
- *   contracts / attachments  → /contracts/{id}/attachments
+ *   buildings            / images       → /buildings/{id}/images
+ *   buildings            / documents    → /buildings/{id}/documents
+ *   units                / images       → /units/{id}/images
+ *   contracts            / attachments  → /contracts/{id}/attachments
+ *   management-contracts / attachments  → /management/contracts/{id}/attachments
  *
  * The DELETE handler reads `?id={subId}` (e.g. ?id=42) since the resource
  * being deleted is the sub-resource, not the parent.
@@ -22,11 +23,18 @@ const ALLOWED: Record<string, Set<string>> = {
   buildings: new Set(["images", "documents"]),
   units: new Set(["images"]),
   contracts: new Set(["attachments"]),
+  "management-contracts": new Set(["attachments"]),
+};
+
+/** Upstream segment for kinds whose API path differs from the URL kind. */
+const UPSTREAM_SEGMENT: Record<string, string> = {
+  "management-contracts": "management/contracts",
 };
 
 function upstreamPath(kind: string, id: string, relation: string): string | null {
   if (!ALLOWED[kind]?.has(relation)) return null;
-  return `${API_BASE}/api/v1/${kind}/${id}/${relation}`;
+  const segment = UPSTREAM_SEGMENT[kind] ?? kind;
+  return `${API_BASE}/api/v1/${segment}/${id}/${relation}`;
 }
 
 export async function POST(

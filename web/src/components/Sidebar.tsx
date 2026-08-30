@@ -43,6 +43,12 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
         { id: "agents", href: `/${locale}/agents`, icon: "support_agent", label: t("agents") },
         { id: "tenants", href: `/${locale}/tenants`, icon: "person", label: t("tenants") },
         { id: "contracts", href: `/${locale}/contracts`, icon: "description", label: t("contracts") },
+        {
+          id: "management-contracts",
+          href: `/${locale}/management-contracts`,
+          icon: "handshake",
+          label: t("managementContracts"),
+        },
         { id: "payments", href: `/${locale}/payments`, icon: "payments", label: t("payments") },
         { id: "expenses", href: `/${locale}/expenses`, icon: "receipt_long", label: t("expenses") },
       ],

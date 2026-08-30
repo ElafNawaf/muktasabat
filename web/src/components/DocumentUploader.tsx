@@ -53,7 +53,7 @@ export function DocumentUploader({
   entityId,
   documents,
 }: {
-  kind: "buildings" | "contracts";
+  kind: "buildings" | "contracts" | "management-contracts";
   relation: "documents" | "attachments";
   entityId: number | null;
   documents: EntityDocument[];
@@ -62,7 +62,7 @@ export function DocumentUploader({
   const tCommon = useTranslations("common");
   const router = useRouter();
   const { can } = usePermissions();
-  const canDelete = can(kind === "contracts" ? "contracts" : "properties", "delete");
+  const canDelete = can(kind === "buildings" ? "properties" : "contracts", "delete");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
