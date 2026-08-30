@@ -7,8 +7,10 @@ import { type BuildingMeta } from "@/lib/palette";
 
 type UnitType = "apartment" | "villa" | "office" | "shop" | "warehouse";
 
+// Rounded to avoid server/client floating-point drift (Math.sin can differ in
+// its last bit between Node and the browser), which trips React hydration.
 const seededRng = (seed: number) => (n: number) =>
-  (Math.sin(seed * (n + 1) * 9.7) + 1) / 2;
+  Math.round(((Math.sin(seed * (n + 1) * 9.7) + 1) / 2) * 10000) / 10000;
 
 export function BuildingArt({
   buildingId,

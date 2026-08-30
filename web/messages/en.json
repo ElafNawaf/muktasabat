@@ -496,6 +496,7 @@
     "buildingTypeHint": "Villa, apartment building, or office",
     "selectBuildingType": "Select building type…",
     "propertyTypes": {
+      "residential": "Residential",
       "apartment_building": "Apartment building",
       "villa": "Villa",
       "office": "Office",

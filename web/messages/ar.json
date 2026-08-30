@@ -496,6 +496,7 @@
     "buildingTypeHint": "فيلا، عمارة سكنية، أو مكتب",
     "selectBuildingType": "اختر نوع المبنى…",
     "propertyTypes": {
+      "residential": "سكني",
       "apartment_building": "عمارة سكنية",
       "villa": "فيلا",
       "office": "مكتب",
