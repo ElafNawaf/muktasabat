@@ -5,6 +5,10 @@ services:
       POSTGRES_DB: muktasbat
       POSTGRES_USER: muktasbat
       POSTGRES_PASSWORD: ${DB_PASSWORD:-muktasbat_secret}
+    ports:
+      # Lets a host-side `uvicorn --reload` connect via 127.0.0.1:5432, per
+      # CLAUDE.md's "Start Postgres only: docker compose up -d db" flow.
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

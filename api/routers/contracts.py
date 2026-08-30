@@ -191,6 +191,7 @@ def update_contract(
     unit = db.get(Unit, contract.unit_id)
     _validate_management_link(db, payload, unit)
 
+    contract.tenant_id = payload.tenant_id
     contract.management_contract_id = payload.management_contract_id
     contract.ejar_signed_by = payload.ejar_signed_by
     contract.ejar_registration_fee = payload.ejar_registration_fee

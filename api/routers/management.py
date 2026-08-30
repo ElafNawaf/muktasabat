@@ -223,8 +223,18 @@ def update_management_contract(
     if clash is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Contract number already exists")
 
-    for field, value in payload.model_dump(exclude={"properties"}).items():
+    company_id = payload.company_id
+    if company_id is None:
+        # The form never sends company_id, so keep the contract's existing link
+        # instead of nulling it out — only an explicit value overrides it.
+        company_id = contract.company_id
+        if company_id is None:
+            active = get_active_company(db)
+            company_id = active.id if active else None
+
+    for field, value in payload.model_dump(exclude={"properties", "company_id"}).items():
         setattr(contract, field, value)
+    contract.company_id = company_id
     _replace_properties(db, contract, payload)
     db.flush()
     _apply_fee_totals(db, contract)

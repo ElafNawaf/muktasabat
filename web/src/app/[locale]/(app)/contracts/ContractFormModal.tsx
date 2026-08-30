@@ -27,7 +27,9 @@ import {
 } from "@/lib/types";
 
 const CYCLES: PaymentCycle[] = [1, 3, 6, 12];
-const CONTRACT_TYPES = ["residential", "commercial", "management"] as const;
+// This form always requires a tenant + unit, so only lease types belong here —
+// "management" contracts are created on the dedicated Management Contracts page.
+const CONTRACT_TYPES = ["residential", "commercial"] as const;
 const VALIDITY_TYPES = ["fixed", "open"] as const;
 const PAYMENT_TYPES = ["monthly", "quarterly", "semi-annual", "annual", "full"] as const;
 const SIGNATORIES: EjarSignatory[] = ["property_manager", "landlord"];
@@ -238,12 +240,15 @@ export function ContractFormModal({
     const b = buildings.find((x) => x.id === buildingId);
     const nextUnits = availableUnits.filter((u) => u.building_id === buildingId);
     const first = nextUnits[0];
+    const fees = feesFromBuilding(buildingId, first);
     setForm((f) => ({
       ...f,
       unit_id: first?.id ?? 0,
       rent_amount: first?.rent_amount ?? 0,
       total_rent_amount: first ? first.rent_amount * 12 : 0,
+      agent_id: fees.agent_id,
       agent_percentage: first?.agent_percentage ?? 0,
+      management_percentage: fees.management_percentage,
       branch: f.branch?.trim() ? f.branch : b?.branch ?? "",
       electricity_meter_number: b?.electricity_meter_number ?? "",
       water_meter_number: b?.water_meter_number ?? "",
@@ -258,6 +263,7 @@ export function ContractFormModal({
       rent_amount: u?.rent_amount ?? f.rent_amount,
       total_rent_amount: u ? u.rent_amount * 12 : f.total_rent_amount,
       agent_percentage: u?.agent_percentage ?? f.agent_percentage ?? 0,
+      management_percentage: u?.management_percentage ?? f.management_percentage ?? 0,
     }));
   };
 
@@ -849,7 +855,14 @@ export function ContractFormModal({
               <select
                 className="select"
                 value={form.ejar_signed_by ?? "property_manager"}
-                onChange={(e) => set("ejar_signed_by", e.target.value as EjarSignatory)}
+                onChange={(e) => {
+                  const signatory = e.target.value as EjarSignatory;
+                  setForm((f) => ({
+                    ...f,
+                    ejar_signed_by: signatory,
+                    management_contract_id: signatory === "landlord" ? null : f.management_contract_id,
+                  }));
+                }}
               >
                 {SIGNATORIES.map((sig) => (
                   <option key={sig} value={sig}>

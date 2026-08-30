@@ -153,9 +153,12 @@ def _store(
     try:
         client.upload_fileobj(file_obj, settings.s3_bucket, object_key, ExtraArgs=extra)
     except Exception as e:
-        # Last-resort local fallback when the bucket is reachable-config but auth fails at upload time.
+        # Local fallback only when no credentials were even available to attempt
+        # the request. ClientError means AWS responded (bad bucket, permission
+        # denied, throttled, ...) — a real misconfiguration that must surface
+        # loudly rather than silently landing on ephemeral local disk.
         name = type(e).__name__
-        if name in {"NoCredentialsError", "PartialCredentialsError", "ClientError"}:
+        if name in {"NoCredentialsError", "PartialCredentialsError"}:
             logger.warning("S3 upload failed (%s); falling back to local storage", name)
             # file_obj may have been partially consumed — rewind if possible
             if hasattr(file_obj, "seek"):
