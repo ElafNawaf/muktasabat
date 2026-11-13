@@ -161,6 +161,13 @@ def _store(
         code = ""
         if name == "ClientError":
             code = str(getattr(e, "response", {}).get("Error", {}).get("Code", ""))
+        elif name == "S3UploadFailedError":
+            # boto3's transfer manager wraps the ClientError:
+            # "Failed to upload … An error occurred (AccessDenied) when calling …"
+            import re as _re
+
+            m = _re.search(r"An error occurred \((\w+)\)", str(e))
+            code = m.group(1) if m else ""
         if settings.storage_fallback_local and code in {"AccessDenied", "403", "AllAccessDisabled", "NoSuchBucket", "InvalidAccessKeyId", "SignatureDoesNotMatch"}:
             logger.error(
                 "S3 rejected upload of %s (%s) — stored on the persistent local volume instead. "
