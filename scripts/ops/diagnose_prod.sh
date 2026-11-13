@@ -18,7 +18,9 @@ KEY=$(docker exec muktasabat-api-1 cat /tmp/diag_key)
 echo "served via site: $(curl -s -o /dev/null -w '%{http_code} %{content_type}' $B/uploads/$KEY)"
 echo "private CV path blocked: $(curl -s -o /dev/null -w '%{http_code}' $B/uploads/private/careers/x.pdf)"
 echo "on host volume: $(ls /home/ubuntu/muktasabat/uploads/diag | wc -l) file(s)"
+rm -rf /home/ubuntu/muktasabat/uploads/diag.orphan 2>/dev/null
 docker exec muktasabat-api-1 python -c "from api import storage; storage.delete_object('$KEY')"
+docker exec muktasabat-api-1 sh -c "rm -rf /app/uploads/diag"
 echo "cleanup: $(ls /home/ubuntu/muktasabat/uploads/diag 2>/dev/null | wc -l) left"
 echo "api errors since deploy:"; docker logs muktasabat-api-1 --since 15m 2>&1 | grep -cE 'Traceback'
 # rerun 1794609690
