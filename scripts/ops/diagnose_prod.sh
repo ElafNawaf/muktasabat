@@ -22,3 +22,4 @@ docker exec muktasabat-api-1 python -c "from api import storage; storage.delete_
 echo "cleanup: $(ls /home/ubuntu/muktasabat/uploads/diag 2>/dev/null | wc -l) left"
 echo "api errors since deploy:"; docker logs muktasabat-api-1 --since 15m 2>&1 | grep -cE 'Traceback'
 # rerun 1794609690
+# rerun 1794610389
