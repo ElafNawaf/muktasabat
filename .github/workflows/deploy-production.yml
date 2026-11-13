@@ -16,7 +16,6 @@ name: Deploy production
 on:
   push:
     branches: [feature/public-website]
-    paths-ignore: ["**.md", "docs/**"]
   workflow_dispatch:
 
 concurrency:
