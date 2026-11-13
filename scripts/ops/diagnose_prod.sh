@@ -13,3 +13,4 @@ echo "traversal blocked: $(curl -s -o /dev/null -w '%{http_code}' $B/uploads/..%
 docker exec muktasabat-api-1 rm -rf /app/uploads/diag
 echo "brand: $(curl -s $B/ar | grep -o 'شركة مكتسبات العقارية' | head -1) | phone: $(curl -s $B/ar | grep -o 'tel:[0-9]*' | head -1)"
 echo "api tracebacks (15m): $(docker logs muktasabat-api-1 --since 15m 2>&1 | grep -c Traceback)"
+grep -E '^S3_PUBLIC_BASE_URL' /home/ubuntu/muktasabat/.env | cut -c1-60
