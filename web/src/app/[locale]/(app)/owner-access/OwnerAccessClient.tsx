@@ -68,7 +68,7 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
   const waText = result
     ? T(
         locale,
-        `مرحباً، تم تفعيل حسابك في بوابة الملاك لدى مكتسبات العقارية لمتابعة عقاراتك وإيراداتك. عيّن كلمة المرور من الرابط التالي (صالح 72 ساعة):\n${result.url}\nاسم المستخدم: ${result.username}`,
+        `مرحباً، تم تفعيل حسابك في بوابة الملاك لدى شركة مكتسبات العقارية لمتابعة عقاراتك وإيراداتك. عيّن كلمة المرور من الرابط التالي (صالح 72 ساعة):\n${result.url}\nاسم المستخدم: ${result.username}`,
         `Hello, your Muktasabat owner-portal account is ready. Set your password here (valid 72 hours):\n${result.url}\nUsername: ${result.username}`,
       )
     : "";

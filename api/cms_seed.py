@@ -17,7 +17,7 @@ def _b(ar: str, en: str) -> dict:
 
 
 SITE = {
-    "brand_name": _b("مكتسبات العقارية", "Muktasabat Real Estate"),
+    "brand_name": _b("شركة مكتسبات العقارية", "Muktasabat Real Estate"),
     "tagline": _b("رؤية طموحة. قيمة مستدامة.", "Ambitious vision. Sustainable value."),
     "hero_title": _b("رؤية طموحة. قيمة مستدامة.", "Ambitious vision. Sustainable value."),
     "hero_subtitle": _b(
@@ -60,9 +60,9 @@ SITE = {
     "map_lat": 24.7136,
     "map_lng": 46.6753,
     "social": {},
-    "seo_title": _b("مكتسبات العقارية | تطوير وإدارة أملاك", "Muktasabat Real Estate | Development & Property Management"),
+    "seo_title": _b("شركة مكتسبات العقارية | تطوير وإدارة أملاك", "Muktasabat Real Estate | Development & Property Management"),
     "seo_description": _b(
-        "مكتسبات العقارية: تطوير للغير، شراكات تطوير، إدارة أملاك وإدارة مرافق في المملكة العربية السعودية.",
+        "شركة مكتسبات العقارية: تطوير للغير، شراكات تطوير، إدارة أملاك وإدارة مرافق في المملكة العربية السعودية.",
         "Muktasabat Real Estate: development management, development partnerships, property and facilities management in Saudi Arabia.",
     ),
 }
@@ -167,12 +167,25 @@ _REPLACE = {
 }
 
 
+# Bilingual fields whose Arabic draft value is replaced by the official name.
+_REPLACE_AR = {
+    "brand_name": ("مكتسبات العقارية", "شركة مكتسبات العقارية"),
+    "seo_title": ("مكتسبات العقارية | تطوير وإدارة أملاك", "شركة مكتسبات العقارية | تطوير وإدارة أملاك"),
+}
+
+
 def migrate_cms(db: Session) -> None:
     row = db.get(SiteSettings, 1)
     if row is None or not row.data:
         return
     data = dict(row.data)
     changed = False
+    for key, (old, new) in _REPLACE_AR.items():
+        bi = dict(data.get(key) or {})
+        if (bi.get("ar") or "").strip() == old:
+            bi["ar"] = new
+            data[key] = bi
+            changed = True
     for key, (old_values, new_value) in _REPLACE.items():
         if data.get(key) in old_values:
             data[key] = new_value

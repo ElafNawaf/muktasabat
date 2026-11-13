@@ -53,7 +53,7 @@ export function OwnerShell({
           <Link href={base + qs} className="ow-brand">
             <span className="ow-brand__mark"><BrandLogo size={26} /></span>
             <span>
-              <strong>{ar ? "مكتسبات العقارية" : "Muktasabat"}</strong>
+              <strong>{ar ? "شركة مكتسبات العقارية" : "Muktasabat Real Estate"}</strong>
               <small>{ar ? "بوابة الملاك" : "Owner portal"}</small>
             </span>
           </Link>

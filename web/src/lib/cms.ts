@@ -139,7 +139,7 @@ export type HomeData = {
 
 const EMPTY_BI: Bi = {};
 export const EMPTY_SITE: SiteData = {
-  brand_name: { ar: "مكتسبات العقارية", en: "Muktasabat Real Estate" },
+  brand_name: { ar: "شركة مكتسبات العقارية", en: "Muktasabat Real Estate" },
   tagline: EMPTY_BI,
   hero_title: EMPTY_BI,
   hero_subtitle: EMPTY_BI,

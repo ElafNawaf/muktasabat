@@ -675,10 +675,10 @@ def access_list(db: DbSession, user: CurrentUser, locale: LocaleDep):
 
 
 def _send_owner_invite(to: str, owner_name: str, url: str, locale: Locale) -> None:
-    subject = "دعوة إلى بوابة الملاك — مكتسبات العقارية | Your Muktasabat owner portal"
+    subject = "دعوة إلى بوابة الملاك — شركة مكتسبات العقارية | Your Muktasabat owner portal"
     text = (
         f"مرحباً {owner_name}،\n\n"
-        "تمت دعوتك إلى بوابة الملاك في مكتسبات العقارية لمتابعة عقاراتك وعقودك وإيراداتك وكشوف حسابك.\n"
+        "تمت دعوتك إلى بوابة الملاك في شركة مكتسبات العقارية لمتابعة عقاراتك وعقودك وإيراداتك وكشوف حسابك.\n"
         f"لتعيين كلمة المرور وتفعيل حسابك (الرابط صالح لمدة 72 ساعة):\n{url}\n\n"
         f"اسم المستخدم: {to}\n\n— — —\n\n"
         f"Hello {owner_name},\n\n"
@@ -688,7 +688,7 @@ def _send_owner_invite(to: str, owner_name: str, url: str, locale: Locale) -> No
     html = f"""
 <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;color:#1f2328">
   <div style="background:#7B1A1A;color:#fff;padding:20px 24px;border-radius:10px 10px 0 0">
-    <strong style="font-size:18px">مكتسبات العقارية · Muktasabat</strong>
+    <strong style="font-size:18px">شركة مكتسبات العقارية · Muktasabat Real Estate</strong>
   </div>
   <div style="border:1px solid #e3ddd2;border-top:0;padding:24px;border-radius:0 0 10px 10px">
     <div dir="rtl" style="text-align:right">
