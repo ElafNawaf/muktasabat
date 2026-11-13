@@ -1,0 +1,125 @@
+# Deploy muktasabat.com from GitHub — no laptop needed.
+#
+# Mirrors docs/DEPLOY.md: images are built HERE (never on the 1 GB Lightsail
+# box), shipped with scp, loaded, tags bumped, smoke-tested, and only then is
+# .last_deployed_sha updated. A failed smoke test rolls back automatically.
+#
+# Required repository secret:
+#   LIGHTSAIL_SSH_KEY — contents of lightsail_apsouth1_default.pem
+#     (Lightsail console → Account → SSH keys → download the ap-south-1 default key)
+#
+# Triggers: push to feature/public-website, or "Run workflow" by hand (once this
+# file is on master). Add master to `branches` to deploy every merge automatically.
+
+name: Deploy production
+
+on:
+  push:
+    branches: [feature/public-website]
+    paths-ignore: ["**.md", "docs/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  HOST: 13.232.25.224
+  USER: ubuntu
+  RUNTIME: /home/ubuntu/muktasabat
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check SSH key secret
+        env:
+          KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Repository secret LIGHTSAIL_SSH_KEY is missing. Add it under Settings → Secrets and variables → Actions, then re-run."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/lightsail.pem
+          chmod 600 ~/.ssh/lightsail.pem
+          ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          echo "SSH=ssh -i $HOME/.ssh/lightsail.pem -o ConnectTimeout=20 -o ServerAliveInterval=15 $USER@$HOST" >> "$GITHUB_ENV"
+          echo "SCP=scp -i $HOME/.ssh/lightsail.pem -o ConnectTimeout=20" >> "$GITHUB_ENV"
+
+      - name: Read current production state
+        run: |
+          $SSH true
+          LAST_SHA=$($SSH "cat $RUNTIME/.last_deployed_sha" || echo unknown)
+          CUR_API=$($SSH "grep 'image: muktasabat-api:' $RUNTIME/docker-compose.yml | sed -E 's/.*v([0-9]+).*/\1/'")
+          CUR_WEB=$($SSH "grep 'image: muktasabat-web:' $RUNTIME/docker-compose.yml | sed -E 's/.*v([0-9]+).*/\1/'")
+          echo "LAST_SHA=$LAST_SHA" >> "$GITHUB_ENV"
+          echo "CUR_API=$CUR_API" >> "$GITHUB_ENV"; echo "NEW_API=$((CUR_API + 1))" >> "$GITHUB_ENV"
+          echo "CUR_WEB=$CUR_WEB" >> "$GITHUB_ENV"; echo "NEW_WEB=$((CUR_WEB + 1))" >> "$GITHUB_ENV"
+          echo "prod $LAST_SHA → $GITHUB_SHA | api v$CUR_API→v$((CUR_API+1)) web v$CUR_WEB→v$((CUR_WEB+1))"
+
+      - name: Build images (linux/amd64, on the runner)
+        run: |
+          docker build -t muktasabat-api:v$NEW_API .
+          docker build \
+            --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY="${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}" \
+            -t muktasabat-web:v$NEW_WEB -f web/Dockerfile web/
+          docker save muktasabat-api:v$NEW_API | gzip -1 > api.tar.gz
+          docker save muktasabat-web:v$NEW_WEB | gzip -1 > web.tar.gz
+          ls -lh *.tar.gz
+
+      - name: Ship and load
+        run: |
+          $SCP api.tar.gz web.tar.gz $USER@$HOST:/home/ubuntu/
+          $SSH "set -e
+            gunzip -c /home/ubuntu/api.tar.gz | docker load
+            gunzip -c /home/ubuntu/web.tar.gz | docker load
+            rm -f /home/ubuntu/api.tar.gz /home/ubuntu/web.tar.gz"
+
+      - name: Swap tags and restart
+        run: |
+          $SSH "set -e
+            cd $RUNTIME
+            cp docker-compose.yml docker-compose.yml.bak-$GITHUB_RUN_ID
+            sed -i 's|muktasabat-api:v$CUR_API|muktasabat-api:v$NEW_API|; s|muktasabat-web:v$CUR_WEB|muktasabat-web:v$NEW_WEB|' docker-compose.yml
+            docker compose up -d
+            sleep 15
+            docker compose ps"
+
+      - name: Smoke test
+        id: smoke
+        run: |
+          FAIL=0
+          for p in /en/login /ar/login /en/dashboard /ar /en /ar/services /ar/projects /ar/contact /sitemap.xml /robots.txt; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "https://muktasabat.com$p" || echo 000)
+            printf "%-16s %s\n" "$p" "$code"
+            [ "$code" = 200 ] || FAIL=1
+          done
+          if curl -sS --max-time 30 https://muktasabat.com/ar | grep -q 'mk-hero'; then echo "homepage: new site"; else echo "homepage: NOT the new site"; FAIL=1; fi
+          ERRS=$($SSH "docker logs muktasabat-api-1 --since 3m 2>&1 | grep -iE 'Traceback|startup failed|\"level\": \"ERROR\"' | head -5" || true)
+          if [ -n "$ERRS" ]; then echo "API errors:"; echo "$ERRS"; FAIL=1; fi
+          [ $FAIL = 0 ]
+
+      - name: Roll back on failure
+        if: failure() && env.NEW_API != ''
+        run: |
+          echo "::error::Smoke test failed — rolling back to api v$CUR_API / web v$CUR_WEB"
+          $SSH "cd $RUNTIME && sed -i 's|muktasabat-api:v$NEW_API|muktasabat-api:v$CUR_API|; s|muktasabat-web:v$NEW_WEB|muktasabat-web:v$CUR_WEB|' docker-compose.yml && docker compose up -d && docker compose ps"
+          $SSH "docker logs muktasabat-api-1 --since 5m 2>&1 | tail -40" || true
+
+      - name: Update deploy marker
+        run: $SSH "echo $GITHUB_SHA > $RUNTIME/.last_deployed_sha"
+
+      - name: Warm the website cache
+        # Pages built inside Docker had no API to talk to; ISR replaces them with
+        # live CMS content on the first request after the 5-minute window.
+        run: |
+          sleep 310
+          for p in /ar /en /ar/about /en/about /ar/services /en/services /ar/projects /en/projects /ar/contact /en/contact /sitemap.xml; do
+            curl -sS -o /dev/null --max-time 30 "https://muktasabat.com$p" || true
+          done
+          sleep 5
+          curl -sS --max-time 30 https://muktasabat.com/ar | grep -q 'mk-service' && echo "CMS content live" || echo "::warning::Homepage has no services yet — check the API logs."

@@ -47,6 +47,7 @@ const MODULE_ICON: Record<ModuleId, string> = {
   tenants: "person",
   expenses: "receipt_long",
   users: "admin_panel_settings",
+  website: "language",
 };
 
 type Tab = "users" | "roles";

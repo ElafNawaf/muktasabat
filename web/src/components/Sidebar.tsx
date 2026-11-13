@@ -53,6 +53,14 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
         { id: "expenses", href: `/${locale}/expenses`, icon: "receipt_long", label: t("expenses") },
       ],
     },
+    ...(user?.role === "admin" || user?.role === "content_editor"
+      ? [
+          {
+            label: t("website"),
+            items: [{ id: "website", href: `/${locale}/website`, icon: "language", label: t("website") }],
+          },
+        ]
+      : []),
     ...(user?.role === "admin"
       ? [
           {

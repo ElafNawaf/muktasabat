@@ -14,7 +14,8 @@
     "payments": "Payments",
     "expenses": "Expenses",
     "users": "User Management",
-    "managementContracts": "Management contracts"
+    "managementContracts": "Management contracts",
+    "website": "Website"
   },
   "roles": {
     "admin": "Administrator",
@@ -66,7 +67,8 @@
       "agents": "Agents",
       "tenants": "Tenants",
       "expenses": "Expenses",
-      "users": "User management"
+      "users": "User management",
+      "website": "Website"
     }
   },
   "filters": {
@@ -953,6 +955,143 @@
       "unit": "Unit",
       "contract": "Contract",
       "management_contract": "Management contract"
+    }
+  },
+  "site": {
+    "nav": {
+      "home": "Home",
+      "about": "About",
+      "services": "Services",
+      "projects": "Projects",
+      "news": "News",
+      "careers": "Careers",
+      "contact": "Contact",
+      "portal": "Owner Portal",
+      "menu": "Menu",
+      "close": "Close",
+      "language": "العربية"
+    },
+    "hero": {
+      "ctaServices": "Explore our services",
+      "ctaContact": "Talk to us",
+      "scroll": "Scroll"
+    },
+    "sections": {
+      "aboutEyebrow": "Who we are",
+      "vision": "Our vision",
+      "mission": "Our mission",
+      "values": "Our values",
+      "readMore": "Learn more about us",
+      "servicesEyebrow": "What we do",
+      "servicesTitle": "Integrated real estate services",
+      "servicesLead": "One partner from planning and development through leasing, operations and maintenance.",
+      "projectsEyebrow": "Our portfolio",
+      "projectsTitle": "Featured projects",
+      "allProjects": "View all projects",
+      "portalEyebrow": "For property owners",
+      "portalCta": "Log in to the portal",
+      "portalFeatures": "Live contracts & Ejar status|Rent collection & statements|Maintenance & tenant requests|Monthly performance reports",
+      "testimonialsEyebrow": "Client stories",
+      "testimonialsTitle": "What our clients say",
+      "partnersTitle": "Trusted by",
+      "newsEyebrow": "Latest",
+      "newsTitle": "News & insights",
+      "allNews": "All news",
+      "careersTitle": "Build your career with us",
+      "careersBody": "We're growing. Join a team shaping the future of real estate in the Kingdom.",
+      "careersCta": "See open positions",
+      "openRoles": "{count, plural, =0 {No open roles right now} one {# open role} other {# open roles}}",
+      "contactEyebrow": "Get in touch",
+      "contactTitle": "Let's start a new partnership",
+      "contactLead": "Tell us about your property or investment, and our team will get back to you within one business day."
+    },
+    "projects": {
+      "filterAll": "All",
+      "residential": "Residential",
+      "commercial": "Commercial",
+      "development": "Development",
+      "mixed": "Mixed-use",
+      "hospitality": "Hospitality",
+      "completed": "Completed",
+      "ongoing": "Ongoing",
+      "upcoming": "Upcoming",
+      "details": "Project details",
+      "city": "City",
+      "area": "Area",
+      "units": "Units",
+      "year": "Year",
+      "status": "Status",
+      "category": "Category",
+      "gallery": "Gallery",
+      "location": "Location",
+      "empty": "Projects will be published soon.",
+      "sqm": "m²"
+    },
+    "services": {
+      "details": "Learn more",
+      "askAbout": "Ask about this service",
+      "other": "Other services"
+    },
+    "news": {
+      "empty": "No news yet — check back soon.",
+      "readMore": "Read more",
+      "back": "Back to news"
+    },
+    "careers": {
+      "empty": "There are no open positions right now. You can still send us your CV via the contact form.",
+      "apply": "Apply now",
+      "closes": "Applications close",
+      "full_time": "Full-time",
+      "part_time": "Part-time",
+      "contract": "Contract",
+      "internship": "Internship",
+      "back": "All positions",
+      "applyTitle": "Apply for this role",
+      "cv": "CV (PDF or Word, max 5 MB)",
+      "linkedin": "LinkedIn profile (optional)",
+      "coverLetter": "Why are you a good fit? (optional)",
+      "submitted": "Thank you — your application has been received. We'll be in touch if your profile matches."
+    },
+    "form": {
+      "iAm": "I am a…",
+      "owner": "Property owner",
+      "investor": "Investor",
+      "tenant": "Tenant / looking to rent",
+      "partner": "Business partner",
+      "general": "Other",
+      "name": "Full name",
+      "phone": "Mobile number",
+      "email": "Email",
+      "city": "City",
+      "message": "How can we help?",
+      "submit": "Send",
+      "sending": "Sending…",
+      "success": "Thank you! Your message has been received — we'll contact you shortly.",
+      "error": "Something went wrong. Please try again or contact us on WhatsApp.",
+      "needContact": "Please enter a phone number or email.",
+      "privacy": "By submitting, you agree that we may contact you about your enquiry. We never share your data."
+    },
+    "contact": {
+      "phone": "Phone",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "address": "Office",
+      "hours": "Working hours",
+      "whatsappMsg": "Hello Muktasabat, I'd like to know more about your services."
+    },
+    "footer": {
+      "quickLinks": "Quick links",
+      "contact": "Contact",
+      "legal": "Licences",
+      "cr": "CR No.",
+      "fal": "FAL Licence",
+      "vat": "VAT No.",
+      "rights": "All rights reserved.",
+      "follow": "Follow us"
+    },
+    "common": {
+      "backHome": "Back to home",
+      "notFound": "Page not found"
     }
   }
 }

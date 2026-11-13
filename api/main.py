@@ -46,6 +46,8 @@ from api.routers import (
     units,
 )
 from api.bootstrap_roles import seed_default_roles
+from api.cms_seed import seed_cms
+from api.routers import cms
 
 
 # Configure JSON logging before anything else grabs a handler.
@@ -57,6 +59,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Create database tables on startup (same schema as api.models). For production, use managed migrations."""
     import api.models  # noqa: F401 — register ORM mappers with Base.metadata
+    import api.cms_models  # noqa: F401 — public-website CMS tables
     from api.models import User
 
     Base.metadata.create_all(bind=engine)
@@ -78,6 +81,10 @@ async def lifespan(app: FastAPI):
 
     with SessionLocal() as db:
         seed_default_roles(db)
+
+    # Public website: fill an empty CMS with starter content (no-op afterwards).
+    with SessionLocal() as db:
+        seed_cms(db)
 
     # Pydantic EmailStr rejects .local; fix legacy bootstrap row so /auth/login can return UserRead.
     with SessionLocal() as db:
@@ -178,6 +185,9 @@ app.include_router(expenses.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)
+# Public website CMS — /api/v1/cms/public/* (anonymous) and /api/v1/cms/admin/*
+app.include_router(cms.public, prefix=API_V1)
+app.include_router(cms.admin, prefix=API_V1)
 
 # Serve local uploads (used when S3 is unset or AWS credentials are missing).
 app.mount(

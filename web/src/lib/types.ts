@@ -403,7 +403,8 @@ export type ModuleId =
   | "agents"
   | "tenants"
   | "expenses"
-  | "users";
+  | "users"
+  | "website";
 
 export type Role = {
   code: string;
@@ -425,6 +426,7 @@ export const MODULE_IDS: ModuleId[] = [
   "tenants",
   "expenses",
   "users",
+  "website",
 ];
 
 export const PERMISSION_ACTIONS: PermissionAction[] = [
