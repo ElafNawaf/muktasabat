@@ -6,6 +6,7 @@ available. Otherwise falls back to a local `uploads/` directory served at
 """
 from __future__ import annotations
 
+import io
 import logging
 import shutil
 import uuid
@@ -147,6 +148,12 @@ def _store(
         return _store_local(file_obj, object_key=object_key)
 
     client = _client()
+    # boto3 closes the stream when an upload fails; keep the bytes so the
+    # local fallback can still write them.
+    data: bytes | None = None
+    if settings.storage_fallback_local:
+        data = file_obj.read()
+        file_obj = io.BytesIO(data)
     extra: dict = {"ContentType": content_type, "CacheControl": cache_control}
     if original_filename:
         extra["ContentDisposition"] = f'inline; filename="{original_filename}"'
@@ -174,12 +181,7 @@ def _store(
                 object_key,
                 code,
             )
-            if hasattr(file_obj, "seek"):
-                try:
-                    file_obj.seek(0)
-                except Exception:
-                    pass
-            return _store_local(file_obj, object_key=object_key)
+            return _store_local(io.BytesIO(data or b""), object_key=object_key)
         if name in {"NoCredentialsError", "PartialCredentialsError"}:
             logger.warning("S3 upload failed (%s); falling back to local storage", name)
             # file_obj may have been partially consumed — rewind if possible
