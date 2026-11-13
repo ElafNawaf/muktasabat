@@ -1,0 +1,19 @@
+# Read-only health/config report for production (prints names and status only).
+name: Diagnose production
+on:
+  push:
+    branches: [ops/diagnose]
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run diagnostic on the instance
+        env:
+          KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/k && chmod 600 ~/.ssh/k
+          ssh-keyscan -T 15 -H 13.232.25.224 >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/k ubuntu@13.232.25.224 'bash -s' < scripts/ops/diagnose_prod.sh
