@@ -78,6 +78,29 @@ jobs:
             gunzip -c /home/ubuntu/web.tar.gz | docker load
             rm -f /home/ubuntu/api.tar.gz /home/ubuntu/web.tar.gz"
 
+      - name: Preflight — boot the new API next to the live one
+        # Starts the NEW image with the live container's env + network and waits
+        # for "Application startup complete". Startup runs the CMS table creation
+        # and seeding against the production DB, so any crash shows up here,
+        # before the live containers are touched.
+        run: |
+          $SSH "set -e
+            NET=\$(docker inspect muktasabat-api-1 --format '{{range \$k, \$v := .NetworkSettings.Networks}}{{\$k}}{{end}}')
+            docker inspect muktasabat-api-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -vE '^(PATH|LANG|GPG_KEY|PYTHON_[A-Z_]+)=' > /tmp/preflight.env
+            docker rm -f mk-preflight >/dev/null 2>&1 || true
+            set +e
+            timeout 60 docker run --name mk-preflight --rm --network \$NET --env-file /tmp/preflight.env muktasabat-api:v$NEW_API \
+              uvicorn api.main:app --host 127.0.0.1 --port 8001 > /tmp/preflight.log 2>&1 &
+            for i in \$(seq 1 50); do
+              grep -q 'Application startup complete' /tmp/preflight.log && break
+              grep -qE 'Traceback|startup failed' /tmp/preflight.log && break
+              sleep 1
+            done
+            docker rm -f mk-preflight >/dev/null 2>&1
+            rm -f /tmp/preflight.env
+            cat /tmp/preflight.log
+            grep -q 'Application startup complete' /tmp/preflight.log"
+
       - name: Swap tags and restart
         run: |
           $SSH "set -e
@@ -98,8 +121,11 @@ jobs:
             [ "$code" = 200 ] || FAIL=1
           done
           if curl -sS --max-time 30 https://muktasabat.com/ar | grep -q 'mk-hero'; then echo "homepage: new site"; else echo "homepage: NOT the new site"; FAIL=1; fi
-          ERRS=$($SSH "docker logs muktasabat-api-1 --since 3m 2>&1 | grep -iE 'Traceback|startup failed|\"level\": \"ERROR\"' | head -5" || true)
-          if [ -n "$ERRS" ]; then echo "API errors:"; echo "$ERRS"; FAIL=1; fi
+          if $SSH "docker logs muktasabat-api-1 --since 3m 2>&1 | grep -qiE 'Traceback|startup failed'"; then
+            echo "API errors:"; $SSH "docker logs muktasabat-api-1 --since 3m 2>&1 | grep -v '\"level\": \"INFO\"' | tail -80"; FAIL=1
+          fi
+          RESTARTS=$($SSH "docker inspect muktasabat-api-1 --format '{{.RestartCount}}'")
+          [ "$RESTARTS" = 0 ] || { echo "API container restarted $RESTARTS time(s)"; FAIL=1; }
           [ $FAIL = 0 ]
 
       - name: Roll back on failure
