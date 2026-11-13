@@ -93,6 +93,7 @@ jobs:
           setenv LOCAL_UPLOAD_DIR /app/uploads
           setenv STORAGE_FALLBACK_LOCAL 1
           setenv API_PUBLIC_BASE_URL https://muktasabat.com
+          setenv S3_PUBLIC_BASE_URL https://muktasabat.com/uploads
           setenv DISABLE_BOOTSTRAP_ADMIN 1
           grep -qE '^REVALIDATE_SECRET=' .env || echo "REVALIDATE_SECRET=$(openssl rand -hex 24)" >> .env
           if ! grep -q '/app/uploads' docker-compose.yml; then

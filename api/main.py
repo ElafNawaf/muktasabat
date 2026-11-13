@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select, update
 
 from api.config import get_settings
@@ -47,7 +46,7 @@ from api.routers import (
 )
 from api.bootstrap_roles import seed_default_roles
 from api.cms_seed import migrate_cms, seed_cms
-from api.routers import cms, owner_portal
+from api.routers import cms, files, owner_portal
 
 
 # Configure JSON logging before anything else grabs a handler.
@@ -192,9 +191,5 @@ app.include_router(cms.admin, prefix=API_V1)
 # Owner portal — owner-scoped reporting + staff invite management
 app.include_router(owner_portal.router, prefix=API_V1)
 
-# Serve local uploads (used when S3 is unset or AWS credentials are missing).
-app.mount(
-    "/uploads",
-    StaticFiles(directory=str(local_upload_root())),
-    name="uploads",
-)
+# Uploaded files: local volume first, then the private S3 bucket (api/routers/files.py).
+app.include_router(files.router)
