@@ -4,6 +4,7 @@ B=https://muktasabat.com
 for p in /ar /en /ar/for-owners /en/for-owners /ar/owner /ar/owner-access /ar/website/settings; do printf "%-22s %s\n" "$p" "$(curl -s -o /dev/null -w '%{http_code} → %{redirect_url}' $B$p)"; done
 echo "whatsapp link on /ar: $(curl -s $B/ar | grep -o 'wa.me/[0-9]*' | sort -u | head -2 | tr '\n' ' ')"
 echo "phone on /ar: $(curl -s $B/ar | grep -o 'tel:[0-9+]*' | sort -u | head -2 | tr '\n' ' ')"
+echo "brand on /ar: $(curl -s $B/ar | grep -o "شركة مكتسبات العقارية" | head -1)"
 echo "owner-portal API without login: $(curl -s -o /dev/null -w '%{http_code}' $B/api/site/lead -X POST -H 'content-type: application/json' -d '{}')"
 echo "security headers:"; curl -sI $B/ar | grep -iE 'content-security-policy|strict-transport|x-frame' | cut -c1-80
 docker exec -i muktasabat-api-1 python - <<'PY'
