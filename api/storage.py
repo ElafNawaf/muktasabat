@@ -158,12 +158,11 @@ def _store(
         # denied, throttled, ...) — a real misconfiguration that must surface
         # loudly rather than silently landing on ephemeral local disk.
         name = type(e).__name__
-        code = ""
-        if name == "ClientError":
-            code = str(getattr(e, "response", {}).get("Error", {}).get("Code", ""))
-        elif name == "S3UploadFailedError":
-            # boto3's transfer manager wraps the ClientError:
-            # "Failed to upload … An error occurred (AccessDenied) when calling …"
+        # Read the AWS error code whatever the wrapper: ClientError and its
+        # modeled subclasses (e.g. botocore's `AccessDenied`) carry `.response`;
+        # boto3's S3UploadFailedError only has it in the message text.
+        code = str(getattr(e, "response", None) and e.response.get("Error", {}).get("Code") or "")
+        if not code:
             import re as _re
 
             m = _re.search(r"An error occurred \((\w+)\)", str(e))
