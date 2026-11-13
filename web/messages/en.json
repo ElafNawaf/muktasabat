@@ -15,7 +15,8 @@
     "expenses": "Expenses",
     "users": "User Management",
     "managementContracts": "Management contracts",
-    "website": "Website"
+    "website": "Website",
+    "ownerAccess": "Owner portal access"
   },
   "roles": {
     "admin": "Administrator",
@@ -969,7 +970,8 @@
       "portal": "Owner Portal",
       "menu": "Menu",
       "close": "Close",
-      "language": "العربية"
+      "language": "العربية",
+      "owners": "For owners"
     },
     "hero": {
       "ctaServices": "Explore our services",
@@ -1092,6 +1094,93 @@
     "common": {
       "backHome": "Back to home",
       "notFound": "Page not found"
+    },
+    "owners": {
+      "title": "Your property, fully visible",
+      "lead": "Every owner under a Muktasabat management agreement gets a private portal with live figures from our property-management system — no waiting for month-end emails.",
+      "cta": "Request a management proposal",
+      "login": "Owner login",
+      "illustrative": "Illustrative figures",
+      "features": [
+        [
+          "monitoring",
+          "Revenue & net income",
+          "Rent collected, our fees, maintenance and your net income — month by month, building by building."
+        ],
+        [
+          "receipt_long",
+          "Monthly statements",
+          "Detailed owner statements you can download as Excel or save as PDF for your accountant."
+        ],
+        [
+          "apartment",
+          "Occupancy & leases",
+          "See which units are leased or vacant, who the tenant is and when each lease ends."
+        ],
+        [
+          "verified",
+          "Ejar status",
+          "Every lease and your management agreement, with their registration status on Ejar."
+        ],
+        [
+          "schedule",
+          "Collections & follow-up",
+          "Upcoming and overdue instalments, with our follow-up on late payments."
+        ],
+        [
+          "build",
+          "Transparent expenses",
+          "Every maintenance and operating cost, with vendor and date, before it reaches your statement."
+        ]
+      ],
+      "mock": {
+        "net": "Net income",
+        "collected": "Collected",
+        "occupancy": "Occupancy",
+        "overdue": "Overdue"
+      },
+      "processTitle": "How we manage your property",
+      "process": [
+        [
+          "Assessment & agreement",
+          "We inspect the property, price it against the market and sign a management agreement registered on Ejar."
+        ],
+        [
+          "Marketing & leasing",
+          "We market vacant units, screen tenants and register every lease on Ejar."
+        ],
+        [
+          "Collection & maintenance",
+          "We collect rent, follow up on late payments and handle maintenance within the limits you approve."
+        ],
+        [
+          "Reporting & payouts",
+          "You follow everything live in the owner portal and receive a monthly statement with your net payout."
+        ]
+      ],
+      "faqTitle": "Questions owners ask",
+      "faq": [
+        [
+          "Who gets access to the owner portal?",
+          "Every owner with an active property-management agreement with Muktasabat. Your account manager sends you an activation link by email or WhatsApp."
+        ],
+        [
+          "How current are the figures?",
+          "They come straight from the system our team uses every day, so payments, expenses and lease changes appear as soon as they are recorded."
+        ],
+        [
+          "Can I download my statements?",
+          "Yes. Any month or full year can be downloaded as an Excel-compatible file or printed to PDF."
+        ],
+        [
+          "Are my leases registered on Ejar?",
+          "Yes. Each lease and your management agreement shows its Ejar registration status in the portal."
+        ],
+        [
+          "How are fees calculated?",
+          "Fees follow your management agreement — usually a percentage of rent collected — and every deduction is itemised on your statement."
+        ]
+      ]
     }
   }
 }

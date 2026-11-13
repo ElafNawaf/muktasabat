@@ -46,8 +46,8 @@ from api.routers import (
     units,
 )
 from api.bootstrap_roles import seed_default_roles
-from api.cms_seed import seed_cms
-from api.routers import cms
+from api.cms_seed import migrate_cms, seed_cms
+from api.routers import cms, owner_portal
 
 
 # Configure JSON logging before anything else grabs a handler.
@@ -85,6 +85,7 @@ async def lifespan(app: FastAPI):
     # Public website: fill an empty CMS with starter content (no-op afterwards).
     with SessionLocal() as db:
         seed_cms(db)
+        migrate_cms(db)
 
     # Pydantic EmailStr rejects .local; fix legacy bootstrap row so /auth/login can return UserRead.
     with SessionLocal() as db:
@@ -188,6 +189,8 @@ app.include_router(translate.router, prefix=API_V1)
 # Public website CMS — /api/v1/cms/public/* (anonymous) and /api/v1/cms/admin/*
 app.include_router(cms.public, prefix=API_V1)
 app.include_router(cms.admin, prefix=API_V1)
+# Owner portal — owner-scoped reporting + staff invite management
+app.include_router(owner_portal.router, prefix=API_V1)
 
 # Serve local uploads (used when S3 is unset or AWS credentials are missing).
 app.mount(

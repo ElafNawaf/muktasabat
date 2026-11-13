@@ -158,6 +158,22 @@ def _store(
         # denied, throttled, ...) — a real misconfiguration that must surface
         # loudly rather than silently landing on ephemeral local disk.
         name = type(e).__name__
+        code = ""
+        if name == "ClientError":
+            code = str(getattr(e, "response", {}).get("Error", {}).get("Code", ""))
+        if settings.storage_fallback_local and code in {"AccessDenied", "403", "AllAccessDisabled", "NoSuchBucket", "InvalidAccessKeyId", "SignatureDoesNotMatch"}:
+            logger.error(
+                "S3 rejected upload of %s (%s) — stored on the persistent local volume instead. "
+                "Fix the IAM policy for the S3 bucket to resume S3 storage.",
+                object_key,
+                code,
+            )
+            if hasattr(file_obj, "seek"):
+                try:
+                    file_obj.seek(0)
+                except Exception:
+                    pass
+            return _store_local(file_obj, object_key=object_key)
         if name in {"NoCredentialsError", "PartialCredentialsError"}:
             logger.warning("S3 upload failed (%s); falling back to local storage", name)
             # file_obj may have been partially consumed — rewind if possible

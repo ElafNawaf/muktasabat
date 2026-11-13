@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { BrandLogo } from "@/components/BrandLogo";
+
 type NavLink = { href: string; label: string };
 
 export function SiteHeader({
@@ -56,7 +58,7 @@ export function SiteHeader({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt="" className="mk-brand__logo" />
           ) : (
-            <span className="mk-brand__mark" aria-hidden="true">م</span>
+            <span className="mk-brand__mark" aria-hidden="true"><BrandLogo size={30} /></span>
           )}
           <span className="mk-brand__name">{brand}</span>
         </Link>

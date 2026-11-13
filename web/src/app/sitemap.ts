@@ -9,6 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const paths: { p: string; lm?: string; pr: number }[] = [
     { p: "", pr: 1 },
     { p: "/about", pr: 0.7 },
+    { p: "/for-owners", pr: 0.9 },
     { p: "/services", pr: 0.9 },
     { p: "/projects", pr: 0.9 },
     { p: "/news", pr: 0.6 },

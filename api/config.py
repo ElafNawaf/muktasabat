@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     s3_public_base_url: str = os.environ.get("S3_PUBLIC_BASE_URL", "")
     # Local fallback directory (relative to repo root) when S3_BUCKET is empty.
     local_upload_dir: str = os.environ.get("LOCAL_UPLOAD_DIR", "uploads")
+    # When S3 rejects a write (e.g. IAM AccessDenied) store on local disk instead
+    # of failing the upload. Only enable when LOCAL_UPLOAD_DIR is a persistent
+    # volume (production mounts ./uploads → /app/uploads). Files keep their
+    # local URL; new uploads go to S3 automatically once access is restored.
+    storage_fallback_local: bool = os.environ.get("STORAGE_FALLBACK_LOCAL", "").lower() in ("1", "true", "yes")
     # Public base URL of this API — used to build /uploads/... links in local mode.
     api_public_base_url: str = os.environ.get("API_PUBLIC_BASE_URL", "http://127.0.0.1:8000")
 

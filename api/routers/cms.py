@@ -13,6 +13,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import re
 from datetime import date
 from html import escape
 from typing import Any, Literal, Optional
@@ -518,6 +519,64 @@ def download_cv(app_id: int, db: DbSession, _u: Perm("website", "view")):
         logger.exception("Could not presign CV %s", a.cv_object_key)
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "File storage unavailable")
     return {"url": url}
+
+
+# ── Delivery health (email + file storage), admin only ──
+
+
+class _TestEmailIn(BaseModel):
+    to: str
+
+
+@admin.get("/health")
+def delivery_health(_u: Perm("website", "edit")):
+    """Live check of SES and S3 using the API's real credentials."""
+    from api import storage
+
+    s = get_settings()
+    out: dict[str, Any] = {"email": {}, "storage": {}}
+    out["email"] = {
+        "configured": bool(s.ses_region and s.ses_from_email),
+        "region": s.ses_region or None,
+        "from": s.ses_from_email or None,
+    }
+    st: dict[str, Any] = {"bucket": s.s3_bucket or None, "fallback_local": s.storage_fallback_local}
+    if not s.s3_bucket:
+        st.update(mode="local", ok=True)
+    else:
+        try:
+            storage._client().head_bucket(Bucket=s.s3_bucket)
+            st.update(mode="s3", ok=True)
+        except Exception as e:  # noqa: BLE001
+            code = str(getattr(e, "response", {}).get("Error", {}).get("Code", type(e).__name__))
+            st.update(mode="local" if s.storage_fallback_local else "s3", ok=False, error=code)
+    out["storage"] = st
+    return out
+
+
+@admin.post("/health/test-email")
+def delivery_test_email(payload: _TestEmailIn, _u: Perm("website", "edit")):
+    """Send a real test message through SES and report AWS's answer verbatim."""
+    from api.email import _send_via_ses
+
+    to = payload.to.strip()
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", to):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid email")
+    s = get_settings()
+    if not (s.ses_region and s.ses_from_email):
+        return {"ok": False, "error": "SES is not configured (SES_REGION / SES_FROM_EMAIL)."}
+    try:
+        _send_via_ses(
+            EmailMessage(
+                to=to,
+                subject="Muktasabat — test email · رسالة تجريبية",
+                text_body="Email delivery from muktasabat.com is working.\nتم إرسال هذه الرسالة بنجاح من نظام مكتسبات.",
+            )
+        )
+        return {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        msg = str(getattr(e, "response", {}).get("Error", {}).get("Message", "")) or str(e)
+        return {"ok": False, "error": msg[:400]}
 
 
 # ── Generic content CRUD (services, projects, posts, jobs, testimonials, partners) ──

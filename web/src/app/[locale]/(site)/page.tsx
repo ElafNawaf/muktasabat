@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { LeadForm } from "@/components/site/LeadForm";
+import { OwnerShowcase, ProcessSteps } from "@/components/site/OwnerShowcase";
 import { ProjectCard } from "@/components/site/ProjectCard";
 import { Shurfat } from "@/components/site/Shurfat";
 import { StatsRow } from "@/components/site/StatsRow";
@@ -116,21 +117,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </section>
       )}
 
-      {/* ── Owner portal ── */}
-      <section className="mk-portal">
-        <div className="mk-wrap mk-split">
-          <div>
-            <h2 className="mk-h2">{tr(locale, site.portal_title) || t("nav.portal")}</h2>
-            {tr(locale, site.portal_body) && <p className="mk-lead">{tr(locale, site.portal_body)}</p>}
-            <Link href={L("/login")} className="mk-btn mk-btn--light">{t("sections.portalCta")}</Link>
-          </div>
-          <ul className="mk-portal__list">
-            {t("sections.portalFeatures").split("|").map((f) => (
-              <li key={f}><span className="ms" aria-hidden="true">check</span>{f}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      {/* ── Owner portal (value proposition for owners under management) ── */}
+      <OwnerShowcase locale={locale} />
+      <ProcessSteps locale={locale} />
 
       {/* ── Testimonials ── */}
       {home.testimonials.length > 0 && (

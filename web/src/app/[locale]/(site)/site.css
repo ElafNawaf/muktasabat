@@ -1,3 +1,15 @@
+/* The portal shell locks <body> (overflow:hidden; height:100%) because it
+   scrolls inside its own panel. The public site must use normal document
+   scrolling — iOS Safari cannot scroll at all otherwise. `.mk-public` is
+   set by SitePageScroll for browsers without :has(). */
+html:has(.mk-site), html:has(.mk-site) body, html.mk-public, html.mk-public body {
+  height: auto !important;
+  min-height: 100%;
+  overflow: visible !important;
+  overflow-x: clip !important;
+  overscroll-behavior-y: auto;
+}
+
 /* ───────────── Muktasabat public site ─────────────
    Scoped under .mk-site so nothing leaks into the portal UI.
    Signature: the Najdi shurfat parapet (Shurfat.tsx). Everything else quiet. */
@@ -83,7 +95,7 @@
 .mk-header.is-scrolled { border-bottom-color: var(--mk-line); }
 .mk-header__bar { display: flex; align-items: center; gap: 24px; height: 76px; }
 .mk-brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; flex-shrink: 0; }
-.mk-brand__mark { width: 40px; height: 40px; display: grid; place-items: center; background: var(--mk-maroon); color: #fff; font: 700 22px/1 var(--mk-display); border-radius: 6px 6px 2px 2px; clip-path: polygon(0 30%, 25% 30%, 50% 0, 75% 30%, 100% 30%, 100% 100%, 0 100%); padding-top: 12px; font-size: 24px; }
+.mk-brand__mark { width: 42px; height: 42px; display: grid; place-items: center; background: var(--mk-maroon); border-radius: 10px; flex-shrink: 0; }
 .mk-brand__logo { height: 44px; width: auto; }
 .mk-brand__name { font-size: 20px; color: var(--mk-maroon); }
 .mk-nav { display: flex; gap: 4px; margin-inline-start: auto; }
@@ -222,6 +234,52 @@
 .mk-portal__list li { display: flex; gap: 14px; align-items: center; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,.14); font-size: 18px; }
 .mk-portal__list .ms { color: var(--mk-sand); }
 
+/* Owner portal showcase — dark band, illustrative dashboard */
+.mk-owners { background: var(--mk-basalt); color: #fff; padding-block: var(--mk-sec); }
+.mk-owners--full { padding-top: clamp(56px, 8vw, 104px); }
+.mk-owners .mk-lead { color: rgba(255,255,255,.78); }
+.mk-owners__grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: clamp(32px, 6vw, 80px); align-items: center; }
+@media (max-width: 900px) { .mk-owners__grid { grid-template-columns: 1fr; } }
+.mk-mock { margin: 0; background: #fff; color: var(--mk-ink); border-radius: 12px; box-shadow: 0 30px 60px rgba(0,0,0,.35); overflow: hidden; }
+.mk-mock__bar { display: flex; gap: 6px; padding: 10px 14px; background: #f1ece2; }
+.mk-mock__bar span { width: 10px; height: 10px; border-radius: 50%; background: #d9cdb8; }
+.mk-mock__body { padding: 18px; display: grid; gap: 16px; }
+.mk-mock__kpis { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 8px; }
+.mk-mock__kpis div { background: var(--mk-sand-soft); border-radius: 8px; padding: 10px; min-width: 0; }
+.mk-mock__kpis div.is-hero { background: var(--mk-maroon); color: #fff; }
+.mk-mock__kpis small { display: block; font-size: 11px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-mock__kpis strong { display: block; font-size: clamp(13px, 1.4vw, 17px); white-space: nowrap; }
+.mk-mock__chart { height: 140px; display: flex; align-items: flex-end; gap: 6px; padding-top: 8px; border-bottom: 1px solid var(--mk-line); }
+.mk-mock__chart span { flex: 1; background: linear-gradient(180deg, var(--mk-palm), #3f7a69); border-radius: 3px 3px 0 0; }
+.mk-mock__chart span:nth-child(odd) { background: var(--mk-maroon); opacity: .85; }
+.mk-mock figcaption { font-size: 11px; color: var(--mk-mute); padding: 0 18px 12px; }
+@media (max-width: 480px) { .mk-mock__kpis { grid-template-columns: 1fr 1fr; } }
+.mk-ofeatures { list-style: none; margin: clamp(48px, 6vw, 72px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 40px; }
+.mk-ofeatures .ms { font-size: 30px; color: var(--mk-sand); }
+.mk-ofeatures h3 { font-family: var(--mk-display); font-size: 20px; font-weight: 600; margin: 10px 0 6px; }
+.mk-ofeatures p { margin: 0; color: rgba(255,255,255,.72); }
+@media (max-width: 900px) { .mk-ofeatures { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .mk-ofeatures { grid-template-columns: 1fr; } }
+
+/* Process — a real sequence, so it is numbered */
+.mk-steps { list-style: none; counter-reset: step; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+.mk-steps li { counter-increment: step; position: relative; padding-top: 56px; }
+.mk-steps li::before { content: counter(step); position: absolute; top: 0; inset-inline-start: 0; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--mk-maroon); color: #fff; font: 600 18px/1 var(--mk-display); }
+.mk-steps li:not(:last-child)::after { content: ""; position: absolute; top: 20px; inset-inline-start: 52px; inset-inline-end: -16px; height: 1px; background: #d8ccb6; }
+.mk-steps h3 { font-family: var(--mk-display); font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+.mk-steps p { margin: 0; color: var(--mk-mute); }
+@media (max-width: 900px) { .mk-steps { grid-template-columns: 1fr 1fr; } .mk-steps li::after { display: none; } }
+@media (max-width: 560px) { .mk-steps { grid-template-columns: 1fr; } }
+
+/* FAQ */
+.mk-faq { margin-top: 24px; border-top: 1px solid var(--mk-line); }
+.mk-faq details { border-bottom: 1px solid var(--mk-line); }
+.mk-faq summary { cursor: pointer; list-style: none; padding: 20px 0; font-weight: 600; font-size: 18px; display: flex; justify-content: space-between; gap: 16px; }
+.mk-faq summary::-webkit-details-marker { display: none; }
+.mk-faq summary::after { content: "+"; font-size: 24px; line-height: 1; color: var(--mk-maroon); transition: transform .2s; }
+.mk-faq details[open] summary::after { transform: rotate(45deg); }
+.mk-faq details p { margin: 0 0 20px; color: var(--mk-mute); max-width: 65ch; }
+
 /* Testimonials */
 .mk-quotes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 48px; margin-top: 24px; }
 .mk-quote { margin: 0; }
@@ -328,7 +386,8 @@
 .mk-footer { position: relative; background: var(--mk-maroon-deep); color: rgba(255,255,255,.82); padding: 72px 0 0; margin-top: 40px; }
 .mk-footer__crown { position: absolute; top: -39px; inset-inline: 0; width: 100%; height: 40px; color: var(--mk-maroon-deep); }
 .mk-footer__grid { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 40px; padding-bottom: 48px; }
-.mk-footer__name { font-size: 26px; color: #fff; margin-bottom: 8px; }
+.mk-footer__name { font-size: 24px; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+.mk-footer__logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: rgba(255,255,255,.1); }
 .mk-footer__tag { margin: 0 0 20px; }
 .mk-footer__h { font-family: var(--mk-display); color: var(--mk-sand); font-size: 17px; margin: 0 0 14px; }
 .mk-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }

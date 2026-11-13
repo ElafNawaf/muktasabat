@@ -11,7 +11,7 @@ export default async function WebsiteLayout({ children, params }: { children: Re
   const ar = locale === "ar";
   if (!perms.view) {
     return (
-      <div className="cms-root">
+      <div className="cms-root page screen-enter">
         <div className="cms-empty">
           <span className="ms">lock</span>
           <p>{ar ? "ليست لديك صلاحية إدارة محتوى الموقع. تواصل مع مدير النظام." : "You don't have access to website content. Ask an administrator to grant the Website permission."}</p>
@@ -28,7 +28,7 @@ export default async function WebsiteLayout({ children, params }: { children: Re
     ...kinds.map((k) => ({ href: k, label: ar ? KIND_META[k].title[1] : KIND_META[k].title[0], icon: KIND_META[k].icon })),
   ];
   return (
-    <div className="cms-root">
+    <div className="cms-root page screen-enter">
       <header className="cms-head">
         <div>
           <h1>{ar ? "الموقع الإلكتروني" : "Website"}</h1>

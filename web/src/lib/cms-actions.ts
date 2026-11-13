@@ -107,3 +107,24 @@ export async function cmsDeleteApplication(id: number): Promise<CmsResult<null>>
     return fail(e);
   }
 }
+
+export type DeliveryHealth = {
+  email: { configured: boolean; region: string | null; from: string | null };
+  storage: { bucket: string | null; mode: "s3" | "local"; ok: boolean; error?: string; fallback_local: boolean };
+};
+
+export async function cmsDeliveryHealth(): Promise<CmsResult<DeliveryHealth>> {
+  try {
+    return { ok: true, data: await api.get<DeliveryHealth>(`/api/v1/cms/admin/health`) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function cmsTestEmail(to: string): Promise<CmsResult<{ ok: boolean; error?: string }>> {
+  try {
+    return { ok: true, data: await api.post<{ ok: boolean; error?: string }>(`/api/v1/cms/admin/health/test-email`, { to }) };
+  } catch (e) {
+    return fail(e);
+  }
+}

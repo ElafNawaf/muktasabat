@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -14,9 +14,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+# Owner accounts (role "owner") may only reach these API paths. Every other
+# route is staff-only: many staff endpoints are not owner-scoped, so letting an
+# owner call them would expose other owners' data.
+OWNER_ALLOWED_PREFIXES = ("/api/v1/owner-portal/", "/api/v1/auth/me")
+
+
 def get_current_user(
     db: DbSession,
     token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
 ) -> User:
     credentials_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -37,6 +44,10 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None or not user.is_active_user:
         raise credentials_error
+    if user.role == "owner":
+        path = request.url.path
+        if not path.startswith(OWNER_ALLOWED_PREFIXES) or path.startswith("/api/v1/owner-portal/admin"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Owner accounts can only use the owner portal")
     return user
 
 

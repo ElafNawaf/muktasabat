@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { SITE_URL } from "@/lib/cms";
 
-const PORTAL = ["dashboard", "properties", "owners", "agents", "tenants", "contracts", "management-contracts", "payments", "expenses", "users", "website", "login", "register", "forgot-password", "reset-password", "verify-email"];
+const PORTAL = ["dashboard", "properties", "owners", "agents", "tenants", "contracts", "management-contracts", "payments", "expenses", "users", "website", "owner", "login", "register", "forgot-password", "reset-password", "verify-email"];
 
 export default function robots(): MetadataRoute.Robots {
   return {

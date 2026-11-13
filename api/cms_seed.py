@@ -53,8 +53,8 @@ SITE = {
         "تابع عقودك ومدفوعاتك وتقارير أملاكك وطلبات المستأجرين في مكان واحد، على مدار الساعة.",
         "Track your contracts, payments, property reports and tenant requests in one place, around the clock.",
     ),
-    "phone": "+966 55 500 5210",
-    "whatsapp": "+966555005210",
+    "phone": "920007039",
+    "whatsapp": "+966920007039",
     "address": _b("الرياض، المملكة العربية السعودية", "Riyadh, Saudi Arabia"),
     "working_hours": _b("الأحد – الخميس، 9 ص – 5 م", "Sun – Thu, 9 AM – 5 PM"),
     "map_lat": 24.7136,
@@ -157,3 +157,26 @@ def seed_cms(db: Session) -> None:
         for i, p in enumerate(PROJECTS):
             db.add(CmsProject(**p, sort_order=i, published=True))
     db.commit()
+
+
+# ── Data migrations for already-seeded sites (idempotent) ──
+_REPLACE = {
+    # Draft contact numbers from the Lovable mock-up → the company's unified number.
+    "phone": ({"+966 55 500 5210", "+966555005210"}, "920007039"),
+    "whatsapp": ({"+966555005210", "+966 55 500 5210"}, "+966920007039"),
+}
+
+
+def migrate_cms(db: Session) -> None:
+    row = db.get(SiteSettings, 1)
+    if row is None or not row.data:
+        return
+    data = dict(row.data)
+    changed = False
+    for key, (old_values, new_value) in _REPLACE.items():
+        if data.get(key) in old_values:
+            data[key] = new_value
+            changed = True
+    if changed:
+        row.data = data
+        db.commit()

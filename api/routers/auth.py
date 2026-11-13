@@ -44,6 +44,14 @@ def _hash_verify_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def _aware(dt: datetime | None) -> datetime | None:
+    """Postgres TIMESTAMP columns come back naive (stored as UTC wall time);
+    SQLite may return aware values. Normalise so comparisons never raise."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
 def _absolute(path: str) -> str:
     base = get_settings().web_base_url.rstrip("/")
     return f"{base}{path}"
@@ -123,7 +131,7 @@ def reset_password(payload: ResetPasswordRequest, db: DbSession):
     digest = _hash_reset_token(payload.token)
     user = db.scalar(select(User).where(User.password_reset_token == digest))
     now = datetime.now(timezone.utc)
-    if user is None or user.password_reset_expires is None or user.password_reset_expires < now:
+    if user is None or user.password_reset_expires is None or _aware(user.password_reset_expires) < now:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset link")
 
     user.set_password(payload.new_password)
@@ -162,7 +170,7 @@ def verify_email(payload: VerifyEmailRequest, db: DbSession):
     digest = _hash_verify_token(payload.token)
     user = db.scalar(select(User).where(User.email_verification_token == digest))
     now = datetime.now(timezone.utc)
-    if user is None or user.email_verification_expires is None or user.email_verification_expires < now:
+    if user is None or user.email_verification_expires is None or _aware(user.email_verification_expires) < now:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification link")
 
     user.email_verified = True

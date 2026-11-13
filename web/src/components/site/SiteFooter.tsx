@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
+import { BrandLogo } from "@/components/BrandLogo";
 import { tr, waLink, type SiteData } from "@/lib/cms";
 
 import { Shurfat } from "./Shurfat";
@@ -28,7 +29,7 @@ export async function SiteFooter({ locale, site }: { locale: string; site: SiteD
       <Shurfat className="mk-footer__crown" teeth={64} />
       <div className="mk-wrap mk-footer__grid">
         <div className="mk-footer__brand">
-          <p className="mk-footer__name">{brand}</p>
+          <p className="mk-footer__name"><span className="mk-footer__logo" aria-hidden="true"><BrandLogo size={30} /></span>{brand}</p>
           {tr(locale, site.tagline) && <p className="mk-footer__tag">{tr(locale, site.tagline)}</p>}
           {social.length > 0 && (
             <ul className="mk-social" aria-label={t("footer.follow")}>
@@ -46,6 +47,7 @@ export async function SiteFooter({ locale, site }: { locale: string; site: SiteD
           <ul>
             <li><Link href={L("/about")}>{t("nav.about")}</Link></li>
             <li><Link href={L("/services")}>{t("nav.services")}</Link></li>
+            <li><Link href={L("/for-owners")}>{t("nav.owners")}</Link></li>
             <li><Link href={L("/projects")}>{t("nav.projects")}</Link></li>
             <li><Link href={L("/news")}>{t("nav.news")}</Link></li>
             <li><Link href={L("/careers")}>{t("nav.careers")}</Link></li>

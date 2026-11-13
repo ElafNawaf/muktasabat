@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { SitePageScroll } from "@/components/site/SitePageScroll";
 import { cms, SITE_URL, tr, waLink } from "@/lib/cms";
 
 import "./site.css";
@@ -60,15 +61,16 @@ export default async function SiteLayout({
     <div className="mk-site" lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;600;700&display=swap" />
+      <SitePageScroll />
       <a href="#main" className="mk-skip">{locale === "ar" ? "تخطَّ إلى المحتوى" : "Skip to content"}</a>
       <SiteHeader
         locale={locale}
         brand={tr(locale, site.brand_name)}
         logoUrl={site.logo_url}
         links={[
-          { href: L(""), label: t("nav.home") },
           { href: L("/about"), label: t("nav.about") },
           { href: L("/services"), label: t("nav.services") },
+          { href: L("/for-owners"), label: t("nav.owners") },
           { href: L("/projects"), label: t("nav.projects") },
           { href: L("/news"), label: t("nav.news") },
           { href: L("/careers"), label: t("nav.careers") },

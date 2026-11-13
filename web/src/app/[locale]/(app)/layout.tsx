@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { AppShell } from "@/components/AppShell";
 import { PermissionsProvider } from "@/components/PermissionsProvider";
 import { api } from "@/lib/api";
@@ -13,6 +15,8 @@ export default async function AppLayout({
 }) {
   const { locale } = await params;
   const user = await requireAuth(locale);
+  // Property owners have their own scoped portal; staff screens are not for them.
+  if (user.role === "owner") redirect(`/${locale}/owner`);
   const roles = await api.get<Role[]>("/api/v1/roles");
   const myRole = roles.find((r) => r.code === user.role);
 

@@ -78,6 +78,36 @@ jobs:
             gunzip -c /home/ubuntu/web.tar.gz | docker load
             rm -f /home/ubuntu/api.tar.gz /home/ubuntu/web.tar.gz"
 
+      - name: Ensure runtime config (idempotent)
+        # Persistent upload volume + settings the release needs. Backs up both
+        # files, validates with `docker compose config`, restores on failure.
+        run: |
+          $SSH 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /home/ubuntu/muktasabat
+          ts=$(date +%Y%m%d%H%M%S)
+          cp docker-compose.yml docker-compose.yml.bak-$ts
+          cp .env .env.bak-$ts
+          mkdir -p uploads
+          setenv() { grep -qE "^$1=" .env || echo "$1=$2" >> .env; }
+          setenv LOCAL_UPLOAD_DIR /app/uploads
+          setenv STORAGE_FALLBACK_LOCAL 1
+          setenv API_PUBLIC_BASE_URL https://muktasabat.com
+          setenv DISABLE_BOOTSTRAP_ADMIN 1
+          grep -qE '^REVALIDATE_SECRET=' .env || echo "REVALIDATE_SECRET=$(openssl rand -hex 24)" >> .env
+          if ! grep -q '/app/uploads' docker-compose.yml; then
+            sed -i '0,/^    env_file: .env$/s//    env_file: .env\n    volumes:\n      - .\/uploads:\/app\/uploads/' docker-compose.yml
+          fi
+          if ! grep -q 'REVALIDATE_SECRET' docker-compose.yml; then
+            sed -i '0,/^      NODE_ENV: production$/s//      NODE_ENV: production\n      REVALIDATE_SECRET: ${REVALIDATE_SECRET}/' docker-compose.yml
+          fi
+          if docker compose config -q; then
+            echo "runtime config OK"; grep -n -A2 'volumes:' docker-compose.yml | head -4
+          else
+            echo "compose invalid — restoring backup"; cp docker-compose.yml.bak-$ts docker-compose.yml; cp .env.bak-$ts .env; exit 1
+          fi
+          REMOTE
+
       - name: Preflight — boot the new API next to the live one
         # Starts the NEW image with the live container's env + network and waits
         # for "Application startup complete". Startup runs the CMS table creation
@@ -89,7 +119,7 @@ jobs:
             docker inspect muktasabat-api-1 --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -vE '^(PATH|LANG|GPG_KEY|PYTHON_[A-Z_]+)=' > /tmp/preflight.env
             docker rm -f mk-preflight >/dev/null 2>&1 || true
             set +e
-            timeout 60 docker run --name mk-preflight --rm --network \$NET --env-file /tmp/preflight.env muktasabat-api:v$NEW_API \
+            timeout 60 docker run --name mk-preflight --rm --network \$NET --env-file /tmp/preflight.env -v $RUNTIME/uploads:/app/uploads muktasabat-api:v$NEW_API \
               uvicorn api.main:app --host 127.0.0.1 --port 8001 > /tmp/preflight.log 2>&1 &
             for i in \$(seq 1 50); do
               grep -q 'Application startup complete' /tmp/preflight.log && break
@@ -137,6 +167,12 @@ jobs:
 
       - name: Update deploy marker
         run: $SSH "echo $GITHUB_SHA > $RUNTIME/.last_deployed_sha"
+
+      - name: Refresh site cache now
+        run: |
+          SECRET=$($SSH "grep -E '^REVALIDATE_SECRET=' $RUNTIME/.env | cut -d= -f2-")
+          curl -sS -X POST -H "x-revalidate-secret: $SECRET" https://muktasabat.com/api/site/revalidate || true
+          echo
 
       - name: Warm the website cache
         # Pages built inside Docker had no API to talk to; ISR replaces them with
