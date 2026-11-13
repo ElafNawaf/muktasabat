@@ -1,9 +1,15 @@
 #!/bin/bash
-# Pass 4 — why /uploads returns 404 in production.
-docker exec muktasabat-api-1 sh -c 'mkdir -p /app/uploads/diag && printf PNG > /app/uploads/diag/probe.png && ls -la /app/uploads/diag; echo LOCAL_UPLOAD_DIR=$LOCAL_UPLOAD_DIR'
-docker exec muktasabat-api-1 python -c "from api.storage import local_upload_root; print('root:', local_upload_root())"
-echo "api direct from web container:"; docker exec muktasabat-web-1 sh -c 'wget -S -qO- http://api:8000/uploads/diag/probe.png 2>&1 | head -5; echo; echo API_URL=$API_URL NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL'
-echo "via localhost:3000:"; curl -s -D - -o /dev/null http://127.0.0.1:3000/uploads/diag/probe.png | head -3
-echo "via public site:"; curl -s -D - -o /dev/null https://muktasabat.com/uploads/diag/probe.png | head -3
-docker logs muktasabat-web-1 --since 2m 2>&1 | tail -5
+# Pass 5 — uploads end to end (test file is removed afterwards).
+B=https://muktasabat.com
+KEY=$(docker exec muktasabat-api-1 python -c "
+import io
+from api import storage
+o=storage.upload_image(io.BytesIO(bytes.fromhex('89504e470d0a1a0a')), content_type='image/png', prefix='diag')
+print(o.object_key)" 2>/dev/null | tail -1)
+echo "stored key: $KEY"
+echo "served via site: $(curl -s -o /dev/null -w '%{http_code} %{content_type}' $B/uploads/$KEY)"
+echo "private path blocked: $(curl -s -o /dev/null -w '%{http_code}' $B/uploads/private/careers/x.pdf)"
+echo "traversal blocked: $(curl -s -o /dev/null -w '%{http_code}' $B/uploads/..%2F..%2Fetc/passwd)"
 docker exec muktasabat-api-1 rm -rf /app/uploads/diag
+echo "brand: $(curl -s $B/ar | grep -o 'شركة مكتسبات العقارية' | head -1) | phone: $(curl -s $B/ar | grep -o 'tel:[0-9]*' | head -1)"
+echo "api tracebacks (15m): $(docker logs muktasabat-api-1 --since 15m 2>&1 | grep -c Traceback)"
