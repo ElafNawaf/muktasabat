@@ -71,7 +71,6 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
       <div className="page-header">
         <div>
           <h2 className="page-title">{T("الموارد البشرية", "Human resources")}</h2>
-          <div className="page-subtitle">{T(`${dash.headcount} موظف · يعتمد الطلبات: ${dash.approver ?? "—"}`, `${dash.headcount} employees · Requests approved by ${dash.approver ?? "—"}`)}</div>
         </div>
         {canCreate && (
           <div className="hr-new">
