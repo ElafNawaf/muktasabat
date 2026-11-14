@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { FilterBar, FilterSearch, FilterSelect } from "@/components/EntityFilterBar";
 import { Modal } from "@/components/Modal";
 import { markPaymentPaid } from "@/lib/actions";
+import { ReceiptInput, receiptProblem, uploadPaymentReceipt } from "@/components/ReceiptInput";
 import { colActions, colAddAction } from "@/lib/renewal-actions";
 
 type Bucket = "upcoming" | "d1_30" | "d31_60" | "d61_90" | "d90p";
@@ -156,6 +157,7 @@ function Drawer({ r, locale, canEdit, sar, onClose }: { r: CRow; locale: string;
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [receipt, setReceipt] = useState<File | null>(null);
   const v = (k: string) => f[k] ?? "";
   const set = (k: string, x: string) => setF((o) => ({ ...o, [k]: x }));
   const load = () => colActions(r.payment_id).then((x) => (x.ok ? setActs(x.data as Act[]) : setErr(x.error)));
@@ -228,13 +230,19 @@ function Drawer({ r, locale, canEdit, sar, onClose }: { r: CRow; locale: string;
             </label>
             <label className="field"><span>{T("تاريخ السداد", "Paid on")}</span><input className="input" type="date" value={v("pd")} onChange={(e) => set("pd", e.target.value)} /></label>
             <label className="field"><span>{T("رقم الإيصال", "Receipt no.")}</span><input className="input" dir="ltr" value={v("rc")} onChange={(e) => set("rc", e.target.value)} /></label>
-            <button className="btn btn-primary btn-sm" disabled={pending} onClick={() => start(async () => {
+            <ReceiptInput file={receipt} onChange={setReceipt} ar={ar} />
+            <button className="btn btn-primary btn-sm" disabled={pending || !receipt} onClick={() => start(async () => {
               setErr(null);
+              const bad = receiptProblem(receipt, ar);
+              if (bad || !receipt) return setErr(bad);
+              // Evidence first: if the upload fails nothing is marked paid.
+              const up = await uploadPaymentReceipt(r.payment_id, receipt, "payment");
+              if (!up.ok) return setErr(up.error);
               const x = await markPaymentPaid(r.payment_id, { payment_method: (v("method") || "bank_transfer") as "bank_transfer", paid_date: v("pd") || null, receipt_number: v("rc") || null });
               if (!x.ok) return setErr(x.error);
               setMsg(T("سُجّل السداد — سيُرسل إشعار للمالك وتبدأ مهلة تحويل حصته.", "Payment recorded — the owner's payout clock starts now."));
-              setPanel(null);
-            })}>{T("تأكيد السداد", "Confirm payment")}</button>
+              setPanel(null); setReceipt(null);
+            })}>{pending ? "…" : T("تأكيد السداد", "Confirm payment")}</button>
           </div>
         )}
         {msg && <p className="col-ok">{msg}</p>}

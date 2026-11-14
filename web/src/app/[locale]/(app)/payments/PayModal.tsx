@@ -1,9 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { Modal } from "@/components/Modal";
+import { ReceiptInput, receiptProblem, uploadPaymentReceipt } from "@/components/ReceiptInput";
 import { markPaymentPaid, type PayInput } from "@/lib/actions";
 
 import type { PaymentRow } from "./PaymentsClient";
@@ -30,6 +31,8 @@ export function PayModal({
   });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const ar = useLocale() === "ar";
+  const [receipt, setReceipt] = useState<File | null>(null);
 
   const set = <K extends keyof PayInput>(k: K, v: PayInput[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -43,7 +46,18 @@ export function PayModal({
       paid_date: form.paid_date || null,
       notes: form.notes?.toString().trim() || null,
     };
+    const bad = receiptProblem(receipt, ar);
+    if (bad || !receipt) {
+      setError(bad);
+      return;
+    }
     start(async () => {
+      // Evidence first: if the upload fails nothing is marked paid.
+      const up = await uploadPaymentReceipt(payment.id, receipt, "payment");
+      if (!up.ok) {
+        setError(up.error);
+        return;
+      }
       const res = await markPaymentPaid(payment.id, payload);
       if (!res.ok) {
         setError(res.error);
@@ -65,7 +79,7 @@ export function PayModal({
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={pending}>
             {tCommon("cancel")}
           </button>
-          <button type="submit" form="pay-form" className="btn btn-primary" disabled={pending}>
+          <button type="submit" form="pay-form" className="btn btn-primary" disabled={pending || !receipt}>
             {pending ? "…" : t("confirmPaid")}
           </button>
         </>
@@ -112,6 +126,7 @@ export function PayModal({
             />
           </div>
         </div>
+        <ReceiptInput file={receipt} onChange={setReceipt} ar={ar} />
         <div className="field">
           <label>{t("notes")}</label>
           <textarea

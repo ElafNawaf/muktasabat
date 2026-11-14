@@ -516,6 +516,15 @@ class Payment(Base):
     owner_transferred_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     # مرجع الحوالة البنكية
     owner_transfer_reference: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    # ── Evidence (إثبات) — bank receipt / transfer slip, PDF or image ────────
+    # إثبات سداد المستأجر
+    receipt_key: Mapped[Optional[str]] = mapped_column(String(255))
+    receipt_url: Mapped[Optional[str]] = mapped_column(String(500))
+    receipt_name: Mapped[Optional[str]] = mapped_column(String(255))
+    # إثبات تحويل حصة المالك
+    owner_transfer_receipt_key: Mapped[Optional[str]] = mapped_column(String(255))
+    owner_transfer_receipt_url: Mapped[Optional[str]] = mapped_column(String(500))
+    owner_transfer_receipt_name: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     contract: Mapped["Contract"] = relationship(back_populates="payments")

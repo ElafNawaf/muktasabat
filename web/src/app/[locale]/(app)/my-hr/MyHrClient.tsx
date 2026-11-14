@@ -114,7 +114,6 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
               {data.user.ticket_entitlement !== "none" && <small className="text-sec">{[data.user.ticket_destination, hl(ar, HR.cls, data.user.ticket_class), data.user.ticket_family_members ? T(`+${data.user.ticket_family_members} مرافقين`, `+${data.user.ticket_family_members} family`) : null].filter(Boolean).join(" · ")}</small>}
             </div>
           </div>
-          {data.approver && <p className="text-sec hr-appr"><span className="ms ms-sm">verified_user</span>{T(`يعتمد طلباتك: ${data.approver}`, `Your requests are approved by ${data.approver}`)}</p>}
         </section>
       </div>
 

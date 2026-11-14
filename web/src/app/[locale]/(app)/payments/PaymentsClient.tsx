@@ -12,6 +12,7 @@ import {
   FilterStatusPills,
 } from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
+import { ReceiptLink } from "@/components/ReceiptInput";
 import { deletePayment } from "@/lib/actions";
 import { formatDate, formatSAR } from "@/lib/format";
 import {
@@ -39,6 +40,10 @@ export type PaymentRow = {
   owner_transfer_due_date?: string | null;
   owner_transferred_date?: string | null;
   owner_transfer_reference?: string | null;
+  receipt_url?: string | null;
+  receipt_name?: string | null;
+  owner_transfer_receipt_url?: string | null;
+  owner_transfer_receipt_name?: string | null;
   created_at: string;
   splits?: { id: number; split_type: string; amount: number; description: string | null }[];
 };
@@ -278,13 +283,34 @@ export function PaymentsClient({
                       )}
                     </td>
                     <td className="text-sec" style={{ fontSize: 12 }}>
-                      {p.paid_date ? fmtDate(p.paid_date) : "—"}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                        <span>{p.paid_date ? fmtDate(p.paid_date) : "—"}</span>
+                        {eff === "paid" &&
+                          (p.receipt_url ? (
+                            <ReceiptLink url={p.receipt_url} name={p.receipt_name} ar={locale === "ar"} />
+                          ) : (
+                            <span className="receipt-missing">
+                              <span className="ms ms-sm">warning</span>
+                              {locale === "ar" ? "بلا إيصال" : "No receipt"}
+                            </span>
+                          ))}
+                      </div>
                     </td>
                     <td style={{ fontSize: 12 }}>
                       {p.owner_transferred_date ? (
-                        <span className="badge badge-success">
-                          <span className="dot" /> {t("ownerSent", { date: fmtDate(p.owner_transferred_date) })}
-                        </span>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                          <span className="badge badge-success">
+                            <span className="dot" /> {t("ownerSent", { date: fmtDate(p.owner_transferred_date) })}
+                          </span>
+                          {p.owner_transfer_receipt_url ? (
+                            <ReceiptLink url={p.owner_transfer_receipt_url} name={p.owner_transfer_receipt_name} ar={locale === "ar"} />
+                          ) : (
+                            <span className="receipt-missing">
+                              <span className="ms ms-sm">warning</span>
+                              {locale === "ar" ? "بلا إثبات تحويل" : "No transfer slip"}
+                            </span>
+                          )}
+                        </div>
                       ) : p.owner_transfer_due_date ? (
                         <span
                           className={

@@ -32,6 +32,10 @@ class PaymentRead(BaseModel):
     owner_transfer_due_date: Optional[date] = None
     owner_transferred_date: Optional[date] = None
     owner_transfer_reference: Optional[str] = None
+    receipt_url: Optional[str] = None
+    receipt_name: Optional[str] = None
+    owner_transfer_receipt_url: Optional[str] = None
+    owner_transfer_receipt_name: Optional[str] = None
     created_at: datetime
     splits: list[PaymentSplitRead] = []
 

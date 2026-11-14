@@ -84,6 +84,13 @@ def _profile(db: Session, user_id: int) -> HrProfile:
         p = HrProfile(user_id=user_id)
         db.add(p)
         db.flush()
+    if p.company_id is None:  # every employee belongs to a group company; default: the holding
+        from api.hr_people_models import HrCompany
+
+        hold = db.scalar(select(HrCompany.id).where(HrCompany.is_holding.is_(True)).order_by(HrCompany.id))
+        if hold:
+            p.company_id = hold
+            db.flush()
     return p
 
 
@@ -114,6 +121,22 @@ def geo_check(s: HrSettings, lat: float, lng: float, accuracy: Optional[float]) 
     d = distance_m(lat, lng, s.office_lat, s.office_lng)
     slack = min(accuracy or 0, max(s.geofence_radius_m, 20))
     return round(d, 1), d - slack <= s.geofence_radius_m
+
+
+def office_for(db: Session, s: HrSettings, user_id: int):
+    """The office an employee checks in at: their company's office if HR set one, else HQ from HR settings."""
+    from types import SimpleNamespace
+
+    p = db.scalar(select(HrProfile).where(HrProfile.user_id == user_id))
+    if p and p.company_id:
+        from api.hr_people_models import HrCompany
+
+        c = db.get(HrCompany, p.company_id)
+        if c and c.office_lat is not None and c.office_lng is not None:
+            return SimpleNamespace(office_lat=c.office_lat, office_lng=c.office_lng,
+                                   geofence_radius_m=c.geofence_radius_m or s.geofence_radius_m, max_accuracy_m=s.max_accuracy_m,
+                                   enforce_location=s.enforce_location)
+    return s
 
 
 def local_now() -> datetime:
@@ -514,12 +537,13 @@ def _locate(db: Session, s: HrSettings, user: User, now: datetime, loc: LocIn, k
         db.commit()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             f"Your location is too imprecise (±{loc.accuracy:.0f} m). Turn on precise location / GPS and try again.")
-    d, inside = geo_check(s, loc.lat, loc.lng, loc.accuracy)
+    o = office_for(db, s, user.id)
+    d, inside = geo_check(o, loc.lat, loc.lng, loc.accuracy)
     if kind == "check_in" and not inside and s.enforce_location:
         _ping(db, user.id, now, "refused", loc, d, False, "outside")
         db.commit()
         raise HTTPException(status.HTTP_403_FORBIDDEN,
-                            f"You are {d:.0f} m from the office; check-in is allowed within {s.geofence_radius_m} m. "
+                            f"You are {d:.0f} m from the office; check-in is allowed within {o.geofence_radius_m} m. "
                             "Working remotely or on a field visit today? Raise a remote / field work request.")
     return d, inside
 
@@ -539,7 +563,7 @@ def check_in(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
     if mode == "office":
         d, inside = _locate(db, s, user, n, loc, "check_in")
     else:
-        d, inside = (geo_check(s, loc.lat, loc.lng, loc.accuracy) if loc.lat is not None and loc.lng is not None else (None, None))
+        d, inside = (geo_check(office_for(db, s, user.id), loc.lat, loc.lng, loc.accuracy) if loc.lat is not None and loc.lng is not None else (None, None))
         if wl and wl.from_time and n.time() < wl.from_time.replace(second=0) and mode == "field":
             pass  # early start on a field day is allowed; times are informative
     if att is None:
@@ -568,7 +592,7 @@ def check_out(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
         raise HTTPException(status.HTTP_409_CONFLICT, "You have already checked out today.")
     d, inside = (None, None)
     if loc.lat is not None and loc.lng is not None:
-        d, inside = geo_check(s, loc.lat, loc.lng, loc.accuracy)
+        d, inside = geo_check(office_for(db, s, user.id), loc.lat, loc.lng, loc.accuracy)
     elif att.mode == "office" and s.enforce_location:
         _ping(db, user.id, n, "refused", loc, None, None, f"no_location:{loc.error or ''}")
         db.commit()
@@ -622,7 +646,7 @@ def ping(loc: LocIn, db: DbSession, user: CurrentUser):
         return {"tracking": True, "inside": att.outside_since is None, "throttled": True}
     if loc.accuracy is not None and loc.accuracy > s.max_accuracy_m:
         return {"tracking": True, "inside": att.outside_since is None, "ignored": "low_accuracy"}
-    d, inside = geo_check(s, loc.lat, loc.lng, loc.accuracy)
+    d, inside = geo_check(office_for(db, s, user.id), loc.lat, loc.lng, loc.accuracy)
     att.last_ping_at = n
     if inside:
         if att.outside_since:
@@ -890,6 +914,7 @@ def employees(db: DbSession, user: Perm("hr", "view"), locale: str = Query("ar",
         mgr = db.get(User, p.manager_user_id) if p.manager_user_id else None
         out.append({
             "user_id": u.id, "name": _uname(u, locale), "username": u.username, "email": u.email, "phone": u.phone, "role": u.role,
+            "company_id": p.company_id, "department_id": p.department_id,
             "employee_no": p.employee_no, "department": p.department, "job_title": p.job_title or u.job_title,
             "manager_user_id": p.manager_user_id, "manager": _uname(mgr, locale) if mgr else None,
             "hire_date": p.hire_date.isoformat() if p.hire_date else None, "nationality": p.nationality,

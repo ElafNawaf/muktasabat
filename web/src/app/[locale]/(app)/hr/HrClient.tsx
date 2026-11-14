@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { FilterBar, FilterSearch, FilterSelect } from "@/components/EntityFilterBar";
+import { AssetsRegister } from "@/components/hr/AssetsRegister";
 import { RequestDrawer, RequestModal } from "@/components/hr/HrForms";
+import { HP, lb, type Asset, type Company } from "@/lib/hr-people";
 import { Modal } from "@/components/Modal";
 import { getPosition, geoErrorText } from "@/lib/geo";
 import { hrAttendanceDay, hrAttendanceReport, hrDecide, hrSaveEmployee, hrSaveSettings, hrSetAttendance } from "@/lib/hr-actions";
@@ -23,7 +25,7 @@ export type Emp = {
   job_title?: string | null; manager_user_id?: number | null; manager?: string | null; hire_date?: string | null; nationality?: string | null;
   contract_type: string; employment_status: string; annual_leave_days: number; leave_adjustment: number; ticket_entitlement: string;
   ticket_destination?: string | null; ticket_class: string; ticket_family_members: number; work_start?: string | null; work_end?: string | null;
-  work_mode: string; remote_days: number[];
+  work_mode: string; remote_days: number[]; company_id?: number | null; department_id?: number | null;
   emergency_contact?: string | null; notes?: string | null; balance: Balance;
 };
 export type ReportRow = { user_id: number; name: string; working_days: number; present: number; late: number; late_minutes: number; absent: number; on_leave: number; early_leave_minutes: number; permission_minutes: number; worked_hours: number; attendance_pct: number;
@@ -35,10 +37,12 @@ export type HrSettings = {
   office_lat: number; office_lng: number; geofence_radius_m: number; max_accuracy_m: number; enforce_location: boolean; ping_minutes: number;
   left_alert_minutes: number; missing_checkout_minutes: number; checkin_reminder_minutes: number; daily_summary: boolean;
 };
-type Tab = "overview" | "requests" | "attendance" | "employees" | "settings";
+type Tab = "overview" | "requests" | "attendance" | "employees" | "assets" | "settings";
+export type Expiring = { user_id: number; name: string; kind: string; date?: string | null; days: number; ref?: string };
 
-export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate }: {
+export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate, assets, companies, expiring }: {
   locale: string; dash: Dash; requests: HrReq[]; employees: Emp[]; settings: HrSettings; report: Report; month: string; canCreate: boolean;
+  assets: Asset[]; companies: Company[]; expiring: Expiring[];
 }) {
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
@@ -46,7 +50,11 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
   const [tab, setTab] = useState<Tab>("overview");
   const [openId, setOpenId] = useState<number | null>(null);
   const [newKind, setNewKind] = useState<null | "leave" | "permission" | "ticket" | "work_location">(null);
-  useEffect(() => { const id = Number(new URLSearchParams(window.location.search).get("open")); if (id) setOpenId(id); }, []);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const id = Number(sp.get("open")); if (id) setOpenId(id);
+    const t = sp.get("tab") as Tab | null; if (t) setTab(t);
+  }, []);
   const can = { approve: dash.can_approve, edit: dash.can_edit };
   const people = employees.map((e) => ({ id: e.user_id, name: e.name }));
   const tabs: [Tab, string, string, number?][] = [
@@ -54,6 +62,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
     ["requests", T("الطلبات", "Requests"), "inbox", dash.pending.length],
     ["attendance", T("الحضور والانصراف", "Attendance"), "badge"],
     ["employees", T("الموظفون", "Employees"), "groups"],
+    ["assets", T("العُهد", "Assets"), "inventory_2"],
     ["settings", T("الإعدادات", "Settings"), "tune"],
   ];
 
@@ -83,10 +92,11 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
         ))}
       </nav>
 
-      {tab === "overview" && <Overview locale={locale} dash={dash} onOpen={setOpenId} onTab={setTab} />}
+      {tab === "overview" && <Overview locale={locale} dash={dash} onOpen={setOpenId} onTab={setTab} expiring={expiring} />}
       {tab === "requests" && <Requests locale={locale} rows={requests} people={people} onOpen={setOpenId} />}
       {tab === "attendance" && <AttendanceTab locale={locale} board={dash.board} report={report} month={month} canEdit={can.edit} />}
-      {tab === "employees" && <Employees locale={locale} rows={employees} canEdit={can.edit} />}
+      {tab === "employees" && <Employees locale={locale} rows={employees} canEdit={can.edit} companies={companies} />}
+      {tab === "assets" && <AssetsRegister locale={locale} assets={assets} companies={companies} people={people} canEdit={can.edit} />}
       {tab === "settings" && <SettingsTab locale={locale} s={settings} canSave={can.approve} />}
 
       {newKind && <RequestModal locale={locale} kind={newKind} employees={people} colleagues={people} onClose={() => setNewKind(null)} onDone={(r) => { setNewKind(null); router.refresh(); setOpenId(r.id); }} />}
@@ -96,7 +106,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
 }
 
 /* ───────── Overview ───────── */
-function Overview({ locale, dash, onOpen, onTab }: { locale: string; dash: Dash; onOpen: (id: number) => void; onTab: (t: Tab) => void }) {
+function Overview({ locale, dash, onOpen, onTab, expiring }: { locale: string; dash: Dash; onOpen: (id: number) => void; onTab: (t: Tab) => void; expiring: Expiring[] }) {
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
   const router = useRouter();
@@ -170,6 +180,23 @@ function Overview({ locale, dash, onOpen, onTab }: { locale: string; dash: Dash;
           </>}
         </section>
       </div>
+
+      {expiring.length > 0 && (
+        <section className="card hr-sec">
+          <header className="hr-sec__head"><h3>{T("وثائق وعقود تحتاج متابعة", "Documents & contracts to follow up")}</h3></header>
+          <ul className="hr-list">
+            {expiring.map((x, i) => (
+              <li key={i}>
+                <a className="hr-list__main" href={`/${locale}/hr/people/${x.user_id}?tab=${x.kind === "contract" || x.kind === "probation" ? "contracts" : x.kind === "bank_change" ? "bank" : "personal"}`}>
+                  <span className="hr-kind"><span className="ms ms-sm" aria-hidden>{x.kind === "bank_change" ? "account_balance" : x.kind === "contract" || x.kind === "probation" ? "contract" : "badge"}</span>{lb(ar, HP.expiring, x.kind)}</span>
+                  <strong>{x.name}</strong>
+                  <span className="text-sec">{x.kind === "bank_change" ? T("بانتظار اعتمادك", "Waiting for your approval") : x.days < 0 ? T(`انتهى منذ ${-x.days} يوم (${x.date})`, `Expired ${-x.days} days ago (${x.date})`) : T(`بعد ${x.days} يوم (${x.date})`, `In ${x.days} days (${x.date})`)}{x.ref ? ` · ${x.ref}` : ""}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {dash.alerts.length > 0 && (
         <section className="card hr-sec hr-alerts">
@@ -362,28 +389,33 @@ function EditAttendance({ locale, row, day, onClose }: { locale: string; row: Bo
 }
 
 /* ───────── Employees ───────── */
-function Employees({ locale, rows, canEdit }: { locale: string; rows: Emp[]; canEdit: boolean }) {
+function Employees({ locale, rows, canEdit, companies }: { locale: string; rows: Emp[]; canEdit: boolean; companies: Company[] }) {
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
   const [q, setQ] = useState("");
   const [edit, setEdit] = useState<Emp | null>(null);
-  const shown = useMemo(() => rows.filter((r) => !q.trim() || `${r.name} ${r.department ?? ""} ${r.job_title ?? ""} ${r.employee_no ?? ""}`.toLowerCase().includes(q.trim().toLowerCase())), [rows, q]);
+  const [comp, setComp] = useState("all");
+  const cname = (id?: number | null) => companies.find((c) => c.id === id);
+  const shown = useMemo(() => rows.filter((r) => (comp === "all" || String(r.company_id) === comp) && (!q.trim() || `${r.name} ${r.department ?? ""} ${r.job_title ?? ""} ${r.employee_no ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()))), [rows, q, comp]);
   return (
     <>
-      <FilterBar search={<FilterSearch value={q} onChange={setQ} placeholder={T("بحث بالاسم أو القسم…", "Search name or department…")} />} />
+      <FilterBar search={<FilterSearch value={q} onChange={setQ} placeholder={T("بحث بالاسم أو القسم…", "Search name or department…")} />}>
+        <FilterSelect label={T("الشركة", "Company")} value={comp} onChange={setComp} options={[{ value: "all", label: T("كل المجموعة", "Whole group") }, ...companies.map((c) => ({ value: String(c.id), label: `${c.name} (${c.headcount})` }))]} />
+      </FilterBar>
       <div className="card card-tight"><div className="tbl-wrap"><table className="tbl">
-        <thead><tr><th>{T("الموظف", "Employee")}</th><th>{T("القسم / المسمى", "Department / title")}</th><th>{T("المدير المباشر", "Manager")}</th><th>{T("تاريخ التعيين", "Hired")}</th><th>{T("رصيد الإجازة", "Leave left")}</th><th>{T("التذكرة", "Ticket")}</th><th>{T("الحالة", "Status")}</th>{canEdit && <th />}</tr></thead>
+        <thead><tr><th>{T("الموظف", "Employee")}</th><th>{T("الشركة", "Company")}</th><th>{T("القسم / المسمى", "Department / title")}</th><th>{T("المدير المباشر", "Manager")}</th><th>{T("تاريخ التعيين", "Hired")}</th><th>{T("رصيد الإجازة", "Leave left")}</th><th>{T("التذكرة", "Ticket")}</th><th>{T("الحالة", "Status")}</th><th /></tr></thead>
         <tbody>
           {shown.map((e) => (
             <tr key={e.user_id}>
-              <td><strong>{e.name}</strong><div className="text-sec" style={{ fontSize: 12 }}>{[e.employee_no && `#${e.employee_no}`, e.phone].filter(Boolean).join(" · ") || e.username}</div></td>
+              <td><a className="ap-link" href={`/${locale}/hr/people/${e.user_id}`}><strong>{e.name}</strong></a><div className="text-sec" style={{ fontSize: 12 }}>{[e.employee_no && `#${e.employee_no}`, e.phone].filter(Boolean).join(" · ") || e.username}</div></td>
+              <td><span className="hr-comp" style={{ ["--cc" as string]: cname(e.company_id)?.color || "var(--color-primary)" }}>{cname(e.company_id)?.name ?? "—"}</span></td>
               <td>{e.department ?? "—"}<div className="text-sec" style={{ fontSize: 12 }}>{e.job_title ?? ""}</div></td>
               <td>{e.manager ?? "—"}</td>
               <td className="text-sec">{e.hire_date ?? "—"}</td>
               <td><strong className={e.balance.remaining < 0 ? "hr-bad" : ""}>{e.balance.remaining}</strong><span className="text-sec"> / {e.balance.entitlement}</span></td>
               <td>{hl(ar, HR.ticketEnt, e.ticket_entitlement)}{e.ticket_destination ? <div className="text-sec" style={{ fontSize: 12 }}>{e.ticket_destination}</div> : null}</td>
               <td><span className={`mx-chip ${e.employment_status === "active" ? "" : "hr-muted"}`}>{hl(ar, HR.emp, e.employment_status)}</span><div className="text-sec" style={{ fontSize: 12 }}>{hl(ar, HR.mode, e.work_mode)}{e.work_mode === "hybrid" && e.remote_days.length ? `: ${e.remote_days.map((d) => HR.weekday[d][ar ? 0 : 1]).join("، ")}` : ""}</div></td>
-              {canEdit && <td><button className="btn btn-ghost btn-sm" onClick={() => setEdit(e)}>{T("تعديل", "Edit")}</button></td>}
+              <td className="ef-rowact"><a className="btn btn-ghost btn-sm" href={`/${locale}/hr/people/${e.user_id}`}>{T("الملف", "File")}</a>{canEdit && <button className="btn btn-ghost btn-sm" onClick={() => setEdit(e)}>{T("الإعدادات", "Settings")}</button>}</td>
             </tr>
           ))}
         </tbody>
