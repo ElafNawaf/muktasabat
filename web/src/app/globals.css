@@ -2346,3 +2346,10 @@ a.icon-btn { text-decoration: none; }
 .reinvite-who { display: grid; flex: 1 1 200px; min-width: 0; }
 .reinvite-who small { color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; }
 .reinvite-actions { display: flex; gap: 6px; }
+
+/* Empty states — calm card with a clear next step */
+.empty-state { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 56px 24px; background: var(--color-surface); border: 1px dashed var(--color-border-strong); border-radius: 14px; }
+.empty-state .empty-icon { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--brand-sand-soft); color: var(--brand-maroon); margin-bottom: 4px; }
+.empty-state .empty-icon .ms { font-size: 28px; }
+.empty-state .empty-title { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--color-text-primary); }
+.empty-state .empty-sub { color: var(--color-text-secondary); max-width: 46ch; font-size: 14px; }

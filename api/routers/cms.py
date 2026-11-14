@@ -215,22 +215,34 @@ def public_detail(kind: Kind, slug: str, db: DbSession):
     return out.model_validate(row).model_dump(mode="json")
 
 
-def _notify(recipients: list[str], subject: str, lines: list[tuple[str, str | None]]) -> None:
+_LABELS_AR = {
+    "Type": "النوع", "Name": "الاسم", "Phone": "الجوال", "Email": "البريد", "City": "المدينة",
+    "Message": "الرسالة", "Page": "الصفحة", "Open in portal": "فتح في النظام", "Position": "الوظيفة",
+    "CV attached": "السيرة الذاتية مرفقة",
+}
+
+
+def _notify(recipients: list[str], subject: str, lines: list[tuple[str, str | None]], subject_ar: str = "") -> None:
+    """Staff notification, bilingual (Arabic labels with English beside them)."""
     if not recipients:
         return
-    text = "\n".join(f"{k}: {v or '-'}" for k, v in lines)
+    text = "\n".join(f"{_LABELS_AR.get(k, k)} / {k}: {v or '-'}" for k, v in lines)
     rows = "".join(
-        f"<tr><td style='padding:4px 12px 4px 0;color:#6B7280'>{escape(k)}</td>"
-        f"<td style='padding:4px 0'>{escape(v or '-')}</td></tr>"
+        f"<tr><td style='padding:6px 12px 6px 0;color:#5D636B;white-space:nowrap'>{escape(_LABELS_AR.get(k, k))}"
+        f" <span style='color:#9a9ea4'>{escape(k)}</span></td>"
+        f"<td style='padding:6px 0'>{escape(v or '-')}</td></tr>"
         for k, v in lines
     )
+    title = f"{subject_ar} | {subject}" if subject_ar else subject
     html = (
-        "<div style='font-family:Arial,sans-serif;font-size:14px'>"
-        f"<h2 style='color:#7B1A1A;margin:0 0 12px'>{escape(subject)}</h2>"
-        f"<table>{rows}</table></div>"
+        "<div style='background:#FAF7F1;padding:24px 0;font-family:Tahoma,Arial,sans-serif'>"
+        "<div style='max-width:600px;margin:0 auto;background:#fff;border:1px solid #E3DDD2;border-radius:8px;overflow:hidden'>"
+        "<div style='background:#7B1A1A;color:#fff;padding:16px 24px;font-weight:bold' dir='rtl'>شركة مكتسبات العقارية · Muktasabat</div>"
+        f"<div dir='rtl' style='padding:20px 24px;text-align:right'><h2 style='color:#7B1A1A;margin:0 0 12px;font-size:17px'>{escape(title)}</h2>"
+        f"<table dir='rtl' style='font-size:14px;border-collapse:collapse'>{rows}</table></div></div></div>"
     )
     for to in recipients:
-        send_email(EmailMessage(to=to, subject=subject, text_body=text, html_body=html))
+        send_email(EmailMessage(to=to, subject=title, text_body=text, html_body=html))
 
 
 @public.post("/leads", status_code=status.HTTP_201_CREATED)
@@ -256,7 +268,7 @@ def submit_lead(payload: LeadIn, request: Request, db: DbSession):
     base = get_settings().web_base_url.rstrip("/")
     _notify(
         private.lead_notify_emails,
-        f"New website enquiry #{lead.id} ({lead.kind}) — Muktasabat",
+        f"استفسار جديد من الموقع رقم {lead.id} | New website enquiry #{lead.id} ({lead.kind})",
         [
             ("Type", lead.kind),
             ("Name", lead.name),
@@ -339,7 +351,7 @@ async def apply_job(
     base = get_settings().web_base_url.rstrip("/")
     _notify(
         private.careers_notify_emails,
-        f"New application: {job.title_en} — Muktasabat",
+        f"طلب توظيف جديد: {job.title_ar} | New application: {job.title_en}",
         [
             ("Position", job.title_en),
             ("Name", name),
@@ -592,8 +604,14 @@ def delivery_test_email(payload: _TestEmailIn, _u: Perm("website", "edit")):
         _send_via_ses(
             EmailMessage(
                 to=to,
-                subject="Muktasabat — test email · رسالة تجريبية",
-                text_body="Email delivery from muktasabat.com is working.\nتم إرسال هذه الرسالة بنجاح من نظام مكتسبات.",
+                subject="رسالة تجريبية | Muktasabat test email",
+                text_body="تم إرسال هذه الرسالة بنجاح من نظام مكتسبات.\nEmail delivery from muktasabat.com is working.",
+                html_body=(
+                    "<div dir='rtl' style='font-family:Tahoma,Arial,sans-serif;max-width:560px;margin:auto;border:1px solid #E3DDD2;border-radius:8px;overflow:hidden'>"
+                    "<div style='background:#7B1A1A;color:#fff;padding:16px 24px;font-weight:bold'>شركة مكتسبات العقارية · Muktasabat</div>"
+                    "<p style='padding:16px 24px;margin:0'>تم إرسال هذه الرسالة بنجاح من نظام مكتسبات.</p>"
+                    "<p dir='ltr' style='padding:0 24px 16px;margin:0'>Email delivery from muktasabat.com is working.</p></div>"
+                ),
             )
         )
         return {"ok": True}

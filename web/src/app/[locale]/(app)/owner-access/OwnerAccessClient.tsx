@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
+import { FilterBar, FilterSearch, FilterStatusPills } from "@/components/EntityFilterBar";
+
 import { inviteOwner, revokeOwner } from "./actions";
+
+type Status = "all" | "active" | "pending" | "none" | "off";
+const statusOf = (r: AccessRow): Exclude<Status, "all"> =>
+  !r.has_account ? "none" : !r.active ? "off" : r.invite_pending ? "pending" : "active";
 
 export type AccessRow = {
   owner_id: number;
@@ -30,11 +36,17 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
   const [pending, start] = useTransition();
   const [copied, setCopied] = useState(false);
 
+  const [status, setStatus] = useState<Status>("all");
+  const count = (st: Exclude<Status, "all">) => rows.filter((r) => statusOf(r) === st).length;
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return s ? rows.filter((r) => `${r.name} ${r.email ?? ""}`.toLowerCase().includes(s)) : rows;
-  }, [rows, q]);
-  const active = rows.filter((r) => r.active).length;
+    return rows.filter(
+      (r) =>
+        (status === "all" || statusOf(r) === status) &&
+        (!s || `${r.name} ${r.email ?? ""} ${r.username ?? ""}`.toLowerCase().includes(s)),
+    );
+  }, [rows, q, status]);
+  const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("");
 
   function open(r: AccessRow) {
     setInviting(r);
@@ -76,66 +88,109 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
   return (
     <div className="oa page screen-enter">
       <style>{CSS}</style>
-      <header className="oa-head">
+      <div className="page-header">
         <div>
-          <h1>{T(locale, "وصول الملاك إلى البوابة", "Owner portal access")}</h1>
-          <p>
-            {T(locale, "امنح الملاك المتعاقدين معنا حساباً لمتابعة عقاراتهم وإيراداتهم وكشوف حساباتهم.", "Give owners under contract a login to follow their properties, revenue and statements.")}{" "}
-            <strong>{active}</strong> / {rows.length} {T(locale, "مفعّل", "active")}
-          </p>
+          <h2 className="page-title">{T(locale, "وصول الملاك إلى البوابة", "Owner portal access")}</h2>
+          <div className="page-subtitle">
+            {T(locale, "امنح الملاك المتعاقدين معنا حساباً لمتابعة عقاراتهم وعقودهم وإيراداتهم وكشوف حساباتهم.", "Give owners under contract a login to follow their properties, leases, revenue and statements.")}
+          </div>
         </div>
-        <input className="oa-search" placeholder={T(locale, "بحث بالاسم أو البريد…", "Search name or email…")} value={q} onChange={(e) => setQ(e.target.value)} />
-      </header>
+      </div>
+
+      <div className="kpi-grid oa-kpis">
+        {([
+          ["group", T(locale, "إجمالي الملاك", "Owners"), rows.length, ""],
+          ["verified_user", T(locale, "حسابات مفعّلة", "Active accounts"), count("active"), "success"],
+          ["schedule_send", T(locale, "بانتظار التفعيل", "Invite pending"), count("pending"), "warning"],
+          ["person_off", T(locale, "بدون حساب", "No account"), count("none"), ""],
+        ] as const).map(([icon, label, value, tone]) => (
+          <div key={icon} className={`kpi ${tone}`}>
+            <div className="kpi-head"><div className="kpi-icon"><span className="ms">{icon}</span></div></div>
+            <div className="kpi-label">{label}</div>
+            <div className="kpi-value">{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <FilterBar
+        statusRow={
+          <FilterStatusPills<Status>
+            value={status}
+            onChange={setStatus}
+            options={[
+              { value: "all", label: T(locale, "الكل", "All"), count: rows.length },
+              { value: "active", label: T(locale, "مفعّل", "Active"), count: count("active") },
+              { value: "pending", label: T(locale, "بانتظار التفعيل", "Pending"), count: count("pending") },
+              { value: "none", label: T(locale, "بدون حساب", "No account"), count: count("none") },
+              { value: "off", label: T(locale, "موقوف", "Turned off"), count: count("off") },
+            ]}
+          />
+        }
+        search={<FilterSearch value={q} onChange={setQ} placeholder={T(locale, "بحث بالاسم أو البريد…", "Search name or email…")} />}
+      />
+
       {error && !inviting && <p className="oa-err">{error}</p>}
-      <div className="oa-tablewrap">
-        <table className="oa-table">
-          <thead>
-            <tr>
-              <th>{T(locale, "المالك", "Owner")}</th>
-              <th>{T(locale, "الحساب", "Account")}</th>
-              <th>{T(locale, "آخر دخول", "Last sign-in")}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((r) => (
-              <tr key={r.owner_id}>
-                <td>
-                  <strong>{r.name}</strong>
-                  <small>{r.email ?? "—"}</small>
-                </td>
-                <td>
-                  {!r.has_account ? (
-                    <span className="oa-chip">{T(locale, "لا يوجد", "None")}</span>
-                  ) : !r.active ? (
-                    <span className="oa-chip oa-chip--off">{T(locale, "موقوف", "Turned off")}</span>
-                  ) : r.invite_pending ? (
-                    <span className="oa-chip oa-chip--wait">{T(locale, "بانتظار التفعيل", "Invite sent")}</span>
-                  ) : (
-                    <span className="oa-chip oa-chip--on">{T(locale, "مفعّل", "Active")}</span>
-                  )}
-                  {r.username && <small dir="ltr">{r.username}</small>}
-                </td>
-                <td>{r.last_login ? new Date(r.last_login + "Z").toLocaleDateString(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB") : "—"}</td>
-                <td className="oa-actions">
-                  <Link className="oa-btn oa-btn--ghost" href={`/${locale}/owner?as=${r.owner_id}`} target="_blank">
-                    <span className="ms">visibility</span>
-                    {T(locale, "معاينة", "Preview")}
-                  </Link>
-                  <button className="oa-btn" onClick={() => open(r)} disabled={pending}>
-                    <span className="ms">{r.has_account ? "forward_to_inbox" : "person_add"}</span>
-                    {r.has_account ? T(locale, "إعادة الدعوة", "Re-invite") : T(locale, "دعوة", "Invite")}
-                  </button>
-                  {r.active && (
-                    <button className="oa-btn oa-btn--danger" onClick={() => revoke(r)} disabled={pending} title={T(locale, "إيقاف الوصول", "Turn off access")}>
-                      <span className="ms">block</span>
-                    </button>
-                  )}
-                </td>
+      <div className="card card-tight">
+        <div className="tbl-wrap">
+          <table className="tbl oa-table">
+            <thead>
+              <tr>
+                <th>{T(locale, "المالك", "Owner")}</th>
+                <th>{T(locale, "حالة الحساب", "Account")}</th>
+                <th>{T(locale, "اسم المستخدم", "Username")}</th>
+                <th>{T(locale, "آخر دخول", "Last sign-in")}</th>
+                <th aria-label={T(locale, "إجراءات", "Actions")} />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {shown.length === 0 && (
+                <tr><td colSpan={5} className="oa-empty">{T(locale, "لا يوجد ملاك مطابقون.", "No owners match.")}</td></tr>
+              )}
+              {shown.map((r) => {
+                const st = statusOf(r);
+                return (
+                  <tr key={r.owner_id}>
+                    <td data-label={T(locale, "المالك", "Owner")}>
+                      <div className="oa-who">
+                        <span className="oa-avatar" aria-hidden>{initials(r.name)}</span>
+                        <span>
+                          <strong>{r.name}</strong>
+                          <small dir="ltr">{r.email ?? "—"}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td data-label={T(locale, "الحساب", "Account")}>
+                      <span className={`badge ${st === "active" ? "badge-success" : st === "pending" ? "badge-warning" : st === "off" ? "badge-danger" : ""}`}>
+                        <span className="dot" />
+                        {st === "active" ? T(locale, "مفعّل", "Active") : st === "pending" ? T(locale, "بانتظار التفعيل", "Invite sent") : st === "off" ? T(locale, "موقوف", "Turned off") : T(locale, "لا يوجد", "None")}
+                      </span>
+                    </td>
+                    <td data-label={T(locale, "اسم المستخدم", "Username")} dir="ltr" className="text-sec">{r.username ?? "—"}</td>
+                    <td data-label={T(locale, "آخر دخول", "Last sign-in")} className="text-sec">
+                      {r.last_login ? new Date(r.last_login + "Z").toLocaleDateString(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB") : "—"}
+                    </td>
+                    <td>
+                      <div className="actions oa-actions">
+                        <button className="btn btn-sm btn-primary" onClick={() => open(r)} disabled={pending}>
+                          <span className="ms ms-sm">{r.has_account ? "forward_to_inbox" : "person_add"}</span>
+                          {r.has_account ? T(locale, "إعادة الدعوة", "Re-invite") : T(locale, "دعوة", "Invite")}
+                        </button>
+                        <Link className="icon-btn" href={`/${locale}/owner?as=${r.owner_id}`} target="_blank" title={T(locale, "معاينة كما يراها المالك", "Preview as owner")} aria-label={T(locale, "معاينة", "Preview")}>
+                          <span className="ms ms-sm">visibility</span>
+                        </Link>
+                        {r.active && (
+                          <button className="icon-btn oa-danger" onClick={() => revoke(r)} disabled={pending} title={T(locale, "إيقاف الوصول", "Turn off access")} aria-label={T(locale, "إيقاف الوصول", "Turn off access")}>
+                            <span className="ms ms-sm">block</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {inviting && (
@@ -195,36 +250,40 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
 }
 
 const CSS = `
-.oa{display:grid;gap:18px}
-.oa *{box-sizing:border-box}
-.oa .ms{font-family:"Material Symbols Outlined";font-size:18px;line-height:1;vertical-align:middle;direction:ltr}
-.oa-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-end}
-.oa-head h1{margin:0;font-size:24px;font-weight:600;color:var(--color-text-primary)}
-.oa-head p{margin:4px 0 0;color:var(--color-text-secondary)}
-.oa-search{min-height:38px;padding:8px 12px;border:1px solid var(--color-border-strong);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text-primary);font:inherit;width:min(320px,100%)}
-.oa-tablewrap{overflow-x:auto;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg)}
-.oa-table{width:100%;border-collapse:collapse;font-size:14px}
-.oa-table th{text-align:start;font-size:12px;color:var(--color-text-secondary);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--color-border)}
-.oa-table td{padding:12px 14px;border-bottom:1px solid var(--color-border);vertical-align:middle;color:var(--color-text-primary)}
-.oa-table td small{display:block;color:var(--color-text-secondary);font-size:12px}
-.oa-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
-.oa-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:var(--radius-md);border:1px solid var(--color-primary);background:var(--color-primary);color:#fff;font:inherit;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;white-space:nowrap}
-.oa-btn:disabled{opacity:.6}
-.oa-btn--ghost{background:transparent;color:var(--color-primary)}
-.oa-btn--danger{background:transparent;border-color:var(--color-border-strong);color:var(--color-danger)}
-.oa-chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--color-bg-deep);color:var(--color-text-secondary)}
-.oa-chip--on{background:var(--color-success-soft);color:var(--color-success)}
-.oa-chip--wait{background:var(--color-warning-soft);color:var(--color-warning)}
-.oa-chip--off{background:var(--color-danger-soft);color:var(--color-danger)}
-.oa-err{color:var(--color-danger);background:var(--color-danger-soft);padding:8px 12px;border-radius:var(--radius-md);margin:0}
+.oa-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.oa-who{display:flex;align-items:center;gap:12px}
+.oa-who strong{display:block;font-weight:600}
+.oa-who small{display:block;color:var(--color-text-secondary);font-size:12.5px}
+.oa-avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--brand-sand-soft);color:var(--brand-maroon);font-weight:700;font-size:14px;flex-shrink:0}
+.oa-danger:hover{color:var(--color-danger);background:var(--color-danger-soft)}
+.oa-empty{text-align:center;color:var(--color-text-secondary);padding:40px!important}
+.oa-err{color:var(--color-danger);background:var(--color-danger-soft);padding:10px 14px;border-radius:10px;margin:0 0 12px}
 .oa-ok{color:var(--color-success);margin:0}
 .oa-muted{color:var(--color-text-secondary);margin:0}
+.oa-btn{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border-radius:var(--radius-md);border:1px solid var(--color-primary);background:var(--color-primary);color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.oa-btn:disabled{opacity:.6}
+.oa-btn--ghost{background:transparent;color:var(--color-primary)}
+.oa .ms{font-family:"Material Symbols Outlined";line-height:1;direction:ltr}
 .oa-modal{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:16px}
-.oa-modal__bg{position:absolute;inset:0;background:rgba(0,0,0,.4)}
-.oa-modal__panel{position:relative;background:var(--color-surface);border-radius:var(--radius-lg);padding:22px;width:min(520px,100%);display:grid;gap:10px;box-shadow:var(--shadow-lg)}
-.oa-modal__panel h2{margin:0;font-size:18px;color:var(--color-text-primary)}
-.oa-form{display:grid;gap:12px}
-.oa-form label{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--color-text-primary)}
-.oa-form input,.oa-form select,.oa-form textarea{min-height:38px;padding:8px 10px;border:1px solid var(--color-border-strong);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text-primary);font:inherit;width:100%}
+.oa-modal__bg{position:absolute;inset:0;background:rgba(20,10,10,.45)}
+.oa-modal__panel{position:relative;background:var(--color-surface);border-radius:16px;padding:24px;width:min(520px,100%);display:grid;gap:12px;box-shadow:var(--shadow-lg)}
+.oa-modal__panel h2{margin:0;font-size:20px;font-family:var(--font-display);color:var(--color-text-primary)}
+.oa-form{display:grid;gap:14px}
+.oa-form label{display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--color-text-primary)}
+.oa-form input,.oa-form select,.oa-form textarea{min-height:44px;padding:10px 12px;border:1px solid var(--color-border-strong);border-radius:10px;background:var(--color-surface);color:var(--color-text-primary);font:inherit;width:100%}
 .oa-row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+@media (max-width:1100px){.oa-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){
+  .oa-table thead{display:none}
+  .oa-table,.oa-table tbody,.oa-table tr,.oa-table td{display:block;width:100%}
+  .oa-table tr{padding:14px 16px;border-bottom:1px solid var(--color-border)}
+  .oa-table td{border:0!important;padding:4px 0!important;position:static!important;white-space:normal}
+  .oa-table td:first-child::after{display:none}
+  .oa-table td[data-label]:not(:first-child){display:flex;justify-content:space-between;gap:12px}
+  .oa-table td[data-label]:not(:first-child)::before{content:attr(data-label);color:var(--color-text-secondary);font-size:12.5px}
+  .oa-table td:first-child{margin-bottom:6px}
+  .oa-actions{margin-top:8px}
+  .oa-actions .btn{flex:1}
+  .oa-table tbody tr:hover td:first-child{box-shadow:none}
+}
 `;

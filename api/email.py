@@ -159,33 +159,51 @@ def send_account_invite(to: str, username: str, url: str, hours: int, portal: st
 
 def send_email_verification(to: str, verify_url: str) -> None:
     text = (
-        "Welcome to Muktasabat!\n\n"
-        "Confirm your email address to activate your account:\n"
+        "مرحبًا بك في شركة مكتسبات العقارية.\nأكّد بريدك الإلكتروني لتفعيل حسابك (الرابط صالح 24 ساعة):\n"
         f"{verify_url}\n\n"
-        "This link expires in 24 hours."
+        "Welcome to Muktasabat Real Estate.\nConfirm your email address to activate your account (link valid for 24 hours):\n"
+        f"{verify_url}"
     )
-    html = (
-        "<p>Welcome to Muktasabat!</p>"
-        f'<p><a href="{verify_url}">Confirm your email address</a> to activate your account.</p>'
-        "<p>This link expires in 24 hours.</p>"
+    html = _branded(
+        "<p>مرحبًا بك! أكّد بريدك الإلكتروني لتفعيل حسابك.</p>"
+        + _button(verify_url, "تأكيد البريد الإلكتروني")
+        + "<p style='color:#5D636B;font-size:13px'>الرابط صالح لمدة 24 ساعة.</p>",
+        "<p>Welcome! Confirm your email address to activate your account.</p>"
+        + _button(verify_url, "Confirm email")
+        + "<p style='color:#5D636B;font-size:13px'>The link is valid for 24 hours.</p>",
     )
-    send_email(EmailMessage(to=to, subject="Verify your Muktasabat email", text_body=text, html_body=html))
+    send_email(EmailMessage(to=to, subject="تأكيد البريد الإلكتروني | Verify your Muktasabat email", text_body=text, html_body=html))
+
+
+ROLE_NAMES = {
+    "admin": ("مدير النظام", "Administrator"),
+    "manager": ("مدير", "Manager"),
+    "viewer": ("مستخدم اطّلاع", "Viewer"),
+    "owner": ("مالك", "Owner"),
+    "content_editor": ("محرر محتوى الموقع", "Website editor"),
+}
 
 
 def send_user_invite(to: str, username: str, role: str, accept_url: str) -> None:
-    """Email an invited user the link to set their initial password."""
+    """Email an invited staff user the link to set their initial password (bilingual)."""
+    from html import escape
+
+    r_ar, r_en = ROLE_NAMES.get(role, (role, role))
+    u = escape(username)
     text = (
-        f"You've been invited to join Muktasabat as {role}.\n\n"
-        f"Username: {username}\n\n"
-        "Set your password to activate your account (link expires in 24 hours):\n"
-        f"{accept_url}"
+        f"تمت دعوتك إلى نظام شركة مكتسبات العقارية بصلاحية: {r_ar}\nاسم المستخدم: {username}\n"
+        f"عيّن كلمة المرور لتفعيل حسابك (الرابط صالح 24 ساعة):\n{accept_url}\n\n"
+        f"You've been invited to Muktasabat as {r_en}.\nUsername: {username}\n"
+        f"Set your password to activate your account (link expires in 24 hours):\n{accept_url}"
     )
-    html = (
-        f"<p>You've been invited to join Muktasabat as <strong>{role}</strong>.</p>"
-        f"<p>Username: <strong>{username}</strong></p>"
-        f'<p><a href="{accept_url}">Set your password</a> to activate your account.</p>'
-        "<p>This link expires in 24 hours.</p>"
+    html = _branded(
+        f"<p>تمت دعوتك إلى نظام إدارة الأملاك بصلاحية <strong>{escape(r_ar)}</strong>.</p>"
+        f"<p>اسم المستخدم: <strong dir='ltr'>{u}</strong> (ويمكنك الدخول ببريدك الإلكتروني أيضًا)</p>"
+        + _button(accept_url, "تعيين كلمة المرور")
+        + "<p style='color:#5D636B;font-size:13px'>الرابط صالح لمدة 24 ساعة.</p>",
+        f"<p>You've been invited to the property-management system as <strong>{escape(r_en)}</strong>.</p>"
+        f"<p>Username: <strong>{u}</strong> (you can also sign in with your email)</p>"
+        + _button(accept_url, "Set your password")
+        + "<p style='color:#5D636B;font-size:13px'>The link expires in 24 hours.</p>",
     )
-    send_email(
-        EmailMessage(to=to, subject="You're invited to Muktasabat", text_body=text, html_body=html)
-    )
+    send_email(EmailMessage(to=to, subject="دعوة إلى مكتسبات | You're invited to Muktasabat", text_body=text, html_body=html))

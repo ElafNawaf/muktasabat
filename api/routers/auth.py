@@ -170,7 +170,7 @@ def register(payload: RegisterRequest, db: DbSession):
     db.commit()
     db.refresh(user)
 
-    verify_url = _absolute(f"/en/verify-email?token={raw}")
+    verify_url = _absolute(f"/ar/verify-email?token={raw}")
     send_email_verification(to=user.email, verify_url=verify_url)
     return user
 
@@ -203,7 +203,7 @@ def resend_verification(payload: ResendVerificationRequest, db: DbSession):
         user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
         db.add(user)
         db.commit()
-        verify_url = _absolute(f"/en/verify-email?token={raw}")
+        verify_url = _absolute(f"/ar/verify-email?token={raw}")
         send_email_verification(to=user.email, verify_url=verify_url)
         if settings.reset_password_debug:
             debug_url = f"/verify-email?token={raw}"
@@ -293,7 +293,31 @@ def delete_user(user_id: int, db: DbSession, actor: Perm("users", "delete")):
                 status.HTTP_409_CONFLICT,
                 "Cannot delete the last active administrator",
             )
-    user.is_active_user = False
+    # Permanent delete. (Suspending is the separate "toggle active" action.)
+    # History is kept: audit rows keep the username text, assignments are cleared.
+    from sqlalchemy import update
+
+    from api.models import Building, Employee, OwnerUser
+
+    db.execute(update(AuditLog).where(AuditLog.user_id == user.id).values(user_id=None))
+    db.execute(update(Building).where(Building.assignee_id == user.id).values(assignee_id=None))
+    link = db.scalar(select(OwnerUser).where(OwnerUser.user_id == user.id))
+    if link is not None:
+        db.delete(link)
+    emp = db.scalar(select(Employee).where(Employee.user_id == user.id))
+    if emp is not None:
+        emp.owners.clear()
+        db.delete(emp)
+    db.add(
+        AuditLog(
+            user_id=actor.id,
+            username=actor.username,
+            action="user_delete",
+            entity_type="user",
+            entity_id=str(user.id),
+        )
+    )
+    db.delete(user)
     db.commit()
 
 
@@ -333,7 +357,7 @@ def invite_user(payload: InviteUserRequest, db: DbSession, _admin: AdminUser):
     db.commit()
     db.refresh(user)
 
-    accept_url = _absolute(f"/en/reset-password?token={raw}")
+    accept_url = _absolute(f"/ar/reset-password?token={raw}")
     send_user_invite(
         to=user.email, username=user.username, role=user.role, accept_url=accept_url
     )

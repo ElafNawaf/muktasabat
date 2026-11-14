@@ -1,4 +1,6 @@
+import { Topbar } from "@/components/Topbar";
 import { api } from "@/lib/api";
+import { requireAuth } from "@/lib/auth";
 import { KIND_META, type CmsKind } from "@/lib/cms-fields";
 
 import "./cms.css";
@@ -9,14 +11,19 @@ export default async function WebsiteLayout({ children, params }: { children: Re
   const { locale } = await params;
   const perms = await websitePerms(locale);
   const ar = locale === "ar";
+  const me = await requireAuth(locale);
+  const bar = <Topbar title={ar ? "الموقع الإلكتروني" : "Website"} user={me} />;
   if (!perms.view) {
     return (
+      <>
+      {bar}
       <div className="cms-root page screen-enter">
         <div className="cms-empty">
           <span className="ms">lock</span>
           <p>{ar ? "ليست لديك صلاحية إدارة محتوى الموقع. تواصل مع مدير النظام." : "You don't have access to website content. Ask an administrator to grant the Website permission."}</p>
         </div>
       </div>
+      </>
     );
   }
   const inbox = await api.get<{ new_leads: number; new_applications: number }>("/api/v1/cms/admin/inbox").catch(() => ({ new_leads: 0, new_applications: 0 }));
@@ -28,6 +35,8 @@ export default async function WebsiteLayout({ children, params }: { children: Re
     ...kinds.map((k) => ({ href: k, label: ar ? KIND_META[k].title[1] : KIND_META[k].title[0], icon: KIND_META[k].icon })),
   ];
   return (
+    <>
+    {bar}
     <div className="cms-root page screen-enter">
       <header className="cms-head">
         <div>
@@ -42,5 +51,6 @@ export default async function WebsiteLayout({ children, params }: { children: Re
       <WebsiteTabs locale={locale} tabs={tabs} />
       {children}
     </div>
+    </>
   );
 }

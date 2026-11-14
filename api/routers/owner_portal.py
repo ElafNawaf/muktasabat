@@ -675,6 +675,9 @@ def access_list(db: DbSession, user: CurrentUser, locale: LocaleDep):
 
 
 def _send_owner_invite(to: str, owner_name: str, url: str, locale: Locale) -> None:
+    from html import escape as _esc
+
+    owner_name_html = _esc(owner_name)
     subject = "دعوة إلى بوابة الملاك — شركة مكتسبات العقارية | Your Muktasabat owner portal"
     text = (
         f"مرحباً {owner_name}،\n\n"
@@ -692,12 +695,13 @@ def _send_owner_invite(to: str, owner_name: str, url: str, locale: Locale) -> No
   </div>
   <div style="border:1px solid #e3ddd2;border-top:0;padding:24px;border-radius:0 0 10px 10px">
     <div dir="rtl" style="text-align:right">
-      <p>مرحباً {owner_name}،</p>
+      <p>مرحباً {owner_name_html}،</p>
       <p>تمت دعوتك إلى <strong>بوابة الملاك</strong> لمتابعة عقاراتك وعقود الإيجار والتحصيل وصافي الإيرادات وكشوف الحساب الشهرية.</p>
     </div>
     <p style="text-align:center;margin:28px 0">
       <a href="{url}" style="background:#7B1A1A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:bold">تفعيل الحساب · Activate account</a>
     </p>
+    <p dir="ltr">Hello {owner_name_html}, you've been invited to the <strong>owner portal</strong> to follow your properties, leases, collections, net revenue and monthly statements.</p>
     <p style="font-size:13px;color:#5d636b">Username / اسم المستخدم: <strong dir="ltr">{to}</strong><br>
     The link is valid for 72 hours. · الرابط صالح لمدة 72 ساعة.</p>
   </div>
