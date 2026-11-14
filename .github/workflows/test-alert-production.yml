@@ -1,0 +1,20 @@
+# One-off: assign a tester as responsible for one property and send a TEST payment alert.
+# Output is email-masked (the repo is public).
+name: Test payment alert
+on:
+  push:
+    branches: [ops/test-alert]
+  workflow_dispatch:
+jobs:
+  test-alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Send a test alert on the instance
+        env:
+          KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/k && chmod 600 ~/.ssh/k
+          ssh-keyscan -T 15 -H 13.232.25.224 >> ~/.ssh/known_hosts 2>/dev/null
+          set -o pipefail; ssh -i ~/.ssh/k ubuntu@13.232.25.224 'bash -s' < scripts/ops/test_alert_prod.sh 2>&1 | sed -E 's/([A-Za-z0-9])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+)/\1***@\2/g'
