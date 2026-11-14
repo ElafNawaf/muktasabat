@@ -932,34 +932,45 @@ def attendance_day(db: DbSession, user: Perm("hr", "view"), day: Optional[date] 
     return [{"user_id": u.id, "name": _uname(u, locale), **_day_status(db, s, profiles.get(u.id), u.id, d, atts.get(u.id), n)} for u in _staff(db, working_only=True)]
 
 
+def employee_month(db: Session, s: HrSettings, u: User, first: date, last: date, locale: str = "ar") -> tuple[dict, list[dict]]:
+    """One employee's month: summary row + day-by-day statuses (shared by the report, statistics and emails)."""
+    days = _days_for(db, s, u.id, first, last)
+    wd = [d for d in days if d["status"] not in ("weekend", "untracked")]
+    perm = sum(r.minutes or 0 for r in db.scalars(select(HrRequest).where(
+        HrRequest.user_id == u.id, HrRequest.kind == "permission", HrRequest.status == "approved",
+        HrRequest.start_date >= first, HrRequest.start_date <= last)).all())
+    worked = sum(d["worked_minutes"] or 0 for d in days)
+    verified = sum(d["verified_minutes"] or 0 for d in days)
+    refused = db.scalar(select(func.count()).select_from(LocationPing).where(
+        LocationPing.user_id == u.id, LocationPing.kind == "refused", LocationPing.day >= first, LocationPing.day <= last)) or 0
+    present = sum(1 for d in days if d["status"] in ("present", "late"))
+    ins = [d["check_in"] for d in days if d.get("check_in") and d["status"] in ("present", "late")]
+    avg_in = None
+    if ins:
+        mins_ = sum(int(x[:2]) * 60 + int(x[3:5]) for x in ins) // len(ins)
+        avg_in = f"{mins_ // 60:02d}:{mins_ % 60:02d}"
+    row = {
+        "user_id": u.id, "name": _uname(u, locale), "email": u.email, "working_days": len(wd), "present": present,
+        "late": sum(1 for d in days if d["status"] == "late"), "late_minutes": sum(d["late_minutes"] for d in days),
+        "absent": sum(1 for d in days if d["status"] == "absent"), "on_leave": sum(1 for d in days if d["status"] == "on_leave"),
+        "early_leave_minutes": sum(d["early_leave_minutes"] for d in days), "permission_minutes": perm,
+        "worked_hours": round(worked / 60, 1), "verified_hours": round(verified / 60, 1),
+        "away_minutes": sum(d["away_minutes"] or 0 for d in days),
+        "remote_days": sum(1 for d in days if d["mode"] == "remote" and d["status"] in ("present", "late")),
+        "field_days": sum(1 for d in days if d["mode"] == "field" and d["status"] in ("present", "late")),
+        "exceptions": sum(len(d["flags"]) for d in days) + refused, "refused_checkins": refused,
+        "attendance_pct": round(present / max(1, len([d for d in wd if d["status"] not in ("on_leave", "not_yet")])) * 100, 1),
+        "punctuality_pct": round((present - sum(1 for d in days if d["status"] == "late")) / present * 100, 1) if present else None,
+        "avg_check_in": avg_in,
+    }
+    return row, days
+
+
 @router.get("/attendance/report")
 def attendance_report(db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None, locale: str = Query("ar", pattern="^(ar|en)$")):
     s = _settings(db)
     first, last = _month(month)
-    rows = []
-    for u in _staff(db, working_only=True):
-        days = _days_for(db, s, u.id, first, last)
-        wd = [d for d in days if d["status"] not in ("weekend", "untracked")]
-        perm = sum(r.minutes or 0 for r in db.scalars(select(HrRequest).where(
-            HrRequest.user_id == u.id, HrRequest.kind == "permission", HrRequest.status == "approved",
-            HrRequest.start_date >= first, HrRequest.start_date <= last)).all())
-        worked = sum(d["worked_minutes"] or 0 for d in days)
-        verified = sum(d["verified_minutes"] or 0 for d in days)
-        refused = db.scalar(select(func.count()).select_from(LocationPing).where(
-            LocationPing.user_id == u.id, LocationPing.kind == "refused", LocationPing.day >= first, LocationPing.day <= last)) or 0
-        present = sum(1 for d in days if d["status"] in ("present", "late"))
-        rows.append({
-            "user_id": u.id, "name": _uname(u, locale), "working_days": len(wd), "present": present,
-            "late": sum(1 for d in days if d["status"] == "late"), "late_minutes": sum(d["late_minutes"] for d in days),
-            "absent": sum(1 for d in days if d["status"] == "absent"), "on_leave": sum(1 for d in days if d["status"] == "on_leave"),
-            "early_leave_minutes": sum(d["early_leave_minutes"] for d in days), "permission_minutes": perm,
-            "worked_hours": round(worked / 60, 1), "verified_hours": round(verified / 60, 1),
-            "away_minutes": sum(d["away_minutes"] or 0 for d in days),
-            "remote_days": sum(1 for d in days if d["mode"] == "remote" and d["status"] in ("present", "late")),
-            "field_days": sum(1 for d in days if d["mode"] == "field" and d["status"] in ("present", "late")),
-            "exceptions": sum(len(d["flags"]) for d in days) + refused, "refused_checkins": refused,
-            "attendance_pct": round(present / max(1, len([d for d in wd if d["status"] not in ("on_leave", "not_yet")])) * 100, 1),
-        })
+    rows = [employee_month(db, s, u, first, last, locale)[0] for u in _staff(db, working_only=True)]
     return {"month": first.strftime("%Y-%m"), "from": first.isoformat(), "to": last.isoformat(), "rows": rows}
 
 
@@ -1019,3 +1030,38 @@ def put_hr_settings(payload: SettingsIn, db: DbSession, user: Perm("hr", "approv
         setattr(s, k, getattr(payload, k))
     db.commit()
     return {"ok": True}
+
+
+# ───────────────────────── live dashboard, statistics, monthly reports ─────────────────────────
+
+
+@router.get("/live")
+def live_attendance(db: DbSession, user: Perm("hr", "view"), locale: str = Query("ar", pattern="^(ar|en)$")):
+    from api.services.hr_reports import live
+
+    return live(db, locale)
+
+
+@router.get("/stats")
+def monthly_stats(db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None, locale: str = Query("ar", pattern="^(ar|en)$")):
+    from api.services.hr_reports import stats
+
+    first, _ = _month(month)
+    return stats(db, first, locale)
+
+
+class MonthlySendIn(BaseModel):
+    month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    user_id: Optional[int] = None
+    resend: bool = False
+
+
+@router.post("/reports/monthly/send")
+def send_monthly_reports(payload: MonthlySendIn, db: DbSession, user: Perm("hr", "edit")):
+    from api.services.hr_reports import send_monthly
+
+    first, _ = _month(payload.month)
+    if first > today_riyadh():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "That month hasn't started yet.")
+    res = send_monthly(db, first, [payload.user_id] if payload.user_id else None, resend=payload.resend or bool(payload.user_id))
+    return {"ok": True, "month": first.strftime("%Y-%m"), **res}

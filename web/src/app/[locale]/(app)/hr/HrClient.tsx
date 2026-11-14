@@ -66,6 +66,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
         </div>
         {canCreate && (
           <div className="hr-new">
+            <a className="btn btn-primary" href={`/${locale}/hr/attendance`}><span className="ms">monitoring</span>{T("لوحة الحضور", "Attendance dashboard")}</a>
             <button className="btn btn-secondary" onClick={() => setNewKind("leave")}><span className="ms">beach_access</span>{T("تسجيل إجازة", "File leave")}</button>
             <button className="btn btn-secondary" onClick={() => setNewKind("permission")}><span className="ms">schedule</span>{T("استئذان", "Permission")}</button>
             <button className="btn btn-secondary" onClick={() => setNewKind("work_location")}><span className="ms">home_work</span>{T("عن بُعد / ميداني", "Remote / field")}</button>

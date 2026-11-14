@@ -76,7 +76,9 @@ export function Sidebar({
           <div key={s.label}>
             <div className="nav-section">{s.label}</div>
             {s.items.map((it) => {
-              const isActive = pathname === it.href || pathname.startsWith(it.href + "/");
+              const matches = (h: string) => pathname === h || pathname.startsWith(h + "/");
+              const best = sections.flatMap((x) => x.items).filter((x) => matches(x.href)).sort((a, b) => b.href.length - a.href.length)[0];
+              const isActive = !!best && best.href === it.href;
               return (
                 <Link
                   key={it.id}

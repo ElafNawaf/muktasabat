@@ -48,3 +48,8 @@ export async function hrAttendanceReport(month: string, locale: string) { return
 export async function hrAttendanceUser(userId: number, month: string) { return call(() => api.get(`${B}/attendance/${userId}?month=${month}`), false); }
 export async function hrSetAttendance(body: Record<string, unknown>) { return call(() => api.put(`${B}/attendance`, body)); }
 export async function hrSaveSettings(body: Record<string, unknown>) { return call(() => api.put(`${B}/settings`, body)); }
+export async function hrLive(locale: string) { return call(() => api.get(`${B}/live?locale=${locale}`), false); }
+export async function hrStats(month: string, locale: string) { return call(() => api.get(`${B}/stats?month=${month}&locale=${locale}`), false); }
+export async function hrSendMonthly(month: string, resend: boolean, userId?: number) {
+  return call(() => api.post(`${B}/reports/monthly/send`, { month, resend, user_id: userId ?? null }), false);
+}

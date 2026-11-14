@@ -83,6 +83,15 @@ def run_once(now: datetime | None = None) -> dict:
                          f"({a.check_out.strftime('%H:%M')}). If that's wrong, ask HR to correct it.</p>", url, "خدماتي الوظيفية", "My HR")
                 sent["auto_closed"] += 1
 
+        # 1b) monthly attendance reports for last month, on the 1st after 09:00
+        if today.day == 1 and now.time() >= time(9, 0):
+            from api.services.hr_reports import prev_month, send_monthly
+
+            pm = prev_month(today)
+            if pm >= s.attendance_from.replace(day=1):
+                r = send_monthly(db, pm)
+                sent["monthly"] = r["sent"]
+
         if today.weekday() in weekend:
             return sent
         atts = {a.user_id: a for a in db.scalars(select(Attendance).where(Attendance.day == today)).all()}

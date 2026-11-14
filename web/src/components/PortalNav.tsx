@@ -75,6 +75,7 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       label: t("hrGroup"),
       items: [
         { id: "my-hr", href: L("my-hr"), icon: "badge", label: t("myHr"), show: true },
+        { id: "hr-attendance", href: L("hr/attendance"), icon: "monitoring", label: t("attendanceDashboard"), show: v("hr") },
         { id: "hr", href: L("hr"), icon: "groups", label: t("hrManagement"), show: v("hr") },
       ],
     },
