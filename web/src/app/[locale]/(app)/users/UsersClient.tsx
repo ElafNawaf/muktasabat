@@ -28,6 +28,8 @@ import {
 } from "@/components/EntityFilterBar";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { InviteUserModal } from "./InviteUserModal";
+import { ReinviteModal } from "./ReinviteModal";
+import { reinviteAllUsers, type ReinviteResult } from "@/lib/actions";
 
 export type AdminUserRow = {
   id: number;
@@ -76,6 +78,8 @@ export function UsersClient({
   const [busyId, setBusyId] = useState<number | null>(null);
   const [confirmDel, setConfirmDel] = useState<AdminUserRow | null>(null);
   const [, start] = useTransition();
+  const [reinvite, setReinvite] = useState<ReinviteResult | null>(null);
+  const [reinviting, setReinviting] = useState(false);
 
   // Local mirror of roles so the matrix updates immediately on toggle while the
   // server action runs in the background. revalidatePath then re-fetches.
@@ -211,7 +215,22 @@ export function UsersClient({
           <h2 className="page-title">{t("title")}</h2>
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            className="btn btn-secondary"
+            disabled={reinviting}
+            onClick={async () => {
+              const ar = locale === "ar";
+              if (!window.confirm(ar ? "إرسال دعوة جديدة (اسم المستخدم ورابط تعيين كلمة المرور) لكل المستخدمين ما عدا admin؟" : "Send a fresh invitation (username + set-password link) to every user except admin?")) return;
+              setReinviting(true);
+              const r = await reinviteAllUsers();
+              setReinviting(false);
+              if (r.ok) setReinvite(r.data);
+              else window.alert(r.error);
+            }}
+          >
+            <span className="ms">forward_to_inbox</span> {locale === "ar" ? (reinviting ? "جارٍ الإرسال…" : "إعادة إرسال الدعوات") : reinviting ? "Sending…" : "Re-send invitations"}
+          </button>
           <button className="btn btn-primary" onClick={() => setInviteOpen(true)}>
             <span className="ms">person_add</span> {t("inviteUser")}
           </button>
@@ -634,6 +653,7 @@ export function UsersClient({
         </div>
       )}
 
+      <ReinviteModal result={reinvite} locale={locale} onClose={() => setReinvite(null)} />
       {inviteOpen && (
         <InviteUserModal
           open={inviteOpen}

@@ -34,6 +34,7 @@ def reinvite_users(db: Session, *, exclude_usernames: set[str] | None = None, ac
     exclude = {u.lower() for u in (exclude_usernames or {"admin"})}
     base = get_settings().web_base_url.rstrip("/")
     report = {"sent": [], "failed": [], "skipped": []}
+    links: list[dict] = []
     for user in db.scalars(select(User).order_by(User.id)).all():
         tag = f"#{user.id} {user.role}"
         if user.username.lower() in exclude:
@@ -54,6 +55,7 @@ def reinvite_users(db: Session, *, exclude_usernames: set[str] | None = None, ac
         portal = "owner" if user.role == "owner" else "staff"
         ok = send_account_invite(email, user.username, url, INVITE_HOURS, portal)
         (report["sent"] if ok else report["failed"]).append(f"{tag} {_mask(email)}")
+        links.append({"id": user.id, "username": user.username, "email": email, "role": user.role, "emailed": ok, "url": url})
         db.add(
             AuditLog(
                 user_id=actor.id if actor else None,
@@ -65,4 +67,4 @@ def reinvite_users(db: Session, *, exclude_usernames: set[str] | None = None, ac
         )
         db.commit()
     logger.info("reinvite: sent=%d failed=%d skipped=%d", len(report["sent"]), len(report["failed"]), len(report["skipped"]))
-    return report
+    return {**report, "links": links}

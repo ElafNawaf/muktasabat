@@ -54,6 +54,12 @@ def _send_via_ses(msg: EmailMessage) -> None:
     client.send_email(**kwargs)
 
 
+def _mask(addr: str) -> str:
+    """Logs never carry full addresses (they can end up in shared CI logs)."""
+    local, _, domain = (addr or "").partition("@")
+    return f"{local[:1]}***@{domain}" if domain else "***"
+
+
 def send_email(msg: EmailMessage) -> bool:
     """Best-effort send. SES errors are logged, never raised — auth flows stay
     user-facing-friendly even if email infrastructure has a hiccup."""
@@ -64,17 +70,17 @@ def send_email(msg: EmailMessage) -> bool:
     if not settings.ses_region or not settings.ses_from_email:
         logger.info(
             "[email:console] to=%s subject=%r\n%s",
-            msg.to,
+            _mask(msg.to),
             msg.subject,
             msg.text_body,
         )
         return True
     try:
         _send_via_ses(msg)
-        logger.info("Sent email to %s via SES (subject=%r)", msg.to, msg.subject)
+        logger.info("Sent email to %s via SES (subject=%r)", _mask(msg.to), msg.subject)
         return True
     except Exception:
-        logger.exception("Failed to send email to %s via SES", msg.to)
+        logger.exception("Failed to send email to %s via SES", _mask(msg.to))
         return False
 
 

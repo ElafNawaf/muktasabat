@@ -979,3 +979,18 @@ export async function syncEjarManagementContracts(): Promise<
     return err(e);
   }
 }
+
+// -------- Re-invite all users --------
+
+export type ReinviteLink = { id: number; username: string; email: string; role: string; emailed: boolean; url: string };
+export type ReinviteResult = { sent: string[]; failed: string[]; skipped: string[]; links: ReinviteLink[] };
+
+export async function reinviteAllUsers(): Promise<ActionResult<ReinviteResult>> {
+  try {
+    const data = await api.post<ReinviteResult>("/api/v1/auth/admin/users/reinvite", {});
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
