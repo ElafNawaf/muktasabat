@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { FilterBar, FilterSearch, FilterSelect } from "@/components/EntityFilterBar";
 import { Modal } from "@/components/Modal";
+import { PreviewButton, RowPreview, type PreviewTarget } from "@/components/previews/RowPreview";
 import { markPaymentPaid } from "@/lib/actions";
 import { ReceiptInput, receiptProblem, uploadPaymentReceipt } from "@/components/ReceiptInput";
 import { colActions, colAddAction } from "@/lib/renewal-actions";
@@ -47,6 +48,7 @@ export function CollectionsClient({ locale, rows, stats, canEdit }: { locale: st
   const [who, setWho] = useState("all");
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
+  const [preview, setPreview] = useState<PreviewTarget>(null);
   useEffect(() => { const id = Number(new URLSearchParams(window.location.search).get("open")); if (id) setOpenId(id); }, []);
 
   const people = useMemo(() => Array.from(new Map(rows.filter((r) => r.assignee_id).map((r) => [r.assignee_id!, r.assignee!])).entries()), [rows]);
@@ -107,7 +109,7 @@ export function CollectionsClient({ locale, rows, stats, canEdit }: { locale: st
         <div className="card card-tight">
           <div className="tbl-wrap">
             <table className="tbl">
-              <thead><tr><th>{T("المستأجر", "Tenant")}</th><th>{T("العقار", "Property")}</th><th>{T("المبلغ", "Amount")}</th><th>{T("التأخير", "Overdue")}</th><th>{T("آخر متابعة", "Last follow-up")}</th><th>{T("وعد السداد", "Promise")}</th><th>{T("المسؤول", "Assignee")}</th></tr></thead>
+              <thead><tr><th>{T("المستأجر", "Tenant")}</th><th>{T("العقار", "Property")}</th><th>{T("المبلغ", "Amount")}</th><th>{T("التأخير", "Overdue")}</th><th>{T("آخر متابعة", "Last follow-up")}</th><th>{T("وعد السداد", "Promise")}</th><th>{T("المسؤول", "Assignee")}</th><th aria-label={T("معاينة", "Preview")} /></tr></thead>
               <tbody>
                 {shown.map((r) => (
                   <tr key={r.payment_id} className="mx-row" tabIndex={0} onClick={() => setOpenId(r.payment_id)} onKeyDown={(e) => e.key === "Enter" && setOpenId(r.payment_id)}>
@@ -118,6 +120,7 @@ export function CollectionsClient({ locale, rows, stats, canEdit }: { locale: st
                     <td>{r.last_action ? <>{ACT[r.last_action]?.[ar ? 1 : 2]}<div className="text-sec" style={{ fontSize: 12 }}>{r.last_action_at?.slice(0, 10)}</div></> : <span className="text-sec">{T("لا شيء", "None")}</span>}</td>
                     <td>{r.promise_date ? <span className={`mx-sla ${r.promise_state === "broken" ? "mx-sla--breached" : r.promise_state === "today" ? "mx-sla--at_risk" : "mx-sla--on_track"}`}>{r.promise_state === "broken" ? T("فات الموعد ", "Missed ") : ""}{r.promise_date}</span> : "—"}</td>
                     <td>{r.assignee || <span className="text-sec">—</span>}</td>
+                    <td data-label=""><PreviewButton label={T("معاينة الدفعة", "Preview payment")} onClick={() => setPreview({ kind: "payment", id: r.payment_id })} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -126,6 +129,7 @@ export function CollectionsClient({ locale, rows, stats, canEdit }: { locale: st
         </div>
       )}
 
+      <RowPreview target={preview} locale={locale} onClose={() => setPreview(null)} />
       {open && <Drawer r={open} locale={locale} canEdit={canEdit} sar={sar} onClose={() => { setOpenId(null); router.refresh(); }} />}
     </div>
   );

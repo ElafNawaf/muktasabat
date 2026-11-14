@@ -24,6 +24,8 @@ import {
 } from "@/lib/types";
 
 import { OwnerTransferModal } from "./OwnerTransferModal";
+import { PreviewButton, RowPreview, type PreviewTarget } from "@/components/previews/RowPreview";
+
 import { PayModal } from "./PayModal";
 import { TenantReports, type TenantReport } from "./TenantReports";
 
@@ -76,6 +78,7 @@ export function PaymentsClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [paying, setPaying] = useState<PaymentRow | null>(null);
+  const [preview, setPreview] = useState<PreviewTarget>(null);
   const [transferring, setTransferring] = useState<PaymentRow | null>(null);
   const [confirmDel, setConfirmDel] = useState<PaymentRow | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
@@ -246,7 +249,7 @@ export function PaymentsClient({
                 const b = u ? buildingOf(u.building_id) : null;
                 const eff = effectiveStatus(p);
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id} className="pv-row" onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a, input, select")) setPreview({ kind: "payment", id: p.id }); }}>
                     <td className="mono" style={{ fontSize: 12 }}>
                       {c?.contract_number ?? "—"}
                     </td>
@@ -325,6 +328,7 @@ export function PaymentsClient({
                     </td>
                     <td>
                       <div className="actions" style={{ display: "flex", gap: 4 }}>
+                        <PreviewButton label={locale === "ar" ? "معاينة الدفعة" : "Preview payment"} onClick={() => setPreview({ kind: "payment", id: p.id })} />
                         {eff !== "paid" && (
                           <button
                             className="btn btn-sm btn-primary"
@@ -365,6 +369,8 @@ export function PaymentsClient({
           </table>
         </div>
       </div>
+
+      <RowPreview target={preview} locale={locale} onClose={() => setPreview(null)} />
 
       {paying && (
         <PayModal
