@@ -430,6 +430,12 @@ def ensure_payment_owner_transfer_columns(engine) -> None:
             ("owner_transfer_due_date", "DATE"),
             ("owner_transferred_date", "DATE"),
             ("owner_transfer_reference", "VARCHAR(80)"),
+            ("receipt_key", "VARCHAR(255)"),
+            ("receipt_url", "VARCHAR(500)"),
+            ("receipt_name", "VARCHAR(255)"),
+            ("owner_transfer_receipt_key", "VARCHAR(255)"),
+            ("owner_transfer_receipt_url", "VARCHAR(500)"),
+            ("owner_transfer_receipt_name", "VARCHAR(255)"),
         ],
     )
 

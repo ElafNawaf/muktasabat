@@ -1,9 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { Modal } from "@/components/Modal";
+import { ReceiptInput, receiptProblem, uploadPaymentReceipt } from "@/components/ReceiptInput";
 import { markOwnerTransferred } from "@/lib/actions";
 
 import type { PaymentRow } from "./PaymentsClient";
@@ -24,11 +25,23 @@ export function OwnerTransferModal({
   const [reference, setReference] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const ar = useLocale() === "ar";
+  const [receipt, setReceipt] = useState<File | null>(null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const bad = receiptProblem(receipt, ar);
+    if (bad || !receipt) {
+      setError(bad);
+      return;
+    }
     start(async () => {
+      const up = await uploadPaymentReceipt(payment.id, receipt, "owner_transfer");
+      if (!up.ok) {
+        setError(up.error);
+        return;
+      }
       const res = await markOwnerTransferred(payment.id, {
         transferred_date: date || null,
         reference: reference.trim() || null,
@@ -53,7 +66,7 @@ export function OwnerTransferModal({
           <button type="button" className="btn btn-secondary" onClick={onClose} disabled={pending}>
             {tCommon("cancel")}
           </button>
-          <button type="submit" form="owner-transfer-form" className="btn btn-primary" disabled={pending}>
+          <button type="submit" form="owner-transfer-form" className="btn btn-primary" disabled={pending || !receipt}>
             {pending ? "…" : t("confirmTransfer")}
           </button>
         </>
@@ -81,6 +94,12 @@ export function OwnerTransferModal({
             />
           </div>
         </div>
+        <ReceiptInput
+          file={receipt}
+          onChange={setReceipt}
+          ar={ar}
+          label={ar ? "إثبات التحويل للمالك (إيصال الحوالة البنكية)" : "Proof of transfer to owner (bank transfer slip)"}
+        />
       </form>
     </Modal>
   );

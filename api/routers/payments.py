@@ -1,13 +1,14 @@
+import io
 from datetime import date, timedelta
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy import delete, select
 
 from api.config import get_settings
 from api.deps import AdminUser, CurrentUser, DbSession
 from api.models import Payment, PaymentAlertLog, PaymentSplit
-from api.permissions import Perm
+from api.permissions import Perm, has_permission
 from api.schemas.payment import (
     OwnerTransferRequest,
     PaymentAlertLogRead,
@@ -16,6 +17,7 @@ from api.schemas.payment import (
     PaymentUpdateRequest,
 )
 from api.services import payment_alerts
+from api.storage import StorageNotConfigured, delete_object, upload_document
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -82,6 +84,61 @@ def mark_owner_transferred(
     payment.owner_transfer_reference = payload.reference
     db.commit()
     payment_alerts.notify_owner_transferred(db, payment.id)
+    db.refresh(payment)
+    return payment
+
+
+RECEIPT_MAX_BYTES = 10 * 1024 * 1024
+_RECEIPT_TYPES = {"application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"}
+
+
+@router.post("/{payment_id}/receipt", response_model=PaymentRead)
+async def upload_receipt(
+    payment_id: int,
+    db: DbSession,
+    user: Perm("payments", "edit"),
+    file: UploadFile = File(...),
+    kind: Literal["payment", "owner_transfer"] = Form("payment"),
+):
+    """Attach the evidence (bank receipt / transfer slip — PDF or image).
+
+    ``payment``: the tenant's payment into the company (التحصيل).
+    ``owner_transfer``: the company's transfer of the owner's share (صرف حصة المالك).
+    Uploading again replaces the previous file."""
+    payment = db.get(Payment, payment_id)
+    if payment is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
+    if kind == "owner_transfer" and not has_permission(db, user, "payments", "approve"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not allowed to record owner transfers")
+    ctype = (file.content_type or "").lower()
+    if ctype not in _RECEIPT_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The receipt must be a PDF or an image (JPG, PNG, WebP).")
+    content = await file.read(RECEIPT_MAX_BYTES + 1)
+    if len(content) > RECEIPT_MAX_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "The receipt must be 10 MB or smaller.")
+    if not content:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The file is empty.")
+    try:
+        stored = upload_document(
+            io.BytesIO(content), content_type=ctype,
+            prefix=f"payments/{payment.id}/{kind}", original_filename=file.filename,
+        )
+    except StorageNotConfigured as e:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    name = (file.filename or "receipt")[:255]
+    if kind == "payment":
+        old_key = payment.receipt_key
+        payment.receipt_key, payment.receipt_url, payment.receipt_name = stored.object_key, stored.public_url, name
+    else:
+        old_key = payment.owner_transfer_receipt_key
+        payment.owner_transfer_receipt_key = stored.object_key
+        payment.owner_transfer_receipt_url = stored.public_url
+        payment.owner_transfer_receipt_name = name
+    db.commit()
+    if old_key and old_key != stored.object_key:
+        delete_object(old_key)
     db.refresh(payment)
     return payment
 

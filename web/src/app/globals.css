@@ -3984,3 +3984,14 @@ input.input::-webkit-datetime-edit { padding: 0; }
   .ulist-who { min-width: 0; }
   .ulist-actions { justify-content: flex-start; flex-wrap: wrap; }
 }
+
+/* ── Payment evidence (receipt / transfer slip) ───────────────────────── */
+.receipt-field { display: grid; gap: 6px; }
+.mx-panel .receipt-field { grid-column: 1 / -1; }
+.receipt-pick { justify-self: start; border-style: dashed; }
+.receipt-chip { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 10px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-primary-soft); }
+.receipt-chip > .ms { color: var(--color-primary); }
+.receipt-chip__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.receipt-link { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--color-border); font-size: 11px; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
+.receipt-link:hover { background: var(--color-primary-soft); }
+.receipt-missing { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-warning); white-space: nowrap; }
