@@ -113,6 +113,8 @@ export function AgentFormModal({
           <div className="field" style={{ flex: 1 }}>
             <label>{tCommon("phone")}</label>
             <input
+                type="tel"
+                inputMode="tel"
               className="input input-mono"
               value={form.phone ?? ""}
               onChange={(e) => set("phone", e.target.value)}

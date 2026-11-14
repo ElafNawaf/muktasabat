@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { BilingualField } from "@/components/BilingualField";
+import { ChoiceCards } from "@/components/ChoiceCards";
 import { Modal } from "@/components/Modal";
 import { createTenant, updateTenant, type TenantInput } from "@/lib/actions";
 import type { Tenant, TenantCompanionInput, TenantType } from "@/lib/types";
@@ -194,17 +195,15 @@ export function TenantFormModal({
 
         <div className="field">
           <label>{t("tenantType")}</label>
-          <select
-            className="input"
+          <ChoiceCards<TenantType>
+            label={t("tenantType")}
             value={tenantType}
-            onChange={(e) => onTypeChange(e.target.value as TenantType)}
-          >
-            {TENANT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {t(`tenantTypes.${type}`)}
-              </option>
-            ))}
-          </select>
+            onChange={onTypeChange}
+            options={[
+              { value: "individual" as TenantType, label: t("tenantTypes.individual"), icon: "person" },
+              { value: "company" as TenantType, label: t("tenantTypes.company"), icon: "domain" },
+            ]}
+          />
         </div>
 
         <BilingualField
@@ -247,6 +246,8 @@ export function TenantFormModal({
                 {tCommon("phone")} <span className="req">*</span>
               </label>
               <input
+                type="tel"
+                inputMode="tel"
                 className="input input-mono"
                 value={form.phone ?? ""}
                 onChange={(e) => set("phone", e.target.value)}
@@ -372,6 +373,8 @@ export function TenantFormModal({
                 {t("absherPhone")} <span className="req">*</span>
               </label>
               <input
+                type="tel"
+                inputMode="tel"
                 className="input input-mono"
                 value={form.absher_phone ?? ""}
                 onChange={(e) => set("absher_phone", e.target.value)}

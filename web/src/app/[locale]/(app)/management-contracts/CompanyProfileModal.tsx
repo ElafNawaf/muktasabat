@@ -263,6 +263,8 @@ export function CompanyProfileModal({
             <div className="field" style={{ flex: 1 }}>
               <label>{tCommon("phone")}</label>
               <input
+                type="tel"
+                inputMode="tel"
                 className="input"
                 value={form.phone ?? ""}
                 onChange={(e) => set("phone", e.target.value)}
@@ -380,6 +382,8 @@ export function CompanyProfileModal({
             <div className="field" style={{ flex: 1 }}>
               <label>{tCommon("phone")}</label>
               <input
+                type="tel"
+                inputMode="tel"
                 className="input"
                 value={form.representative_phone ?? ""}
                 onChange={(e) => set("representative_phone", e.target.value)}

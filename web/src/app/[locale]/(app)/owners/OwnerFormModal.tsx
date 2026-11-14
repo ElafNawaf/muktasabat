@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { BilingualField } from "@/components/BilingualField";
+import { ChoiceCards } from "@/components/ChoiceCards";
 import { Modal } from "@/components/Modal";
 import { createOwner, updateOwner, type OwnerInput } from "@/lib/actions";
 import { localized, type Agent, type Owner, type OwnerType } from "@/lib/types";
@@ -137,17 +138,15 @@ export function OwnerFormModal({
 
         <div className="field">
           <label>{t("ownerType")}</label>
-          <select
-            className="input"
+          <ChoiceCards<OwnerType>
+            label={t("ownerType")}
             value={ownerType}
-            onChange={(e) => onTypeChange(e.target.value as OwnerType)}
-          >
-            {OWNER_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {t(`ownerTypes.${type}`)}
-              </option>
-            ))}
-          </select>
+            onChange={onTypeChange}
+            options={[
+              { value: "individual" as OwnerType, label: t("ownerTypes.individual"), icon: "person" },
+              { value: "company" as OwnerType, label: t("ownerTypes.company"), icon: "domain" },
+            ]}
+          />
         </div>
 
         <BilingualField
@@ -187,6 +186,8 @@ export function OwnerFormModal({
               <div className="field" style={{ flex: 1 }}>
                 <label>{tCommon("phone")}</label>
                 <input
+                type="tel"
+                inputMode="tel"
                   className="input input-mono"
                   value={form.phone ?? ""}
                   onChange={(e) => set("phone", e.target.value)}
@@ -224,6 +225,8 @@ export function OwnerFormModal({
               <div className="field" style={{ flex: 1 }}>
                 <label>{t("companyPhone")}</label>
                 <input
+                type="tel"
+                inputMode="tel"
                   className="input input-mono"
                   value={form.phone ?? ""}
                   onChange={(e) => set("phone", e.target.value)}
@@ -278,6 +281,8 @@ export function OwnerFormModal({
             <div className="field">
               <label>{t("representativePhone")}</label>
               <input
+                type="tel"
+                inputMode="tel"
                 className="input input-mono"
                 value={form.representative_phone ?? ""}
                 onChange={(e) => set("representative_phone", e.target.value)}
