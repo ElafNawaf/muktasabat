@@ -2409,3 +2409,10 @@ a.icon-btn { text-decoration: none; }
 [data-theme="dark"] .badge-warning { background: rgba(217,119,6,.16); color: #F3B562; }
 [data-theme="dark"] .badge-danger { background: rgba(220,38,38,.16); color: #F59A9A; }
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { color-scheme: dark; }
+.err-page { min-height: 100%; display: grid; place-items: center; padding: 24px; background: var(--color-bg); overflow-y: auto; position: absolute; inset: 0; }
+.err-card { width: min(480px, 100%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 16px; padding: 32px 28px; text-align: center; display: grid; gap: 12px; justify-items: center; box-shadow: var(--shadow-md); }
+.err-mark { width: 56px; height: 56px; border-radius: 14px; }
+.err-card h1 { margin: 6px 0 0; font-family: var(--font-display); font-size: 22px; }
+.err-card p { margin: 0; color: var(--color-text-secondary); line-height: 1.8; }
+.err-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
+.err-code { color: var(--color-text-tertiary); font-size: 12px; }

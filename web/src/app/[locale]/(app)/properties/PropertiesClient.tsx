@@ -315,6 +315,8 @@ export function PropertiesClient({
 
   const buildingTypeLabel = (type: string | null | undefined) => {
     if (!type) return null;
+    // Imported records can hold free text (e.g. "سكني") instead of a type code — show it as-is.
+    if (!(ALL_BUILDING_TYPES as readonly string[]).includes(type)) return type;
     return tBuildingForm(`propertyTypes.${type}` as "propertyTypes.apartment_building");
   };
 
