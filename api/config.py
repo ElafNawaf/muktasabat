@@ -40,6 +40,23 @@ class Settings(BaseSettings):
     # Public URL of the web app, used to build links in email bodies.
     web_base_url: str = os.environ.get("WEB_BASE_URL", "http://localhost:3000")
 
+    # --- Payment alerts (تنبيهات الدفعات) ---
+    # E-mails go To: the employee responsible for the property (building
+    # assignee) and Cc: these addresses (the CEO). Comma-separated.
+    payment_alerts_enabled: bool = os.environ.get("PAYMENT_ALERTS_ENABLED", "true").lower() in ("1", "true", "yes")
+    payment_alerts_cc: str = os.environ.get("PAYMENT_ALERTS_CC", "")
+    # Early alerts: days before a due date (tenant payment and owner transfer).
+    payment_alert_lead_days: str = os.environ.get("PAYMENT_ALERT_LEAD_DAYS", "7,3,1")
+    # Reminders after a missed due date, in days.
+    payment_alert_overdue_days: str = os.environ.get("PAYMENT_ALERT_OVERDUE_DAYS", "1,3,7,14,30")
+    # The owner's share is due this many days after the tenant pays.
+    owner_transfer_days: int = int(os.environ.get("OWNER_TRANSFER_DAYS", "5") or 5)
+    # Scheduled alerts go out from this hour, Riyadh time (UTC+3).
+    payment_alerts_hour: int = int(os.environ.get("PAYMENT_ALERTS_HOUR", "8") or 8)
+    # A missed run (server down) is caught up for this many days, then dropped,
+    # so an old backlog never floods anyone's inbox.
+    payment_alerts_catchup_days: int = int(os.environ.get("PAYMENT_ALERTS_CATCHUP_DAYS", "3") or 3)
+
     # --- Amazon Translate ---
     # Falls back to ses_region when not set (same AWS account, save IAM hop).
     # Empty → /translate endpoint returns the original text (no-op).

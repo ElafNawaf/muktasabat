@@ -549,6 +549,25 @@ export async function markPaymentPaid(id: number, input: PayInput): Promise<Acti
   }
 }
 
+export type OwnerTransferInput = {
+  transferred_date?: string | null;
+  reference?: string | null;
+};
+
+/** Record that the owner's share was sent — stops the owner-payout alerts. */
+export async function markOwnerTransferred(
+  id: number,
+  input: OwnerTransferInput,
+): Promise<ActionResult<unknown>> {
+  try {
+    const data = await api.post(`/api/v1/payments/${id}/owner-transfer`, input);
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}
+
 export async function deletePayment(id: number): Promise<ActionResult<null>> {
   try {
     await api.delete(`/api/v1/payments/${id}`);

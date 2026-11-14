@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -20,6 +21,7 @@ from api.database import (
     ensure_ejar_party_columns,
     ensure_ejar_property_columns,
     ensure_owner_agent_id_column,
+    ensure_payment_owner_transfer_columns,
     ensure_tenant_extended_columns,
     migrate_tenant_escorts_to_companions,
     ensure_user_email_verification_columns,
@@ -78,6 +80,7 @@ async def lifespan(app: FastAPI):
     ensure_ejar_party_columns(engine)
     ensure_ejar_property_columns(engine)
     ensure_contract_ejar_columns(engine)
+    ensure_payment_owner_transfer_columns(engine)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -143,7 +146,15 @@ async def lifespan(app: FastAPI):
                         "was present. Set DISABLE_BOOTSTRAP_ADMIN=1 in production when appropriate."
                     )
 
-    yield
+    # Payment-timeline alerts (tenant due / overdue / received, owner payout) —
+    # hourly, in-process; see api/services/payment_alerts.py.
+    from api.services.payment_alerts import alert_loop
+
+    alerts_task = asyncio.create_task(alert_loop())
+    try:
+        yield
+    finally:
+        alerts_task.cancel()
 
 
 settings = get_settings()

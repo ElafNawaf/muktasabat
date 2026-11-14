@@ -383,6 +383,19 @@ def ensure_contract_ejar_columns(engine) -> None:
     )
 
 
+def ensure_payment_owner_transfer_columns(engine) -> None:
+    """Owner-remittance tracking on payments (drives the owner-transfer alerts)."""
+    _add_missing_columns(
+        engine,
+        "payments",
+        [
+            ("owner_transfer_due_date", "DATE"),
+            ("owner_transferred_date", "DATE"),
+            ("owner_transfer_reference", "VARCHAR(80)"),
+        ],
+    )
+
+
 def get_db():
     db = SessionLocal()
     try:

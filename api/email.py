@@ -24,6 +24,7 @@ class EmailMessage:
     subject: str
     text_body: str
     html_body: str | None = None
+    cc: list[str] | None = None
 
 
 def _send_via_ses(msg: EmailMessage) -> None:
@@ -42,7 +43,7 @@ def _send_via_ses(msg: EmailMessage) -> None:
 
     kwargs = {
         "Source": settings.ses_from_email,
-        "Destination": {"ToAddresses": [msg.to]},
+        "Destination": {"ToAddresses": [msg.to], **({"CcAddresses": msg.cc} if msg.cc else {})},
         "Message": {
             "Subject": {"Data": msg.subject, "Charset": "UTF-8"},
             "Body": body,
@@ -90,10 +91,12 @@ def send_email(msg: EmailMessage) -> bool:
     # Mailboxes are case-insensitive in practice, but SES's sandbox recipient
     # check is not: "Elaf.x@gmail.com" fails when "elaf.x@gmail.com" is verified.
     msg.to = (msg.to or "").strip().lower()
+    msg.cc = [c for c in dict.fromkeys((c or "").strip().lower() for c in (msg.cc or [])) if c and c != msg.to] or None
     if not settings.ses_region or not settings.ses_from_email:
         logger.info(
-            "[email:console] to=%s subject=%r\n%s",
+            "[email:console] to=%s cc=%s subject=%r\n%s",
             _mask(msg.to),
+            ",".join(_mask(c) for c in msg.cc or []),
             msg.subject,
             msg.text_body,
         )
