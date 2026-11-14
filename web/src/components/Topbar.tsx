@@ -4,6 +4,10 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import Link from "next/link";
+import { useLocale } from "next-intl";
+
+import { BrandLogo } from "./BrandLogo";
 import { useMobileNav } from "./MobileNavProvider";
 import { useTheme } from "./ThemeProvider";
 
@@ -21,6 +25,7 @@ export function Topbar({
   const [signingOut, setSigningOut] = useState(false);
 
   const initials = user.username.slice(0, 2).toUpperCase();
+  const locale = useLocale();
   const tRoles = useTranslations("roles");
   const roleLabel = (["admin", "manager", "viewer", "owner"] as const).includes(user.role as "admin")
     ? tRoles(user.role as "admin")
@@ -60,6 +65,9 @@ export function Topbar({
       >
         <span className="ms">menu</span>
       </button>
+      <Link href={`/${locale}/dashboard`} className="topbar-brand" aria-label="شركة مكتسبات العقارية · Muktasabat Real Estate">
+        <span className="brand-mark"><BrandLogo size={24} /></span>
+      </Link>
       <h1>{title}</h1>
       <div style={{ flex: 1 }} />
 

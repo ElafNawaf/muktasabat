@@ -688,24 +688,22 @@ def _send_owner_invite(to: str, owner_name: str, url: str, locale: Locale) -> No
         "You've been invited to the Muktasabat owner portal to follow your properties, leases, revenue and statements.\n"
         f"Set your password to activate your account (link valid for 72 hours):\n{url}\n\nUsername: {to}\n"
     )
-    html = f"""
-<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;color:#1f2328">
-  <div style="background:#7B1A1A;color:#fff;padding:20px 24px;border-radius:10px 10px 0 0">
-    <strong style="font-size:18px">شركة مكتسبات العقارية · Muktasabat Real Estate</strong>
-  </div>
-  <div style="border:1px solid #e3ddd2;border-top:0;padding:24px;border-radius:0 0 10px 10px">
-    <div dir="rtl" style="text-align:right">
-      <p>مرحباً {owner_name_html}،</p>
-      <p>تمت دعوتك إلى <strong>بوابة الملاك</strong> لمتابعة عقاراتك وعقود الإيجار والتحصيل وصافي الإيرادات وكشوف الحساب الشهرية.</p>
-    </div>
-    <p style="text-align:center;margin:28px 0">
-      <a href="{url}" style="background:#7B1A1A;color:#fff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:bold">تفعيل الحساب · Activate account</a>
-    </p>
-    <p dir="ltr">Hello {owner_name_html}, you've been invited to the <strong>owner portal</strong> to follow your properties, leases, collections, net revenue and monthly statements.</p>
-    <p style="font-size:13px;color:#5d636b">Username / اسم المستخدم: <strong dir="ltr">{to}</strong><br>
-    The link is valid for 72 hours. · الرابط صالح لمدة 72 ساعة.</p>
-  </div>
-</div>"""
+    from api.email import _branded, _button
+
+    to_html = _esc(to)
+    html = _branded(
+        f"<p>مرحباً {owner_name_html}،</p>"
+        "<p>تمت دعوتك إلى <strong>بوابة الملاك</strong> لمتابعة عقاراتك وعقود الإيجار والتحصيل وصافي الإيرادات وكشوف الحساب الشهرية.</p>"
+        f"<p>اسم المستخدم: <strong dir='ltr'>{to_html}</strong></p>"
+        + _button(url, "تفعيل الحساب")
+        + "<p style='color:#5D636B;font-size:13px'>الرابط صالح لمدة 72 ساعة.</p>",
+        f"<p>Hello {owner_name_html},</p>"
+        "<p>You've been invited to the <strong>owner portal</strong> to follow your properties, leases, collections, net revenue and monthly statements.</p>"
+        f"<p>Username: <strong>{to_html}</strong></p>"
+        + _button(url, "Activate account")
+        + "<p style='color:#5D636B;font-size:13px'>The link is valid for 72 hours.</p>",
+        preheader="دعوة إلى بوابة الملاك · Your owner portal invitation",
+    )
     send_email(EmailMessage(to=to, subject=subject, text_body=text, html_body=html))
 
 

@@ -84,24 +84,48 @@ def send_email(msg: EmailMessage) -> bool:
         return False
 
 
-def _branded(inner_ar: str, inner_en: str) -> str:
-    """Bilingual branded HTML shell (Arabic first, English below)."""
+def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
+    """The one Muktasabat email template: logo + Arabic/English company name on
+    the brand maroon, Arabic section (RTL) then English section, branded footer.
+    Table-based inline-styled HTML so Gmail, Outlook and iOS Mail render it."""
+    base = get_settings().web_base_url.rstrip("/")
+    logo = f"{base}/brand/email-logo.png"
+    font = "Tahoma,Segoe UI,Arial,sans-serif"
+    pre = (
+        f"<div style='display:none;max-height:0;overflow:hidden;opacity:0'>{preheader}</div>" if preheader else ""
+    )
     return (
-        "<div style='background:#FAF7F1;padding:24px 0;font-family:Tahoma,Arial,sans-serif'>"
-        "<div style='max-width:560px;margin:0 auto;background:#fff;border:1px solid #E3DDD2;border-radius:8px;overflow:hidden'>"
-        "<div style='background:#7B1A1A;color:#fff;padding:18px 24px;font-size:18px;font-weight:bold' dir='rtl'>"
-        "شركة مكتسبات العقارية <span style='font-weight:normal;opacity:.8;font-size:13px'>Muktasabat Real Estate</span></div>"
-        f"<div dir='rtl' style='padding:20px 24px;text-align:right;color:#1F2328;line-height:1.8'>{inner_ar}</div>"
-        "<hr style='border:0;border-top:1px solid #E3DDD2;margin:0 24px'>"
-        f"<div dir='ltr' style='padding:20px 24px;color:#1F2328;line-height:1.6'>{inner_en}</div>"
-        "</div></div>"
+        f"<!doctype html><html><body style='margin:0;padding:0;background:#F5EFE4'>{pre}"
+        "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#F5EFE4'><tr><td align='center' style='padding:28px 12px'>"
+        "<table role='presentation' width='600' cellpadding='0' cellspacing='0' style='width:100%;max-width:600px;background:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #E3DDD2'>"
+        # Header: logo + names
+        "<tr><td style='background:#7B1A1A;padding:22px 28px'>"
+        "<table role='presentation' dir='rtl' width='100%' cellpadding='0' cellspacing='0'><tr>"
+        f"<td width='62' style='width:56px'><img src='{logo}' width='48' height='48' alt='Muktasabat' style='display:block;border:0;border-radius:10px;margin-left:14px'></td>"
+        f"<td dir='rtl' style='text-align:right;font-family:{font};color:#FFFFFF'>"
+        "<div style='font-size:20px;font-weight:bold;line-height:1.3'>شركة مكتسبات العقارية</div>"
+        "<div style='font-size:13px;color:#E9DCC6;letter-spacing:.3px' dir='ltr'>Muktasabat Real Estate</div>"
+        "</td></tr></table></td></tr>"
+        "<tr><td style='height:4px;background:#E9DCC6;line-height:4px;font-size:0'>&nbsp;</td></tr>"
+        # Arabic
+        f"<tr><td dir='rtl' style='padding:28px 28px 8px;text-align:right;font-family:{font};font-size:15px;line-height:1.9;color:#1F2328'>{inner_ar}</td></tr>"
+        "<tr><td style='padding:0 28px'><div style='border-top:1px solid #E3DDD2;height:1px;line-height:1px;font-size:0'>&nbsp;</div></td></tr>"
+        # English
+        f"<tr><td dir='ltr' style='padding:20px 28px 28px;text-align:left;font-family:{font};font-size:14.5px;line-height:1.7;color:#1F2328'>{inner_en}</td></tr>"
+        # Footer
+        f"<tr><td style='background:#FAF7F1;border-top:1px solid #E3DDD2;padding:18px 28px;font-family:{font};font-size:12.5px;color:#5D636B;text-align:center;line-height:1.8'>"
+        "<div dir='rtl'><strong style='color:#7B1A1A'>شركة مكتسبات العقارية</strong> · Muktasabat Real Estate</div>"
+        f"<div dir='ltr'><a href='{base}' style='color:#7B1A1A;text-decoration:none'>muktasabat.com</a> &nbsp;|&nbsp; 920007039</div>"
+        "<div dir='rtl'>رسالة آلية، يرجى عدم الرد عليها.</div>"
+        "<div dir='ltr'>This is an automated message, please do not reply.</div>"
+        "</td></tr></table></td></tr></table></body></html>"
     )
 
 
 def _button(url: str, label: str) -> str:
     return (
-        f"<p><a href='{url}' style='display:inline-block;background:#7B1A1A;color:#fff;"
-        f"text-decoration:none;padding:12px 22px;border-radius:6px;font-weight:bold'>{label}</a></p>"
+        f"<p style='margin:22px 0'><a href='{url}' style='display:inline-block;background:#7B1A1A;color:#FFFFFF;"
+        f"text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:bold;font-size:15px'>{label}</a></p>"
     )
 
 

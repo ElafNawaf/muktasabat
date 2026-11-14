@@ -175,3 +175,9 @@ html:has(.ow-root), html:has(.ow-root) body { height: auto !important; overflow:
   opacity: .14;
   pointer-events: none;
 }
+.ow-statement__brand { display: flex; align-items: center; gap: 10px; flex-basis: 100%; margin-bottom: 8px; }
+.ow-statement__brand strong { display: block; font-family: var(--font-display); color: var(--ow-maroon); font-size: 17px; }
+.ow-statement__brand small { display: block; color: var(--ow-mute); font-size: 12px; }
+.ow-statement__h { flex-wrap: wrap; }
+@media screen { .ow-statement__brand { display: none; } }
+@media print { .ow-statement__brand { display: flex !important; } }

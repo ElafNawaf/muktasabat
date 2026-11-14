@@ -234,12 +234,17 @@ def _notify(recipients: list[str], subject: str, lines: list[tuple[str, str | No
         for k, v in lines
     )
     title = f"{subject_ar} | {subject}" if subject_ar else subject
-    html = (
-        "<div style='background:#FAF7F1;padding:24px 0;font-family:Tahoma,Arial,sans-serif'>"
-        "<div style='max-width:600px;margin:0 auto;background:#fff;border:1px solid #E3DDD2;border-radius:8px;overflow:hidden'>"
-        "<div style='background:#7B1A1A;color:#fff;padding:16px 24px;font-weight:bold' dir='rtl'>شركة مكتسبات العقارية · Muktasabat</div>"
-        f"<div dir='rtl' style='padding:20px 24px;text-align:right'><h2 style='color:#7B1A1A;margin:0 0 12px;font-size:17px'>{escape(title)}</h2>"
-        f"<table dir='rtl' style='font-size:14px;border-collapse:collapse'>{rows}</table></div></div></div>"
+    from api.email import _branded
+
+    table = (
+        "<table role='presentation' cellpadding='0' cellspacing='0' style='width:100%;border-collapse:collapse;font-size:14px'>"
+        + rows.replace("<tr>", "<tr style='border-bottom:1px solid #F0EBE2'>")
+        + "</table>"
+    )
+    ar_title, _, en_title = title.partition(" | ")
+    html = _branded(
+        f"<h2 style='margin:0 0 14px;font-size:18px;color:#7B1A1A'>{escape(ar_title)}</h2>{table}",
+        f"<p style='margin:0;color:#5D636B'>{escape(en_title or ar_title)}. Details are listed above (Arabic labels with English beside them).</p>",
     )
     for to in recipients:
         send_email(EmailMessage(to=to, subject=title, text_body=text, html_body=html))
@@ -606,11 +611,9 @@ def delivery_test_email(payload: _TestEmailIn, _u: Perm("website", "edit")):
                 to=to,
                 subject="رسالة تجريبية | Muktasabat test email",
                 text_body="تم إرسال هذه الرسالة بنجاح من نظام مكتسبات.\nEmail delivery from muktasabat.com is working.",
-                html_body=(
-                    "<div dir='rtl' style='font-family:Tahoma,Arial,sans-serif;max-width:560px;margin:auto;border:1px solid #E3DDD2;border-radius:8px;overflow:hidden'>"
-                    "<div style='background:#7B1A1A;color:#fff;padding:16px 24px;font-weight:bold'>شركة مكتسبات العقارية · Muktasabat</div>"
-                    "<p style='padding:16px 24px;margin:0'>تم إرسال هذه الرسالة بنجاح من نظام مكتسبات.</p>"
-                    "<p dir='ltr' style='padding:0 24px 16px;margin:0'>Email delivery from muktasabat.com is working.</p></div>"
+                html_body=__import__("api.email", fromlist=["_branded"])._branded(
+                    "<p>تم إرسال هذه الرسالة بنجاح من نظام مكتسبات. هكذا ستظهر رسائلنا للعملاء والملاك والموظفين.</p>",
+                    "<p>Email delivery from muktasabat.com is working. This is how our emails look to clients, owners and staff.</p>",
                 ),
             )
         )

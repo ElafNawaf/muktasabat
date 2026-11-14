@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/BrandLogo";
 import { PrintButton } from "@/components/owner/PrintButton";
 import { L, MONTHS, day, money, ownerApi } from "@/lib/owner";
 
@@ -40,6 +41,10 @@ export default async function OwnerStatements({ params, searchParams }: { params
 
       <article className="ow-card ow-statement">
         <header className="ow-statement__h">
+          <div className="ow-statement__brand">
+            <span className="ow-brand__mark"><BrandLogo size={30} /></span>
+            <span><strong>شركة مكتسبات العقارية</strong><small>Muktasabat Real Estate</small></span>
+          </div>
           <div>
             <h2>{t("كشف حساب المالك", "Owner statement")}</h2>
             <p>{s.owner.name}</p>
