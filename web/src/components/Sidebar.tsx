@@ -93,17 +93,13 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
           </div>
           {!collapsed && (
             <div className="brand-text">
-              <span className="ar">شركة مكتسبات</span>
+              <span className="ar">شركة مكتسبات العقارية</span>
               <span className="en">Muktasabat Real Estate</span>
             </div>
           )}
         </div>
-        <button
-          className="sidebar-collapse-btn"
-          onClick={() => setCollapsed((c) => !c)}
-          title="Collapse"
-        >
-          <span className="ms ms-sm">{collapsed ? "menu_open" : "menu"}</span>
+        <button className="sidebar-close-btn" onClick={closeMobile} aria-label={locale === "ar" ? "إغلاق القائمة" : "Close menu"}>
+          <span className="ms ms-sm">close</span>
         </button>
       </div>
 
@@ -118,10 +114,11 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
                   key={it.id}
                   href={it.href}
                   className={"nav-item" + (isActive ? " active" : "")}
+                  aria-current={isActive ? "page" : undefined}
                   title={collapsed ? it.label : undefined}
                   onClick={closeMobile}
                 >
-                  <span className="ms">{it.icon}</span>
+                  <span className="ms" aria-hidden>{it.icon}</span>
                   <span className="label">{it.label}</span>
                   {it.badge && <span className="badge">{it.badge}</span>}
                 </Link>
@@ -146,6 +143,15 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
         >
           {locale === "en" ? "AR" : "EN"}
         </Link>
+        <button
+          className="sidebar-collapse-btn"
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? (locale === "ar" ? "توسيع القائمة" : "Expand menu") : (locale === "ar" ? "طي القائمة" : "Collapse menu")}
+          aria-label={collapsed ? (locale === "ar" ? "توسيع القائمة" : "Expand menu") : (locale === "ar" ? "طي القائمة" : "Collapse menu")}
+        >
+          <span className="ms ms-sm">{collapsed ? "left_panel_open" : "left_panel_close"}</span>
+        </button>
+
       </div>
     </aside>
   );

@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useMobileNav } from "./MobileNavProvider";
 import { useTheme } from "./ThemeProvider";
@@ -21,6 +21,26 @@ export function Topbar({
   const [signingOut, setSigningOut] = useState(false);
 
   const initials = user.username.slice(0, 2).toUpperCase();
+  const tRoles = useTranslations("roles");
+  const roleLabel = (["admin", "manager", "viewer", "owner"] as const).includes(user.role as "admin")
+    ? tRoles(user.role as "admin")
+    : user.role;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   async function logout() {
     if (signingOut) return;
@@ -43,30 +63,37 @@ export function Topbar({
       <h1>{title}</h1>
       <div style={{ flex: 1 }} />
 
-      <div className="topbar-search">
-        <span className="ms">search</span>
-        <input placeholder={t("search") + "…"} />
-      </div>
-
-      <button className="icon-btn" onClick={toggle} title="Theme">
+      <button className="icon-btn" onClick={toggle} title="Theme" aria-label="Toggle theme">
         <span className="ms">{theme === "light" ? "dark_mode" : "light_mode"}</span>
       </button>
 
-      <button className="icon-btn topbar-notif-btn" title="Notifications">
-        <span className="ms">notifications</span>
-        <span className="dot" />
-      </button>
-
-      <button className="topbar-avatar" onClick={logout} title={t("logout")}>
-        <div className="avatar">{initials}</div>
-        <div
-          className="topbar-user-text"
-          style={{ display: "flex", flexDirection: "column", gap: 2, lineHeight: 1.1 }}
+      <div className="user-menu" ref={menuRef}>
+        <button
+          className="topbar-avatar"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
         >
-          <span className="name">{user.username}</span>
-        </div>
-        <span className="role-pill">{user.role}</span>
-      </button>
+          <div className="avatar">{initials}</div>
+          <span className="topbar-user-text">
+            <span className="name">{user.username}</span>
+            <span className="role">{roleLabel}</span>
+          </span>
+          <span className="ms ms-sm topbar-user-caret" aria-hidden>expand_more</span>
+        </button>
+        {menuOpen && (
+          <div className="user-menu__pop" role="menu">
+            <div className="user-menu__who">
+              <strong>{user.username}</strong>
+              <small>{roleLabel}</small>
+            </div>
+            <button role="menuitem" className="user-menu__item" onClick={logout} disabled={signingOut}>
+              <span className="ms ms-sm" aria-hidden>logout</span>
+              {t("logout")}
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }

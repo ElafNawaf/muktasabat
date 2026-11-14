@@ -1,8 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Children, useId, type ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { Children, useId, useState, type ReactNode } from "react";
 
+/** Modern single-row toolbar: search grows, filters sit inline as pill
+ *  selects, result count + clear on the far end. Wraps on small screens. */
 export function FilterBar({
   children,
   trailing,
@@ -15,33 +17,27 @@ export function FilterBar({
   search?: ReactNode;
 }) {
   const t = useTranslations("filters");
-  const hasFieldFilters = Children.count(children) > 0;
-
+  const [more, setMore] = useState(false);
+  const items = Children.toArray(children);
+  // Keep the toolbar to one calm row: search + 3 filters, the rest on demand.
+  const VISIBLE = search ? 3 : 4;
+  const shown = more ? items : items.slice(0, VISIBLE);
+  const hidden = items.length - VISIBLE;
+  const ar = useLocale() === "ar";
   return (
-    <section className="filter-panel" aria-label={t("panelTitle")}>
-      <div className="filter-panel-header">
-        <div className="filter-panel-title">
-          <span className="ms filter-panel-title-icon" aria-hidden>tune</span>
-          <span>{t("panelTitle")}</span>
-        </div>
-        {trailing ? <div className="filter-panel-header-actions">{trailing}</div> : null}
+    <section className="fbar" aria-label={t("panelTitle")}>
+      {statusRow ? <div className="fbar-status">{statusRow}</div> : null}
+      <div className="fbar-row">
+        {search ? <div className="fbar-search">{search}</div> : null}
+        {shown}
+        {hidden > 0 && (
+          <button type="button" className={`fbar-more${more ? " is-on" : ""}`} onClick={() => setMore((m) => !m)} aria-expanded={more}>
+            <span className="ms ms-sm" aria-hidden>{more ? "expand_less" : "tune"}</span>
+            {more ? (ar ? "فلاتر أقل" : "Fewer filters") : (ar ? `فلاتر أخرى (${hidden})` : `More filters (${hidden})`)}
+          </button>
+        )}
+        {trailing ? <div className="fbar-end">{trailing}</div> : null}
       </div>
-
-      {(search || statusRow) && (
-        <div className="filter-panel-primary">
-          {search ? <div className="filter-panel-search">{search}</div> : null}
-          {statusRow ? <div className="filter-panel-status">{statusRow}</div> : null}
-        </div>
-      )}
-
-      {hasFieldFilters ? (
-        <div className="filter-panel-fields">
-          <div className="filter-panel-fields-head">
-            <span className="filter-panel-fields-label">{t("refineBy")}</span>
-          </div>
-          <div className="filter-panel-grid">{children}</div>
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -82,8 +78,8 @@ export function FilterSelect({
   value,
   onChange,
   options,
-  minWidth = 148,
-  maxWidth = 220,
+  minWidth,
+  maxWidth = 260,
 }: {
   label: string;
   value: string;
@@ -93,26 +89,21 @@ export function FilterSelect({
   maxWidth?: number;
 }) {
   const selectId = useId();
+  const active = options.length > 0 && value !== options[0].value;
+  const current = options.find((o) => o.value === value)?.label ?? options[0]?.label ?? "";
   return (
-    <div className="filter-control" style={{ minWidth, maxWidth }}>
-      <label className="filter-control-label" htmlFor={selectId}>{label}</label>
-      <div className="filter-select-wrap">
-        <select
-          id={selectId}
-          className="select filter-select"
-          aria-label={label}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <span className="ms filter-select-icon" aria-hidden>expand_more</span>
-      </div>
-    </div>
+    <label className={`chip-select${active ? " is-active" : ""}`} htmlFor={selectId} style={{ minWidth, maxWidth }}>
+      <span className="chip-select__label">{label}</span>
+      <span className="chip-select__value">{current}</span>
+      <span className="ms chip-select__icon" aria-hidden>expand_more</span>
+      <select id={selectId} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -141,7 +132,7 @@ export function FilterSearch({
 
 export function FilterClearButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" className="btn btn-sm btn-secondary filter-clear-btn" onClick={onClick}>
+    <button type="button" className="fbar-clear" onClick={onClick}>
       <span className="ms ms-sm" aria-hidden>filter_alt_off</span>
       {label}
     </button>

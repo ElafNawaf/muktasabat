@@ -66,7 +66,16 @@ def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ):
     """OAuth2-compatible login (form-encoded). Returns JWT access + refresh tokens."""
-    user = db.scalar(select(User).where(User.username == form_data.username))
+    # Accept the username (any capitalisation) or the account email, so people
+    # who only remember the address they reset the password for can sign in.
+    ident = (form_data.username or "").strip()
+    user = db.scalar(select(User).where(User.username == ident))
+    if user is None and ident:
+        user = db.scalar(
+            select(User).where(
+                (func.lower(User.username) == ident.lower()) | (func.lower(User.email) == ident.lower())
+            )
+        )
     if user is None or not user.check_password(form_data.password) or not user.is_active_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -109,8 +118,8 @@ def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
 
         # Email link uses the public web base URL; locale is unknown here so
         # the frontend's /reset-password route handles both locales.
-        reset_url = _absolute(f"/en/reset-password?token={raw}")
-        send_password_reset_email(to=user.email, reset_url=reset_url)
+        reset_url = _absolute(f"/ar/reset-password?token={raw}")
+        send_password_reset_email(to=user.email, reset_url=reset_url, username=user.username)
 
         if settings.reset_password_debug:
             debug_url = f"/reset-password?token={raw}"
@@ -331,3 +340,12 @@ def invite_user(payload: InviteUserRequest, db: DbSession, _admin: AdminUser):
 
     debug_url = f"/reset-password?token={raw}" if settings.reset_password_debug else None
     return InviteUserResponse(user=UserRead.model_validate(user), debug_invite_url=debug_url)
+
+
+@router.post("/admin/users/reinvite")
+def reinvite_all_users(db: DbSession, admin: AdminUser):
+    """Email every active user (except `admin`) their username and a fresh
+    72-hour set-password link. Returns masked per-user results."""
+    from api.services.reinvite import reinvite_users
+
+    return reinvite_users(db, exclude_usernames={"admin"}, actor=admin)
