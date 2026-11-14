@@ -56,7 +56,7 @@ SITE = {
     "phone": "920007039",
     "whatsapp": "+966920007039",
     "address": _b("الرياض، المملكة العربية السعودية", "Riyadh, Saudi Arabia"),
-    "working_hours": _b("الأحد – الخميس، 9 ص – 5 م", "Sun – Thu, 9 AM – 5 PM"),
+    "working_hours": _b("السبت – الخميس، 9 ص – 9 م", "Sat – Thu, 9 AM – 9 PM"),
     "map_lat": 24.7136,
     "map_lng": 46.6753,
     "social": {},
@@ -418,4 +418,16 @@ def migrate_cms_v3(db: Session) -> None:
         data["maps_url"] = OFFICE_MAPS_URL
     row.data = data
     _mark(row, "v3-office-map")
+    db.commit()
+
+
+# ── v4: office hours confirmed by the company (Sat–Thu, 9 AM – 9 PM) ──
+def migrate_cms_v4(db: Session) -> None:
+    row = db.get(SiteSettings, 1)
+    if row is None or _done(row, "v4-hours"):
+        return
+    data = dict(row.data or {})
+    data["working_hours"] = SITE["working_hours"]
+    row.data = data
+    _mark(row, "v4-hours")
     db.commit()
