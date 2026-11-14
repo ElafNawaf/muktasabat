@@ -13,7 +13,7 @@ import { api, ApiError, REFRESH_COOKIE, TOKEN_COOKIE } from "./api";
 import type { EmailLogDetail } from "@/app/[locale]/(app)/email-log/EmailLogClient";
 
 import type { ReinviteResult } from "./actions";
-import type { AccountActivity, Profile, TicketDetail, TicketPriority, TicketStatus } from "./types";
+import type { AccountActivity, Profile, TicketCategory, TicketDetail, TicketPriority, TicketStatus } from "./types";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -139,8 +139,10 @@ export async function getActivity(): Promise<Result<AccountActivity[]>> {
 export type TriageInput = {
   status?: TicketStatus;
   priority?: TicketPriority;
+  category?: TicketCategory;
   assignee_id?: number | null;
   unassign?: boolean;
+  resolution?: string;
 };
 
 const SUPPORT_PATHS = ["/[locale]/(app)/support"];
@@ -155,6 +157,10 @@ export async function closeTicket(id: number): Promise<Result<TicketDetail>> {
 
 export async function reopenTicket(id: number): Promise<Result<TicketDetail>> {
   return run(() => api.post<TicketDetail>(`/api/v1/support/tickets/${id}/reopen`), SUPPORT_PATHS);
+}
+
+export async function rateTicket(id: number, rating: number, comment?: string): Promise<Result<TicketDetail>> {
+  return run(() => api.post<TicketDetail>(`/api/v1/support/tickets/${id}/rate`, { rating, comment }), SUPPORT_PATHS);
 }
 
 // ------------------------------------------------------- admin helpdesk

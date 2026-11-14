@@ -20,7 +20,7 @@ export default async function SupportPage({
   const me = await requireAuth(locale);
 
   const [ctx, stats, tickets] = await Promise.all([
-    api.get<{ is_staff: boolean }>("/api/v1/support/me"),
+    api.get<{ is_staff: boolean; is_technician?: boolean }>("/api/v1/support/me"),
     api.get<TicketStats>("/api/v1/support/stats"),
     api.get<TicketSummary[]>("/api/v1/support/tickets"),
   ]);
@@ -32,6 +32,7 @@ export default async function SupportPage({
         tickets={tickets}
         stats={stats}
         isStaff={ctx.is_staff}
+        isTechnician={Boolean(ctx.is_technician)}
         meId={me.id}
         locale={locale}
         openNew={openNew === "1"}

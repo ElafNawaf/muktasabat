@@ -26,6 +26,7 @@ from api.database import (
     migrate_tenant_escorts_to_companions,
     ensure_user_email_verification_columns,
     ensure_user_password_reset_columns,
+    ensure_support_ticket_columns,
     ensure_user_profile_columns,
 )
 from api.logging_config import setup_logging
@@ -72,6 +73,7 @@ async def lifespan(app: FastAPI):
     ensure_user_password_reset_columns(engine)
     ensure_user_email_verification_columns(engine)
     ensure_user_profile_columns(engine)
+    ensure_support_ticket_columns(engine)
     ensure_building_assignee_column(engine)
     ensure_building_location_columns(engine)
     ensure_building_extended_columns(engine)

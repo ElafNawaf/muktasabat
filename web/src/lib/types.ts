@@ -510,6 +510,7 @@ export type TicketUser = {
   username: string;
   full_name: string | null;
   avatar_url: string | null;
+  job_title?: string | null;
 };
 
 export type TicketMessage = {
@@ -537,12 +538,51 @@ export type TicketSummary = {
   assignee: TicketUser | null;
   message_count: number;
   awaiting_me: boolean;
+  assigned_at: string | null;
+  first_response_at: string | null;
+  response_due_at: string | null;
+  resolve_due_at: string | null;
+  resolved_at: string | null;
+  /** on_track | due_soon | breached | met | late | none */
+  sla_state: TicketSlaState;
+  rating: number | null;
+};
+
+export type TicketSlaState = "on_track" | "due_soon" | "breached" | "met" | "late" | "none";
+
+export type TicketEventKind =
+  | "created"
+  | "status"
+  | "priority"
+  | "category"
+  | "assigned"
+  | "unassigned"
+  | "reply"
+  | "note"
+  | "resolved"
+  | "reopened"
+  | "closed"
+  | "rated";
+
+export type TicketEvent = {
+  id: number;
+  kind: TicketEventKind;
+  from_value: string | null;
+  to_value: string | null;
+  public: boolean;
+  created_at: string;
+  actor: TicketUser | null;
 };
 
 export type TicketDetail = TicketSummary & {
   page_url: string | null;
   user_agent: string | null;
+  resolution: string | null;
+  rating_comment: string | null;
+  rated_at: string | null;
+  can_manage: boolean;
   messages: TicketMessage[];
+  events: TicketEvent[];
 };
 
 export type TicketStats = {
@@ -552,4 +592,8 @@ export type TicketStats = {
   resolved: number;
   closed: number;
   urgent_open: number;
+  unassigned: number;
+  assigned_to_me: number;
+  breached: number;
+  avg_rating: number | null;
 };

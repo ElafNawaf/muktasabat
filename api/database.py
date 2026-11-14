@@ -440,3 +440,30 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def ensure_support_ticket_columns(engine) -> None:
+    """SLA / resolution / rating columns on support_tickets (create_all makes the
+    new support_ticket_events table, but never ALTERs an existing one)."""
+    insp = inspect(engine)
+    if not insp.has_table("support_tickets"):
+        return
+    existing = {c["name"] for c in insp.get_columns("support_tickets")}
+    ts = "DATETIME" if engine.dialect.name == "sqlite" else "TIMESTAMP"
+    wanted = {
+        "assigned_at": ts,
+        "first_response_at": ts,
+        "response_due_at": ts,
+        "resolve_due_at": ts,
+        "resolved_at": ts,
+        "resolution": "TEXT",
+        "rating": "INTEGER",
+        "rating_comment": "TEXT",
+        "rated_at": ts,
+    }
+    stmts = [f"ALTER TABLE support_tickets ADD COLUMN {c} {d}" for c, d in wanted.items() if c not in existing]
+    if not stmts:
+        return
+    with engine.begin() as conn:
+        for stmt in stmts:
+            conn.execute(text(stmt))

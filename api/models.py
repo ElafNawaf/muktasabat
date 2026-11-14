@@ -994,11 +994,29 @@ class SupportTicket(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # ── Service levels (SLA) — targets are set from the priority ────────────
+    assigned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    first_response_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    response_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    resolve_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    # Summary of the fix, written by the technician when resolving.
+    resolution: Mapped[Optional[str]] = mapped_column(Text)
+    # Requester satisfaction (1–5) after the ticket is resolved / closed.
+    rating: Mapped[Optional[int]] = mapped_column(Integer)
+    rating_comment: Mapped[Optional[str]] = mapped_column(Text)
+    rated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
     user: Mapped["User"] = relationship(foreign_keys=[user_id])
     assignee: Mapped[Optional["User"]] = relationship(foreign_keys=[assignee_id])
     messages: Mapped[list["SupportTicketMessage"]] = relationship(
         back_populates="ticket",
         order_by="SupportTicketMessage.created_at",
+        cascade="all, delete-orphan",
+    )
+    events: Mapped[list["SupportTicketEvent"]] = relationship(
+        back_populates="ticket",
+        order_by="SupportTicketEvent.id",
         cascade="all, delete-orphan",
     )
 
@@ -1022,6 +1040,33 @@ class SupportTicketMessage(Base):
 
     ticket: Mapped["SupportTicket"] = relationship(back_populates="messages")
     author: Mapped[Optional["User"]] = relationship()
+
+
+class SupportTicketEvent(Base):
+    """Audit trail of a ticket (سجل التذكرة): every status, priority, category
+    and assignment change, replies, notes, ratings — who did it and when.
+
+    ``public`` events are shown to the requester; internal ones (notes) only to
+    support staff and the assignee.
+    """
+
+    __tablename__ = "support_ticket_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(
+        ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    actor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    # created | status | priority | category | assigned | unassigned | reply |
+    # note | resolved | reopened | closed | rated
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    from_value: Mapped[Optional[str]] = mapped_column(String(200))
+    to_value: Mapped[Optional[str]] = mapped_column(String(200))
+    public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    ticket: Mapped["SupportTicket"] = relationship(back_populates="events")
+    actor: Mapped[Optional["User"]] = relationship()
 
 
 class EmailLog(Base):

@@ -2487,6 +2487,43 @@ a.icon-btn { text-decoration: none; }
 .ticket-details { display: flex; flex-direction: column; gap: 12px; font-size: 13px; }
 .ticket-detail-row { display: flex; flex-direction: column; gap: 4px; }
 
+/* ── Support desk: progress, SLA, activity, rating ─────────────────────── */
+.ticket-steps { display: flex; gap: 0; margin: 14px 0 0; padding: 0; list-style: none; }
+.ticket-steps li { flex: 1; position: relative; text-align: center; font-size: 11.5px; color: var(--color-text-secondary); padding-top: 22px; min-width: 0; }
+.ticket-steps li::before { content: ""; position: absolute; top: 6px; inset-inline-start: 50%; width: 12px; height: 12px; margin-inline-start: -6px; border-radius: 50%; background: var(--color-border); z-index: 1; }
+.ticket-steps li::after { content: ""; position: absolute; top: 11px; inset-inline-start: calc(-50% + 6px); width: calc(100% - 12px); height: 2px; background: var(--color-border); }
+.ticket-steps li:first-child::after { display: none; }
+.ticket-steps li.done::before, .ticket-steps li.done::after, .ticket-steps li.current::after { background: var(--color-primary); }
+.ticket-steps li.current::before { background: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-soft); }
+.ticket-steps li.current { color: var(--color-text-primary); font-weight: 600; }
+.sla-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.sla-chip.on_track, .sla-chip.met { background: var(--color-success-soft); color: var(--color-success); }
+.sla-chip.due_soon, .sla-chip.late { background: var(--color-warning-soft); color: var(--color-warning); }
+.sla-chip.breached { background: var(--color-danger-soft); color: var(--color-danger); }
+.sla-chip.none { display: none; }
+.ticket-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ticket-events li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-top: 1px solid var(--color-border); font-size: 12.5px; }
+.ticket-events li:first-child { border-top: 0; }
+.ticket-events .ev-icon { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--color-bg); color: var(--color-text-secondary); }
+.ticket-events .ev-icon .ms { font-size: 15px; }
+.ticket-events li.private .ev-icon { background: var(--color-warning-soft); color: var(--color-warning); }
+.ticket-events time { display: block; color: var(--color-text-secondary); font-size: 11px; margin-top: 2px; }
+.resolution-card { border: 1px solid var(--color-success); background: var(--color-success-soft); border-radius: 12px; padding: 12px 14px; margin: 12px 16px 0; }
+.resolution-card h4 { margin: 0 0 6px; font-size: 13px; color: var(--color-success); display: flex; align-items: center; gap: 6px; }
+.rating-card { border: 1px solid var(--color-border); border-radius: 12px; padding: 14px 16px; margin: 12px 16px 0; background: var(--color-surface); }
+.rating-stars { display: inline-flex; gap: 4px; direction: ltr; }
+.rating-stars button { background: none; border: 0; padding: 2px; cursor: pointer; font-size: 28px; line-height: 1; color: var(--color-border-strong); transition: transform 120ms; }
+.rating-stars button.on { color: #E0A100; }
+.rating-stars button:hover { transform: scale(1.12); }
+.rating-stars.readonly button { cursor: default; font-size: 18px; }
+.assignee-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.assignee-line small { display: block; color: var(--color-text-secondary); font-size: 11px; }
+.msg-body { white-space: pre-wrap; unicode-bidi: plaintext; }
+@media (max-width: 560px) {
+  .ticket-steps li { font-size: 10px; }
+  .resolution-card, .rating-card { margin: 12px 10px 0; }
+}
+
 @media (max-width: 1024px) {
   .support-layout { grid-template-columns: minmax(0, 1fr); }
 }

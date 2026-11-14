@@ -227,24 +227,27 @@ def _notify(recipients: list[str], subject: str, lines: list[tuple[str, str | No
     if not recipients:
         return
     text = "\n".join(f"{_LABELS_AR.get(k, k)} / {k}: {v or '-'}" for k, v in lines)
-    rows = "".join(
-        f"<tr><td style='padding:6px 12px 6px 0;color:#5D636B;white-space:nowrap'>{escape(_LABELS_AR.get(k, k))}"
-        f" <span style='color:#9a9ea4'>{escape(k)}</span></td>"
-        f"<td style='padding:6px 0'>{escape(v or '-')}</td></tr>"
-        for k, v in lines
-    )
     title = f"{subject_ar} | {subject}" if subject_ar else subject
     from api.email import _branded
 
-    table = (
-        "<table role='presentation' cellpadding='0' cellspacing='0' style='width:100%;border-collapse:collapse;font-size:14px'>"
-        + rows.replace("<tr>", "<tr style='border-bottom:1px solid #F0EBE2'>")
-        + "</table>"
-    )
+    def table(label, align: str) -> str:
+        cell = "padding:7px 0 7px 12px" if align == "right" else "padding:7px 12px 7px 0"
+        rows = "".join(
+            f"<tr style='border-bottom:1px solid #F0EBE2'><td style='{cell};color:#5D636B;white-space:nowrap;vertical-align:top;text-align:{align}'>"
+            f"{escape(label(k))}</td><td dir='auto' style='padding:7px 0;vertical-align:top;text-align:{align};word-break:break-word'>"
+            f"{escape(v or '-').replace(chr(10), '<br>')}</td></tr>"
+            for k, v in lines
+        )
+        return ("<table role='presentation' cellpadding='0' cellspacing='0' "
+                f"style='width:100%;border-collapse:collapse;font-size:14px'>{rows}</table>")
+
+    def en_label(k: str) -> str:
+        return k
+
     ar_title, _, en_title = title.partition(" | ")
     html = _branded(
-        f"<h2 style='margin:0 0 14px;font-size:18px;color:#7B1A1A'>{escape(ar_title)}</h2>{table}",
-        f"<p style='margin:0;color:#5D636B'>{escape(en_title or ar_title)}. Details are listed above (Arabic labels with English beside them).</p>",
+        f"<h2 style='margin:0 0 14px;font-size:18px;color:#7B1A1A'>{escape(ar_title)}</h2>{table(lambda k: _LABELS_AR.get(k, k), 'right')}",
+        f"<h2 style='margin:0 0 14px;font-size:17px;color:#7B1A1A'>{escape(en_title or ar_title)}</h2>{table(en_label, 'left')}",
     )
     for to in recipients:
         send_email(EmailMessage(to=to, subject=title, text_body=text, html_body=html, category="website"))

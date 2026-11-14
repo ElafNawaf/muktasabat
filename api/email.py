@@ -182,14 +182,18 @@ def _frame(content_rows: str, *, preheader: str = "") -> str:
         f"<body class='body notranslate' translate='no' style='margin:0;padding:0;background:#F5EFE4'>{pre}"
         "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#F5EFE4'><tr><td align='center' class='mk-outer' style='padding:28px 12px'>"
         "<table role='presentation' width='600' cellpadding='0' cellspacing='0' style='width:100%;max-width:600px;background:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #E3DDD2'>"
-        # Header: logo + names
-        "<tr><td class='mk-maroon' bgcolor='#7B1A1A' style='background:#7B1A1A;background-image:linear-gradient(#7B1A1A,#7B1A1A);padding:22px 28px'>"
-        "<table role='presentation' dir='rtl' width='100%' cellpadding='0' cellspacing='0'><tr>"
-        f"<td width='62' style='width:56px'><img src='{logo}' width='48' height='48' alt='Muktasabat' style='display:block;border:0;border-radius:10px;margin-left:14px'></td>"
-        f"<td dir='rtl' style='text-align:right;font-family:{font};color:#FFFFFF'>"
-        "<div style='font-size:20px;font-weight:bold;line-height:1.3'>شركة مكتسبات العقارية</div>"
-        "<div style='font-size:13px;color:#E9DCC6;letter-spacing:.3px' dir='ltr'>Muktasabat Real Estate</div>"
-        "</td></tr></table></td></tr>"
+        # Header: logo centred above the Arabic + English names. A centred stack
+        # needs no media queries and never depends on RTL/LTR handling, so the
+        # logo sits in the same place in Gmail, Outlook, Apple Mail — phone,
+        # tablet, laptop or a 4K screen.
+        "<tr><td class='mk-maroon' align='center' bgcolor='#7B1A1A' style='background:#7B1A1A;background-image:linear-gradient(#7B1A1A,#7B1A1A);padding:24px 16px 20px;text-align:center'>"
+        "<table role='presentation' align='center' cellpadding='0' cellspacing='0' style='margin:0 auto'><tr>"
+        f"<td align='center' style='padding:0 0 10px'><img src='{logo}' width='56' height='56' alt='Muktasabat' "
+        "style='display:block;width:56px;height:56px;max-width:56px;border:0;outline:none;border-radius:12px;margin:0 auto'></td>"
+        "</tr></table>"
+        f"<div dir='rtl' style='font-family:{font};color:#FFFFFF;font-size:20px;font-weight:bold;line-height:1.35;text-align:center'>شركة مكتسبات العقارية</div>"
+        f"<div dir='ltr' style='font-family:{font};color:#E9DCC6;font-size:13px;letter-spacing:.4px;line-height:1.5;text-align:center'>Muktasabat Real Estate</div>"
+        "</td></tr>"
         "<tr><td style='height:4px;background:#E9DCC6;line-height:4px;font-size:0'>&nbsp;</td></tr>"
         + content_rows +
         # Footer
@@ -206,9 +210,9 @@ def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
     """Arabic section (RTL), divider, English section (LTR) inside the frame."""
     font = "Tahoma,Segoe UI,Arial,sans-serif"
     return _frame(
-        f"<tr><td dir='rtl' style='padding:28px 28px 8px;text-align:right;font-family:{font};font-size:15px;line-height:1.9;color:#1F2328'>{inner_ar}</td></tr>"
+        f"<tr><td dir='rtl' class='mk-body' style='padding:28px 28px 8px;text-align:right;font-family:{font};font-size:15px;line-height:1.9;color:#1F2328'>{inner_ar}</td></tr>"
         "<tr><td style='padding:0 28px'><div style='border-top:1px solid #E3DDD2;height:1px;line-height:1px;font-size:0'>&nbsp;</div></td></tr>"
-        f"<tr><td dir='ltr' style='padding:20px 28px 28px;text-align:left;font-family:{font};font-size:14.5px;line-height:1.7;color:#1F2328'>{inner_en}</td></tr>",
+        f"<tr><td dir='ltr' class='mk-body' style='padding:20px 28px 28px;text-align:left;font-family:{font};font-size:14.5px;line-height:1.7;color:#1F2328'>{inner_en}</td></tr>",
         preheader=preheader,
     )
 
@@ -425,84 +429,4 @@ def send_email_change_alert(to: str, new_email: str, username: str, locale: str 
         + _MUTED.format("إن لم تقم بذلك، غيّر كلمة المرور فورًا وتواصل مع الدعم الفني."),
         en=f"<p>A request was made to change the email of <strong>{u}</strong> to <strong>{n}</strong>.</p>"
         + _MUTED.format("If this wasn't you, change your password right away and contact support."),
-    )
-
-
-def send_ticket_created_to_staff(
-    to: str, ticket_ref: str, subject: str, requester: str, priority: str, url: str
-) -> bool:
-    s, r, p = _esc(subject), _esc(requester), _esc(priority)
-    return _notice(
-        to,
-        category="support",
-        subject_ar=f"تذكرة دعم جديدة {ticket_ref}",
-        subject_en=f"New support ticket {ticket_ref}",
-        ar=f"<p>فتح <strong>{r}</strong> تذكرة دعم جديدة.</p><p>الموضوع: <strong>{s}</strong><br>الأولوية: {p}</p>",
-        en=f"<p><strong>{r}</strong> opened a new support ticket.</p><p>Subject: <strong>{s}</strong><br>Priority: {p}</p>",
-        button=(url, "عرض التذكرة", "View ticket"),
-    )
-
-
-def send_ticket_received(to: str, ticket_ref: str, subject: str, url: str, locale: str | None = None) -> bool:
-    s = _esc(subject)
-    return _notice(
-        to,
-        category="support",
-        subject_ar=f"استلمنا طلبك {ticket_ref}",
-        subject_en=f"We received your request {ticket_ref}",
-        ar=f"<p>شكرًا لتواصلك. استلمنا تذكرتك <strong>{s}</strong> برقم {ticket_ref}.</p>"
-        + _MUTED.format("سيرد فريق الدعم خلال ساعات العمل (السبت–الخميس، 9 ص – 9 م)."),
-        en=f"<p>Thanks for reaching out. We received your ticket <strong>{s}</strong> ({ticket_ref}).</p>"
-        + _MUTED.format("Our support team will reply during office hours (Sat–Thu, 9 AM–9 PM)."),
-        button=(url, "متابعة التذكرة", "Track ticket"),
-    )
-
-
-def send_ticket_reply_to_user(
-    to: str, ticket_ref: str, subject: str, excerpt: str, url: str, locale: str | None = None
-) -> bool:
-    s, x = _esc(subject), _esc(excerpt)
-    quote = f"<p style='border-inline-start:3px solid #E5DCCB;padding:4px 12px;color:#374151'>{x}</p>"
-    return _notice(
-        to,
-        category="support",
-        subject_ar=f"رد جديد على تذكرتك {ticket_ref}",
-        subject_en=f"New reply on your ticket {ticket_ref}",
-        ar=f"<p>رد فريق الدعم على تذكرتك <strong>{s}</strong>:</p>{quote}",
-        en=f"<p>Support replied to your ticket <strong>{s}</strong>:</p>{quote}",
-        button=(url, "عرض الرد", "View reply"),
-    )
-
-
-def send_ticket_status_to_user(
-    to: str,
-    ticket_ref: str,
-    subject: str,
-    status_ar: str,
-    status_en: str,
-    url: str,
-    locale: str | None = None,
-) -> bool:
-    s = _esc(subject)
-    return _notice(
-        to,
-        category="support",
-        subject_ar=f"تحديث حالة التذكرة {ticket_ref}",
-        subject_en=f"Ticket {ticket_ref} updated",
-        ar=f"<p>تم تحديث حالة تذكرتك <strong>{s}</strong> إلى: <strong>{_esc(status_ar)}</strong>.</p>",
-        en=f"<p>Your ticket <strong>{s}</strong> is now: <strong>{_esc(status_en)}</strong>.</p>",
-        button=(url, "عرض التذكرة", "View ticket"),
-    )
-
-
-def send_ticket_user_reply_to_staff(to: str, ticket_ref: str, subject: str, requester: str, url: str) -> bool:
-    s, r = _esc(subject), _esc(requester)
-    return _notice(
-        to,
-        category="support",
-        subject_ar=f"رد من المستخدم على {ticket_ref}",
-        subject_en=f"Customer replied on {ticket_ref}",
-        ar=f"<p>أضاف <strong>{r}</strong> ردًا على التذكرة <strong>{s}</strong>.</p>",
-        en=f"<p><strong>{r}</strong> replied on <strong>{s}</strong>.</p>",
-        button=(url, "عرض التذكرة", "View ticket"),
     )

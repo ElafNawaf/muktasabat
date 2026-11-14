@@ -18,14 +18,15 @@ import type { TicketStats, TicketSummary } from "@/lib/types";
 import { NewTicketModal } from "./NewTicketModal";
 
 type Bucket = "active" | "waiting" | "done" | "all";
-type Scope = "all" | "assigned" | "mine";
+type Scope = "all" | "assigned" | "unassigned" | "mine";
 
 const ACTIVE = new Set(["open", "in_progress", "waiting_user"]);
 
 export function SupportClient({
   tickets,
   stats,
-  isStaff,
+  isStaff: isSupportStaff,
+  isTechnician = false,
   meId,
   locale,
   openNew,
@@ -34,12 +35,15 @@ export function SupportClient({
   tickets: TicketSummary[];
   stats: TicketStats;
   isStaff: boolean;
+  isTechnician?: boolean;
   meId: number;
   locale: string;
   openNew: boolean;
   base?: string;
 }) {
   const root = base ?? `/${locale}`;
+  // Handlers (support staff or technicians with assigned tickets) get the desk view.
+  const isStaff = isSupportStaff || isTechnician;
   const t = useTranslations("support");
   const tCommon = useTranslations("common");
   const [newOpen, setNewOpen] = useState(openNew);
@@ -51,6 +55,7 @@ export function SupportClient({
     const q = search.trim().toLowerCase();
     return tickets.filter((tk) => {
       if (isStaff && scope === "assigned" && tk.assignee?.id !== meId) return false;
+      if (isStaff && scope === "unassigned" && tk.assignee) return false;
       if (isStaff && scope === "mine" && tk.user.id !== meId) return false;
       if (bucket === "active" && !ACTIVE.has(tk.status)) return false;
       if (bucket === "waiting" && !tk.awaiting_me) return false;
@@ -60,7 +65,8 @@ export function SupportClient({
         tk.subject.toLowerCase().includes(q) ||
         tk.reference.toLowerCase().includes(q) ||
         tk.user.username.toLowerCase().includes(q) ||
-        (tk.user.full_name ?? "").toLowerCase().includes(q)
+        (tk.user.full_name ?? "").toLowerCase().includes(q) ||
+        (tk.assignee?.full_name ?? tk.assignee?.username ?? "").toLowerCase().includes(q)
       );
     });
   }, [tickets, bucket, scope, search, isStaff, meId]);
@@ -87,22 +93,37 @@ export function SupportClient({
         </button>
       </div>
 
-      <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-        <Kpi icon="inbox" label={t("kpiOpen")} value={stats.open} />
-        <Kpi icon="pending" label={t("kpiInProgress")} value={stats.in_progress} />
-        <Kpi
-          icon="hourglass_top"
-          label={isStaff ? t("kpiWaitingUser") : t("kpiWaitingYou")}
-          value={stats.waiting_user}
-          variant={!isStaff && stats.waiting_user > 0 ? "warning" : undefined}
-        />
-        <Kpi
-          icon={isStaff ? "priority_high" : "task_alt"}
-          label={isStaff ? t("kpiUrgent") : t("kpiResolved")}
-          value={isStaff ? stats.urgent_open : stats.resolved + stats.closed}
-          variant={isStaff ? (stats.urgent_open > 0 ? "danger" : undefined) : "success"}
-        />
-      </div>
+      {isStaff ? (
+        <div className="kpi-grid">
+          <Kpi icon="inbox" label={t("kpiOpen")} value={stats.open} />
+          <Kpi icon="pending" label={t("kpiInProgress")} value={stats.in_progress} />
+          <Kpi icon="hourglass_top" label={t("kpiWaitingUser")} value={stats.waiting_user} />
+          {isSupportStaff ? (
+            <Kpi icon="person_off" label={t("kpiUnassigned")} value={stats.unassigned} variant={stats.unassigned > 0 ? "warning" : undefined} />
+          ) : (
+            <Kpi icon="assignment_ind" label={t("kpiAssignedToMe")} value={stats.assigned_to_me} />
+          )}
+          <Kpi icon="timer_off" label={t("kpiBreached")} value={stats.breached} variant={stats.breached > 0 ? "danger" : "success"} />
+          <Kpi
+            icon="star"
+            label={t("kpiRating")}
+            value={stats.avg_rating ?? "—"}
+            variant={stats.avg_rating && stats.avg_rating >= 4 ? "success" : undefined}
+          />
+        </div>
+      ) : (
+        <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+          <Kpi icon="inbox" label={t("kpiOpen")} value={stats.open} />
+          <Kpi icon="pending" label={t("kpiInProgress")} value={stats.in_progress} />
+          <Kpi
+            icon="hourglass_top"
+            label={t("kpiWaitingYou")}
+            value={stats.waiting_user}
+            variant={stats.waiting_user > 0 ? "warning" : undefined}
+          />
+          <Kpi icon="task_alt" label={t("kpiResolved")} value={stats.resolved + stats.closed} variant="success" />
+        </div>
+      )}
 
       <div className="support-layout">
         <div style={{ minWidth: 0 }}>
@@ -138,6 +159,7 @@ export function SupportClient({
               >
                 <option value="all">{t("scopeAll")}</option>
                 <option value="assigned">{t("scopeAssigned")}</option>
+                {isSupportStaff && <option value="unassigned">{t("scopeUnassigned")}</option>}
                 <option value="mine">{t("scopeMine")}</option>
               </select>
             )}
@@ -198,9 +220,28 @@ export function SupportClient({
                             </span>
                           )}
                           <span>· {formatDateTime(tk.updated_at, locale)}</span>
+                          <span className="ticket-requester">
+                            ·{" "}
+                            {tk.assignee ? (
+                              <>
+                                <span className="ms ms-sm">support_agent</span>
+                                {tk.assignee.full_name || tk.assignee.username}
+                              </>
+                            ) : (
+                              <span className="text-sec">{t("unassigned")}</span>
+                            )}
+                          </span>
                         </div>
                       </div>
                       <div className="ticket-badges">
+                        {isStaff && tk.sla_state !== "none" && tk.sla_state !== "met" && tk.sla_state !== "on_track" && (
+                          <span className={"sla-chip " + tk.sla_state}>{t(`sla.${tk.sla_state}`)}</span>
+                        )}
+                        {tk.rating ? (
+                          <span style={{ color: "#E0A100", fontSize: 12 }} dir="ltr" title={t("customerRating")}>
+                            ★ {tk.rating}
+                          </span>
+                        ) : null}
                         {tk.priority !== "normal" && (
                           <span className={"badge " + PRIORITY_BADGE[tk.priority]}>{t(`priority.${tk.priority}`)}</span>
                         )}
@@ -264,7 +305,7 @@ function Kpi({
 }: {
   icon: string;
   label: string;
-  value: number;
+  value: number | string;
   variant?: "success" | "warning" | "danger";
 }) {
   return (

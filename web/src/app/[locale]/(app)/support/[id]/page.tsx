@@ -26,7 +26,7 @@ export default async function TicketPage({
     throw e;
   }
   const { is_staff } = await api.get<{ is_staff: boolean }>("/api/v1/support/me");
-  const staff = is_staff ? await api.get<TicketUser[]>("/api/v1/support/staff") : [];
+  const staff = is_staff || ticket.can_manage ? await api.get<TicketUser[]>("/api/v1/support/staff") : [];
 
   return (
     <>

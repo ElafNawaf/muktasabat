@@ -59,3 +59,31 @@ New `users` columns are added on startup by `ensure_user_profile_columns`
 - `SUPPORT_EMAIL` — optional, comma-separated inbox(es) for new-ticket alerts.
 - Existing: `WEB_BASE_URL` (links), `SES_*` (sending), `S3_*` (avatars and
   attachments), `RESET_PASSWORD_DEBUG` (dev only: returns debug links).
+
+## Support desk v2 — assignment, activity log, SLA, detailed e-mails
+
+- **Assignment**: any active staff account can be assigned (Manage ticket →
+  Assigned to, or “Assign to me”). The assignee becomes the ticket's
+  *technician*: they can view, reply, add internal notes and triage it even
+  without `support.edit`. Assigning an open ticket moves it to *In progress*.
+- **Activity log** (`support_ticket_events`): created, status / priority /
+  category changes, (re)assignment, replies, internal notes (staff only),
+  resolve / close / reopen, rating — with who and when. Shown on the ticket and
+  in every e-mail.
+- **Service levels** by priority — first response / resolution:
+  urgent 2 h / 24 h · high 8 h / 3 d · normal 24 h / 5 d · low 72 h / 10 d.
+  The desk shows overdue responses; the first support reply stamps
+  `first_response_at`.
+- **Resolve** requires a resolution summary; the requester gets it by e-mail
+  with one-tap 1–5 star rating links (`?rate=N`). Ratings feed the desk KPI.
+- **E-mails** (`api/services/support_mail.py`): one bilingual layout for
+  customer and technician — banner, status / priority / category chips,
+  “what changed” (before → now), the full message, resolution, ticket details
+  incl. assignee and SLA targets, recent conversation, activity log, button.
+  Who gets what: new ticket → support inbox + receipt to requester; assignment
+  → new assignee (with the full description) + requester; staff reply →
+  requester; customer reply / close / reopen / rating → assignee (or the
+  support inbox while unassigned); internal note → assignee only.
+- **All system e-mails** share a header with the logo centred above the Arabic
+  and English names, so it sits in the same place on every client and screen
+  size. Test: `scripts/test_support_desk.py`.
