@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { sarText } from "@/lib/format";
 
 export type TenantSummary = {
   id: number;
@@ -37,7 +38,7 @@ export const TENANT_STATE: Record<TenantSummary["state"], { ar: string; en: stri
 
 const HUES = ["#8a1f1f", "#b7832a", "#2f6b5a", "#2d6fa3", "#7a4fa0", "#c0603a"];
 export const sar = (locale: string, v: number) =>
-  new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 0 }).format(v || 0);
+  sarText(v, locale);
 const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("");
 export const wa = (phone: string) => `https://wa.me/${phone.replace(/\D/g, "").replace(/^0/, "966")}`;
 

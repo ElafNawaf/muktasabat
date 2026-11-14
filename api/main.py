@@ -50,6 +50,7 @@ from api.routers import (
     hr,
     tenant_portal,
     entity_overview,
+    people_overview,
     notifications,
     owner_portal_detail,
     management,
@@ -217,6 +218,7 @@ def health():
 API_V1 = "/api/v1"
 # Before buildings/tenants: /buildings/summary must not match /buildings/{id}.
 app.include_router(entity_overview.router, prefix=API_V1)
+app.include_router(people_overview.router, prefix=API_V1)
 app.include_router(notifications.router, prefix=API_V1)
 app.include_router(auth.router, prefix=API_V1)
 # Self-service profile / credentials / sessions + support tickets

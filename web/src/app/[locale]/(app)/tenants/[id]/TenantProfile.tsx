@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { PortalAccessCard } from "@/components/PortalAccessCard";
 import { usePermissions } from "@/components/PermissionsProvider";
 import type { Tenant } from "@/lib/types";
 
@@ -139,17 +140,7 @@ export function TenantProfile({ ov, tenant, locale }: { ov: TenantOverview; tena
         </div>
 
         <aside className="tp2-side">
-          <section className="card tp2-card">
-            <h3 className="bd-h3">{t("بوابة المستأجر", "Tenant portal")}</h3>
-            <p className={`tp2-portal${ov.portal.active ? " is-on" : ""}`}>
-              <span className="ms">{ov.portal.active ? "phonelink_lock" : "phonelink_off"}</span>
-              {ov.portal.active ? t("يستخدم البوابة", "Has portal access") : ov.portal.has_account ? t("الحساب موقوف", "Access turned off") : t("لم تتم دعوته بعد", "Not invited yet")}
-            </p>
-            <div className="tp2-row">
-              <Link className="btn btn-sm btn-secondary" href={`/${locale}/tenant-access`}><span className="ms ms-sm">badge</span>{ov.portal.has_account ? t("إدارة الوصول", "Manage access") : t("دعوة للبوابة", "Invite")}</Link>
-              <Link className="btn btn-sm btn-secondary" href={`/${locale}/tenant?as=${ov.id}`} target="_blank"><span className="ms ms-sm">visibility</span>{t("معاينة", "Preview")}</Link>
-            </div>
-          </section>
+          <PortalAccessCard kind="tenant" id={ov.id} name={name} email={ov.email} phone={ov.phone} portal={ov.portal} locale={locale} />
 
           <section className="card tp2-card">
             <h3 className="bd-h3">{t("البيانات الشخصية", "Identity & contact")}</h3>

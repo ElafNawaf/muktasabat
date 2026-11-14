@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
@@ -17,6 +18,7 @@ import { matchesSearch } from "@/lib/filters";
 import { agentColor, initials } from "@/lib/palette";
 import { localized, type Agent, type Owner } from "@/lib/types";
 
+import { AgentCards, AgentKpis, type AgentSummary } from "./AgentCards";
 import { AgentFormModal } from "./AgentFormModal";
 
 type View = "grid" | "list";
@@ -25,7 +27,9 @@ export function AgentsClient({
   agents,
   owners,
   locale,
+  summary = [],
 }: {
+  summary?: AgentSummary[];
   agents: Agent[];
   owners: Owner[];
   locale: string;
@@ -116,11 +120,13 @@ export function AgentsClient({
         </div>
       </div>
 
+      {summary.length > 0 ? <AgentKpis rows={summary} locale={locale} /> : (
       <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         <Kpi icon="support_agent" label={t("totalAgents")} value={String(agents.length)} />
         <Kpi icon="group" label={t("linkedOwners")} value={String(linkedOwners)} variant="success" />
         <Kpi icon="person_off" label={t("unassignedOwners")} value={String(owners.length - linkedOwners)} />
       </div>
+      )}
 
       <FilterBar
         trailing={
@@ -184,6 +190,13 @@ export function AgentsClient({
 
       {filtered.length === 0 ? (
         <Empty icon="support_agent" title={t("noAgents")} subtitle={t("noAgentsHint")} />
+      ) : view === "grid" && summary.length > 0 ? (
+        <AgentCards
+          rows={(() => { const m = new Map(summary.map((x) => [x.id, x])); return filtered.map((a) => m.get(a.id)).filter((x): x is AgentSummary => !!x); })()}
+          locale={locale}
+          onEdit={(id) => { const a = agents.find((x) => x.id === id); if (a) { setEditing(a); setFormOpen(true); } }}
+          onDelete={canDelete ? (id) => { const a = agents.find((x) => x.id === id); if (a) setConfirmDel(a); } : undefined}
+        />
       ) : view === "grid" ? (
         <div className="owner-grid">
           {filtered.map((a) => {
@@ -282,7 +295,7 @@ export function AgentsClient({
               <tbody>
                 {filtered.map((a) => (
                   <tr key={a.id}>
-                    <td>{localized(a, "name", locale)}</td>
+                    <td><Link href={`/${locale}/agents/${a.id}`} style={{ fontWeight: 600, color: "inherit" }}>{localized(a, "name", locale)}</Link></td>
                     <td className="mono text-sec">{a.phone ?? "—"}</td>
                     <td className="text-sec">{a.email ?? "—"}</td>
                     <td className="num">{ownerCounts.get(a.id) ?? 0}</td>

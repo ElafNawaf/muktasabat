@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
@@ -18,6 +19,7 @@ import { formatSAR } from "@/lib/format";
 import { initials, ownerColor } from "@/lib/palette";
 import { localized, type Agent, type Building, type Contract, type Owner, type Unit } from "@/lib/types";
 
+import { OwnerCards, OwnerKpis, type OwnerSummary } from "./OwnerCards";
 import { OwnerFormModal } from "./OwnerFormModal";
 
 type View = "grid" | "list";
@@ -29,7 +31,9 @@ export function OwnersClient({
   units,
   contracts,
   locale,
+  summary = [],
 }: {
+  summary?: OwnerSummary[];
   owners: Owner[];
   agents: Agent[];
   buildings: Building[];
@@ -220,6 +224,7 @@ export function OwnersClient({
         </div>
       </div>
 
+      {summary.length > 0 ? <OwnerKpis rows={summary} locale={locale} /> : (
       <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
         <Kpi icon="group" label={t("totalOwners")} value={String(owners.length)} />
         <Kpi icon="domain" label={t("buildings")} value={String(totalBuildings)} />
@@ -231,6 +236,7 @@ export function OwnersClient({
           variant="success"
         />
       </div>
+      )}
 
       <FilterBar
         trailing={
@@ -334,6 +340,13 @@ export function OwnersClient({
           icon="group"
           title={t("noOwners")}
           subtitle={t("noOwnersHint")}
+        />
+      ) : view === "grid" && summary.length > 0 ? (
+        <OwnerCards
+          rows={(() => { const m = new Map(summary.map((x) => [x.id, x])); return filtered.map((o) => m.get(o.id)).filter((x): x is OwnerSummary => !!x); })()}
+          locale={locale}
+          onEdit={(id) => { const o = owners.find((x) => x.id === id); if (o) openEdit(o); }}
+          onDelete={canDelete ? (id) => { const o = owners.find((x) => x.id === id); if (o) setConfirmDel(o); } : undefined}
         />
       ) : view === "grid" ? (
         <div className="owner-grid">
@@ -511,7 +524,7 @@ export function OwnersClient({
                             {initials(o.name_en ?? o.name)}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 500 }}>{localized(o, "name", locale)}</div>
+                            <Link href={`/${locale}/owners/${o.id}`} style={{ fontWeight: 600, color: "inherit" }}>{localized(o, "name", locale)}</Link>
                             <div className="text-sec" style={{ fontSize: 11.5 }}>
                               {localized(o, "name", locale === "ar" ? "en" : "ar")}
                             </div>

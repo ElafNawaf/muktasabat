@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 
 import { ImageGalleryEditor } from "@/components/ImageGalleryEditor";
 import { usePermissions } from "@/components/PermissionsProvider";
-import { UNIT_STATUS, buildingTypeIcon, buildingTypeText, type UnitStatus } from "@/lib/building-types";
+import { UNIT_STATUS, buildingTypeIcon, buildingTypeText, residenceText, type UnitStatus } from "@/lib/building-types";
+import { localizedCity, localizedDistrict } from "@/lib/filters";
 import type { Building, Owner, Unit } from "@/lib/types";
 
 import { money } from "../BuildingCards";
@@ -24,7 +25,7 @@ type OvUnit = {
 };
 export type BuildingOverview = {
   id: number; name: string; name_en?: string | null; property_type?: string | null; residence_type?: string | null; contract_type?: string | null; building_code?: string | null;
-  city?: string | null; district?: string | null; street?: string | null; national_address?: string | null; postal_code?: string | null; building_number?: string | null;
+  city?: string | null; city_en?: string | null; city_ar?: string | null; district?: string | null; district_en?: string | null; district_ar?: string | null; street?: string | null; national_address?: string | null; postal_code?: string | null; building_number?: string | null;
   additional_number?: string | null; address?: string | null; lat?: number | null; lng?: number | null; deed_number?: string | null; deed_date?: string | null;
   deed_document_type?: string | null; ejar_property_id?: string | null; water_meter?: string | null; electricity_meter?: string | null; notes?: string | null;
   owner: null | { id: number; name: string; phone?: string | null; email?: string | null };
@@ -104,7 +105,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
             <h1>{name}</h1>
             <p>
               <span className="ms ms-sm">location_on</span>
-              {[ov.street, ov.district, ov.city].filter(Boolean).join("، ") || t("لم يُحدد العنوان", "No address yet")}
+              {[ov.street, localizedDistrict(ov, locale), localizedCity(ov, locale)].filter(Boolean).join(locale === "ar" ? "، " : ", ") || t("لم يُحدد العنوان", "No address yet")}
             </p>
             <p className="bd-hero__people">
               {ov.owner && (
@@ -305,7 +306,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
             <h3 className="bd-h3">{t("الموقع والعنوان الوطني", "Location & national address")}</h3>
             <dl className="bd-dl">
               {([
-                [t("المدينة", "City"), ov.city], [t("الحي", "District"), ov.district], [t("الشارع", "Street"), ov.street],
+                [t("المدينة", "City"), localizedCity(ov, locale)], [t("الحي", "District"), localizedDistrict(ov, locale)], [t("الشارع", "Street"), ov.street],
                 [t("رقم المبنى", "Building no."), ov.building_number], [t("الرمز البريدي", "Postal code"), ov.postal_code],
                 [t("الرقم الإضافي", "Additional no."), ov.additional_number], [t("العنوان المختصر", "Short address"), ov.national_address],
               ] as [string, string | null | undefined][]).map(([a, b]) => <div key={a}><dt>{a}</dt><dd>{b || "—"}</dd></div>)}
@@ -316,9 +317,9 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
             <dl className="bd-dl">
               {([
                 [t("رقم الصك", "Deed no."), ov.deed_number], [t("تاريخ الصك", "Deed date"), ov.deed_date ? fmtD(ov.deed_date) : null],
-                [t("نوع وثيقة الملكية", "Deed type"), ov.deed_document_type], [t("رقم العقار في إيجار", "Ejar property ID"), ov.ejar_property_id],
+                [t("نوع وثيقة الملكية", "Deed type"), ({ deed: t("صك", "Deed"), title: t("سند ملكية", "Title"), usufruct: t("حق انتفاع", "Usufruct"), other: t("أخرى", "Other") } as Record<string, string>)[ov.deed_document_type || ""] ?? ov.deed_document_type], [t("رقم العقار في إيجار", "Ejar property ID"), ov.ejar_property_id],
                 [t("عداد الكهرباء", "Electricity meter"), ov.electricity_meter], [t("عداد المياه", "Water meter"), ov.water_meter],
-                [t("فئة السكن", "Residence"), ov.residence_type],
+                [t("فئة السكن", "Residence"), residenceText(locale, ov.residence_type)],
               ] as [string, string | null | undefined][]).map(([a, b]) => <div key={a}><dt>{a}</dt><dd>{b || "—"}</dd></div>)}
             </dl>
             {ov.notes && <p className="bd-notes">{ov.notes}</p>}

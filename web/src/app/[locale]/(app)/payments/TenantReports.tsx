@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { reviewReport } from "@/lib/tenant-actions";
+import { sarText } from "@/lib/format";
 
 export type TenantReport = {
   id: number;
@@ -34,7 +35,7 @@ export function TenantReports({ reports, locale, canEdit }: { reports: TenantRep
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   if (reports.length === 0) return null;
-  const fmt = (v: number) => new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 2 }).format(v);
+  const fmt = (v: number) => sarText(v, locale, { digits: 2 });
   const d = (iso?: string | null) => (iso ? new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "medium" }).format(new Date(iso)) : "—");
 
   function act(id: number, decision: "confirm" | "reject") {

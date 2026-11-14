@@ -52,3 +52,23 @@ export function formatDateTime(iso: string | null | undefined, locale: string = 
     minute: "2-digit",
   }).format(d);
 }
+
+/**
+ * Money with a text currency label ("12,500 ر.س" / "SAR 12,500").
+ * Intl's `style: "currency"` now emits the new Saudi riyal sign (U+20C1) in
+ * Safari, which our fonts don't carry, so we never use it for SAR.
+ */
+export function sarText(
+  amount: number | null | undefined,
+  locale: string = "en",
+  opts: { digits?: number; compact?: boolean } = {},
+): string {
+  const v = amount ?? 0;
+  const digits = opts.digits ?? 0;
+  const n = new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-US", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+    notation: opts.compact && Math.abs(v) >= 1_000_000 ? "compact" : "standard",
+  }).format(v);
+  return locale === "ar" ? `${n} ر.س` : `SAR ${n}`;
+}

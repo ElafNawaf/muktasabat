@@ -2,6 +2,7 @@
  *  logged-in owner; staff previews pass `as` (owner id) which the API checks
  *  against the owners.view permission. */
 import { api } from "./api";
+import { sarText } from "@/lib/format";
 
 export type OwnerMe = { owner_id: number; name: string; email?: string | null; phone?: string | null; bank_name?: string | null; iban_last4?: string | null; buildings: number };
 
@@ -118,12 +119,7 @@ export const ownerApi = {
 export const L = (locale: string, ar: string, en: string) => (locale === "ar" ? ar : en);
 
 export function money(locale: string, v: number | null | undefined, digits = 0) {
-  return new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-SA", {
-    style: "currency",
-    currency: "SAR",
-    maximumFractionDigits: digits,
-    minimumFractionDigits: digits,
-  }).format(v ?? 0);
+  return sarText(v, locale, { digits });
 }
 
 export function num(locale: string, v: number | null | undefined, digits = 0) {

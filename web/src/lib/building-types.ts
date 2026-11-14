@@ -57,3 +57,15 @@ export const UNIT_STATUS: Record<UnitStatus, { ar: string; en: string; tone: str
   vacant: { ar: "شاغرة", en: "Vacant", tone: "idle", icon: "radio_button_unchecked" },
   reserved: { ar: "محجوزة", en: "Reserved", tone: "info", icon: "event_available" },
 };
+
+const RESIDENCE_TEXT: Record<string, [string, string]> = {
+  singles: ["عزّاب", "Singles"],
+  families: ["عائلات", "Families"],
+  mixed: ["عائلات وعزّاب", "Families & singles"],
+};
+/** Human label for a residence category code. */
+export function residenceText(locale: string, v?: string | null) {
+  if (!v) return null;
+  const m = RESIDENCE_TEXT[v.toLowerCase()];
+  return m ? (locale === "ar" ? m[0] : m[1]) : v;
+}

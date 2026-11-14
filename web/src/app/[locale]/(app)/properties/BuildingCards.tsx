@@ -4,14 +4,16 @@ import Link from "next/link";
 
 import { UNIT_STATUS, buildingTypeIcon, buildingTypeText, type UnitStatus } from "@/lib/building-types";
 import type { Building } from "@/lib/types";
+import { sarText } from "@/lib/format";
+import { localizedCity, localizedDistrict } from "@/lib/filters";
 
 export type BuildingSummary = {
   id: number;
   name: string;
   name_en?: string | null;
   property_type?: string | null;
-  city?: string | null;
-  district?: string | null;
+  city?: string | null; city_en?: string | null; city_ar?: string | null;
+  district?: string | null; district_en?: string | null; district_ar?: string | null;
   owner: { id: number; name: string } | null;
   assignee?: string | null;
   image?: string | null;
@@ -30,7 +32,7 @@ const T = (l: string, ar: string, en: string) => (l === "ar" ? ar : en);
 const ORDER: UnitStatus[] = ["occupied", "expiring", "overdue", "reserved", "vacant"];
 
 export function money(locale: string, v: number) {
-  return new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-SA", { style: "currency", currency: "SAR", maximumFractionDigits: 0, notation: v >= 1_000_000 ? "compact" : "standard" }).format(v || 0);
+  return sarText(v, locale, { compact: true });
 }
 
 /** Portfolio totals across the buildings currently shown. */
@@ -105,7 +107,7 @@ export function BuildingCards({
             <div className="pf-card__body">
               <Link href={href} className="pf-card__title">{name}</Link>
               <p className="pf-card__meta">
-                <span className="ms ms-sm">location_on</span>{[b.district, b.city].filter(Boolean).join("، ") || "—"}
+                <span className="ms ms-sm">location_on</span>{[localizedDistrict(b, locale), localizedCity(b, locale)].filter(Boolean).join(locale === "ar" ? "، " : ", ") || "—"}
               </p>
               {s?.owner && (
                 <p className="pf-card__meta"><span className="ms ms-sm">person</span>{s.owner.name}</p>

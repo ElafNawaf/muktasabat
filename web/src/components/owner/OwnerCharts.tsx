@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { sarText } from "@/lib/format";
 
 type M = { month: number; collected: number; net: number; due: number };
 
@@ -15,7 +16,7 @@ export function CashflowChart({ data, labels, locale }: { data: M[]; labels: { m
           <CartesianGrid vertical={false} stroke="#ece7de" />
           <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#5d636b" }} />
           <YAxis orientation={rtl ? "right" : "left"} tickFormatter={(v) => fmt.format(v)} tickLine={false} axisLine={false} width={48} tick={{ fontSize: 12, fill: "#5d636b" }} />
-          <Tooltip formatter={(v: number) => new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-US", { style: "currency", currency: "SAR", maximumFractionDigits: 0 }).format(v)} />
+          <Tooltip formatter={(v: number) => sarText(v, locale)} />
           <Legend iconType="circle" wrapperStyle={{ fontSize: 13 }} />
           <Bar dataKey="collected" name={labels.collected} fill="#7B1A1A" radius={[4, 4, 0, 0]} maxBarSize={28} />
           <Bar dataKey="net" name={labels.net} fill="#2F5D50" radius={[4, 4, 0, 0]} maxBarSize={28} />

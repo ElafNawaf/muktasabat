@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
+import { createPortal } from "react-dom";
 
 /**
  * Right-side drawer dialog used for every form in the app (Owner, Tenant,
@@ -110,7 +111,10 @@ export function Modal({
   // Drawer must be a descendant of .modal-overlay so the
   // `.modal-overlay.open .modal { transform: translateX(0) }` selector matches —
   // otherwise the panel stays at translateX(100%) (offscreen) and looks "crashed".
-  return (
+  // Portalled to <body>: an animated/transformed ancestor (page enter
+  // transitions) becomes the containing block for `position: fixed`, which
+  // let the sticky app top bar cover the drawer header on iPad Safari.
+  const node = (
     <div className="modal-overlay open" onClick={onClose}>
       <div
         ref={panelRef}
@@ -162,6 +166,7 @@ export function Modal({
       </div>
     </div>
   );
+  return typeof document !== "undefined" ? createPortal(node, document.body) : node;
 }
 
 export function ConfirmDialog({
