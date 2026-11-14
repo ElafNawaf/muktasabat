@@ -15,18 +15,18 @@ html:has(.mk-site), html:has(.mk-site) body, html.mk-public, html.mk-public body
    Signature: the Najdi shurfat parapet (Shurfat.tsx). Everything else quiet. */
 
 .mk-site {
-  --mk-maroon: #7b1a1a;
-  --mk-maroon-deep: #5a1212;
-  --mk-basalt: #1f2328;
-  --mk-sand: #e9dcc6;
-  --mk-sand-soft: #f5efe4;
-  --mk-palm: #2f5d50;
+  --mk-maroon: var(--brand-maroon);
+  --mk-maroon-deep: var(--brand-maroon-deep);
+  --mk-basalt: var(--brand-basalt);
+  --mk-sand: var(--brand-sand);
+  --mk-sand-soft: var(--brand-sand-soft);
+  --mk-palm: var(--brand-palm);
   --mk-white: #ffffff;
-  --mk-ink: #1f2328;
-  --mk-mute: #5d636b;
-  --mk-line: #e3ddd2;
+  --mk-ink: var(--brand-basalt);
+  --mk-mute: var(--brand-mute);
+  --mk-line: var(--brand-line);
 
-  --mk-display: "Reem Kufi", var(--font-ar);
+  --mk-display: var(--font-display);
   --mk-body: var(--font-en);
   --mk-wrap: 1200px;
   --mk-gut: clamp(20px, 4vw, 40px);

@@ -3,13 +3,13 @@
 html:has(.ow-root), html:has(.ow-root) body { height: auto !important; overflow: visible !important; overflow-x: clip !important; }
 
 .ow-root {
-  --ow-maroon: #7b1a1a;
-  --ow-maroon-deep: #5a1212;
-  --ow-palm: #2f5d50;
-  --ow-ink: #1f2328;
-  --ow-mute: #5d636b;
-  --ow-line: #e8e2d6;
-  --ow-bg: #f7f4ee;
+  --ow-maroon: var(--brand-maroon);
+  --ow-maroon-deep: var(--brand-maroon-deep);
+  --ow-palm: var(--brand-palm);
+  --ow-ink: var(--brand-basalt);
+  --ow-mute: var(--brand-mute);
+  --ow-line: var(--brand-line);
+  --ow-bg: var(--brand-sand-faint);
   --ow-card: #ffffff;
   --ow-warn: #b42318;
   --ow-warn-bg: #fef3f2;
@@ -71,7 +71,7 @@ html:has(.ow-root), html:has(.ow-root) body { height: auto !important; overflow:
 
 .ow-kpis { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 14px; }
 .ow-kpis--3 { grid-template-columns: repeat(3, 1fr); }
-.ow-kpi { background: var(--ow-card); border: 1px solid var(--ow-line); border-radius: 12px; padding: 18px; text-decoration: none; display: block; }
+.ow-kpi { background: var(--ow-card); border: 1px solid var(--ow-line); border-radius: 8px; padding: 18px; text-decoration: none; display: block; }
 .ow-kpi h2 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--ow-mute); }
 .ow-kpi__v { margin: 0; font-size: clamp(20px, 2.4vw, 28px); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .ow-kpi__s { margin: 4px 0 0; font-size: 13px; color: var(--ow-mute); }
@@ -156,4 +156,22 @@ html:has(.ow-root), html:has(.ow-root) body { height: auto !important; overflow:
   .ow-main { padding: 0; }
   .ow-card { border: 0; padding: 0; }
   .ow-table-wrap { overflow: visible; }
+}
+
+/* Brand typography — same display face as muktasabat.com and the staff portal. */
+.ow-brand strong, .ow-hero h1, .ow-card__h h2, .ow-card__t, .ow-prop__h h2, .ow-statement__h h2, .ow-kpi__v {
+  font-family: var(--font-display);
+  letter-spacing: 0;
+}
+.ow-top::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 7px;
+  background: var(--brand-maroon);
+  -webkit-mask: var(--brand-shurfat) repeat-x bottom / 16px 7px;
+  mask: var(--brand-shurfat) repeat-x bottom / 16px 7px;
+  opacity: .14;
+  pointer-events: none;
 }
