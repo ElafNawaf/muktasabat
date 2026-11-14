@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { Carousel } from "@/components/site/Carousel";
 import { OfficeMap, TrustStrip, ValuationBand } from "@/components/site/Company";
 import { HeroCinema } from "@/components/site/HeroCinema";
-import { FaqSection, Marquee, WhySection } from "@/components/site/HomeSections";
+import { FaqSection, WhySection } from "@/components/site/HomeSections";
 import { LeadForm } from "@/components/site/LeadForm";
 import { ListingCard } from "@/components/site/ListingCard";
 import { OwnerShowcase, ProcessSteps } from "@/components/site/OwnerShowcase";
@@ -79,8 +79,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           slide: t("cinema.slide"),
         }}
       />
-
-      <Marquee locale={locale} />
 
       <div className="mk-wrap">
         <StatsRow

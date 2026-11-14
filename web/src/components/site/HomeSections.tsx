@@ -69,33 +69,3 @@ export async function FaqSection({ locale, items: custom, title: customTitle }: 
   );
 }
 
-/** A slow, endless band of what we do — two rows drifting in opposite
- *  directions, each item with its own accent colour. Pauses on hover; static
- *  under reduced motion. Decorative (the same content is in Services). */
-export function Marquee({ locale }: { locale: string }) {
-  const ar = locale === "ar";
-  const a: [string, string][] = ar
-    ? [["apartment", "إدارة الأملاك"], ["key", "تأجير سكني"], ["storefront", "تأجير تجاري"], ["sell", "بيع العقارات"], ["contract", "عقود موثّقة في إيجار"], ["query_stats", "تقييم إيجاري مجاني"]]
-    : [["apartment", "Property management"], ["key", "Residential leasing"], ["storefront", "Commercial leasing"], ["sell", "Property sales"], ["contract", "Ejar-registered leases"], ["query_stats", "Free rent estimate"]];
-  const b: [string, string][] = ar
-    ? [["campaign", "تسويق عقاري احترافي"], ["payments", "تحصيل الإيجارات"], ["handyman", "صيانة وتشغيل"], ["monitoring", "تقارير شهرية للملاك"], ["verified_user", "مكتب مرخّص"], ["support_agent", "متابعة المستأجرين"]]
-    : [["campaign", "Professional marketing"], ["payments", "Rent collection"], ["handyman", "Maintenance"], ["monitoring", "Monthly owner reports"], ["verified_user", "Licensed office"], ["support_agent", "Tenant follow-up"]];
-  const Row = ({ items, reverse }: { items: [string, string][]; reverse?: boolean }) => (
-    <div className={`mk-mq__row${reverse ? " mk-mq__row--rev" : ""}`}>
-      <ul className="mk-mq__track">
-        {[...items, ...items, ...items, ...items].map(([icon, text], i) => (
-          <li key={i} className={`mk-mq__item mk-tone-${(i % 4) + 1}`}>
-            <span className="ms" aria-hidden="true">{icon}</span>
-            {text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-  return (
-    <div className="mk-mq" aria-hidden="true">
-      <Row items={a} />
-      <Row items={b} reverse />
-    </div>
-  );
-}
