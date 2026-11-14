@@ -605,3 +605,15 @@ def yield_analysis(db: DbSession, _user: Perm("dashboard", "view"), locale: Loca
 
     result.sort(key=lambda x: x.net_income, reverse=True)
     return YieldAnalysisResponse(buildings=result)
+
+
+# ───────────────────────── INSIGHTS (dashboard v2) ─────────────────────────
+
+@router.get("/insights")
+def insights(db: DbSession, _user: Perm("dashboard", "view"), locale: LocaleDep):
+    """Everything the BI dashboard needs in one call: KPIs, 12-month cash flow,
+    forecast, aging, lease-expiry ladder, building league table, owner
+    concentration, expense mix, under-priced units and prioritised alerts."""
+    from api.services.insights import compute_insights
+
+    return compute_insights(db, locale)

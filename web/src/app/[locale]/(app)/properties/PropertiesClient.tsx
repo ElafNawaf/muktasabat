@@ -694,6 +694,35 @@ export function PropertiesClient({
               </div>
 
               <div className="drill-body">
+                {/* Location + photos stay one tap away instead of filling the screen every time. */}
+                <details className="prop-more">
+                  <summary className="prop-more__bar">
+                    <span className="prop-more__item">
+                      <span className="ms ms-sm" aria-hidden>location_on</span>
+                      {[districtLabel, cityLabel].filter(Boolean).join(locale === "ar" ? "، " : ", ") || (locale === "ar" ? "الموقع غير محدد" : "No location set")}
+                    </span>
+                    <span className="prop-more__item">
+                      <span className="ms ms-sm" aria-hidden>photo_library</span>
+                      {b.images.length} {locale === "ar" ? "صور" : "photos"}
+                    </span>
+                    {b.latitude != null && b.longitude != null && (
+                      <a
+                        className="prop-more__link"
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="ms ms-sm" aria-hidden>directions</span>
+                        {t("directions")}
+                      </a>
+                    )}
+                    <span className="prop-more__toggle">
+                      <span className="when-closed">{locale === "ar" ? "عرض الموقع والصور" : "Show location & photos"}</span>
+                      <span className="when-open">{locale === "ar" ? "إخفاء" : "Hide"}</span>
+                      <span className="ms ms-sm" aria-hidden>expand_more</span>
+                    </span>
+                  </summary>
                 <div className="prop-detail-grid">
                   {b.images.length > 0 ? (
                     <div className="prop-gallery">
@@ -850,6 +879,8 @@ export function PropertiesClient({
                     </div>
                   </div>
                 </div>
+
+                </details>
 
                 <div className="unit-section-hd">
                   <div style={{ fontWeight: 600, fontSize: 13.5 }}>
