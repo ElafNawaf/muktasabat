@@ -504,7 +504,7 @@ export function UsersClient({
               );
             })()}
             <div className="card card-tight ulist">
-              <table className="tbl ulist-tbl">
+              <table className="tbl ulist-tbl" data-nocards>
                 <thead>
                   <tr>
                     <th className="ulist-check" aria-label={t("bulkActions")} />
