@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { BrandLogo } from "./BrandLogo";
 import { useMobileNav } from "./MobileNavProvider";
+import { usePermissions } from "./PermissionsProvider";
 
 type NavItem = { id: string; href: string; icon: string; label: string; badge?: number };
 
@@ -28,56 +29,52 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
 
   const roleLabel = useTranslations("roles");
 
+  const { can } = usePermissions();
+  const isAdmin = user?.role === "admin";
+  const L = (p: string) => `/${locale}/${p}`;
+
+  // Grouped by what the data is about: portfolio → contracts → money → running the company.
   const sections: { label: string; items: NavItem[] }[] = [
     {
-      label: t("main"),
+      label: t("overview"),
+      items: [{ id: "dashboard", href: L("dashboard"), icon: "space_dashboard", label: t("dashboard") }],
+    },
+    {
+      label: t("portfolio"),
       items: [
-        { id: "dashboard", href: `/${locale}/dashboard`, icon: "space_dashboard", label: t("dashboard") },
-        { id: "properties", href: `/${locale}/properties`, icon: "domain", label: t("properties") },
+        { id: "properties", href: L("properties"), icon: "domain", label: t("properties") },
+        { id: "owners", href: L("owners"), icon: "group", label: t("owners") },
+        { id: "tenants", href: L("tenants"), icon: "person", label: t("tenants") },
+        { id: "agents", href: L("agents"), icon: "support_agent", label: t("agents") },
       ],
     },
     {
-      label: t("data"),
+      label: t("contractsGroup"),
       items: [
-        { id: "owners", href: `/${locale}/owners`, icon: "group", label: t("owners") },
-        { id: "owner-access", href: `/${locale}/owner-access`, icon: "key", label: t("ownerAccess") },
-        { id: "agents", href: `/${locale}/agents`, icon: "support_agent", label: t("agents") },
-        { id: "tenants", href: `/${locale}/tenants`, icon: "person", label: t("tenants") },
-        { id: "contracts", href: `/${locale}/contracts`, icon: "description", label: t("contracts") },
-        {
-          id: "management-contracts",
-          href: `/${locale}/management-contracts`,
-          icon: "handshake",
-          label: t("managementContracts"),
-        },
-        { id: "payments", href: `/${locale}/payments`, icon: "payments", label: t("payments") },
-        { id: "expenses", href: `/${locale}/expenses`, icon: "receipt_long", label: t("expenses") },
+        { id: "contracts", href: L("contracts"), icon: "description", label: t("leaseContracts") },
+        { id: "management-contracts", href: L("management-contracts"), icon: "handshake", label: t("managementContracts") },
       ],
     },
-    ...(user?.role === "admin" || user?.role === "content_editor"
-      ? [
-          {
-            label: t("website"),
-            items: [{ id: "website", href: `/${locale}/website`, icon: "language", label: t("website") }],
-          },
-        ]
-      : []),
-    ...(user?.role === "admin"
-      ? [
-          {
-            label: t("admin"),
-            items: [
-              {
-                id: "users",
-                href: `/${locale}/users`,
-                icon: "admin_panel_settings",
-                label: t("users"),
-              },
-            ],
-          },
-        ]
-      : []),
-  ];
+    {
+      label: t("finance"),
+      items: [
+        { id: "payments", href: L("payments"), icon: "payments", label: t("payments") },
+        { id: "expenses", href: L("expenses"), icon: "receipt_long", label: t("expenses") },
+      ],
+    },
+    {
+      label: t("management"),
+      items: [
+        ...(isAdmin ? [{ id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users") }] : []),
+        ...(isAdmin || can("owners", "view")
+          ? [{ id: "owner-access", href: L("owner-access"), icon: "key", label: t("ownerAccess") }]
+          : []),
+        ...(isAdmin || user?.role === "content_editor"
+          ? [{ id: "website", href: L("website"), icon: "language", label: t("website") }]
+          : []),
+      ],
+    },
+  ].filter((sec) => sec.items.length > 0);
 
   const otherLocale = locale === "en" ? "ar" : "en";
   const initials = user

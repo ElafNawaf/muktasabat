@@ -16,7 +16,13 @@
     "users": "User Management",
     "managementContracts": "Management contracts",
     "website": "Website",
-    "ownerAccess": "Owner portal access"
+    "ownerAccess": "Owner portal access",
+    "overview": "Overview",
+    "portfolio": "Portfolio & clients",
+    "contractsGroup": "Contracts",
+    "finance": "Finance",
+    "management": "Management",
+    "leaseContracts": "Lease contracts"
   },
   "roles": {
     "admin": "Administrator",
