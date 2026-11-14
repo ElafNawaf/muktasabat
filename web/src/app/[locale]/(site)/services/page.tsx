@@ -4,17 +4,20 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHead } from "@/components/site/PageHead";
 import { cms, pick } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "site" });
-  return {
+  return pageMeta({
+    locale,
+    path: "/services",
     title: t("sections.servicesTitle"),
     description: t("sections.servicesLead"),
-    alternates: { languages: { ar: "/ar/services", en: "/en/services" } },
-  };
+    keywords: locale === "ar" ? ["خدمات عقارية", "إدارة أملاك", "تسويق عقاري", "وساطة عقارية"] : ["real estate services", "property management", "property marketing"],
+  });
 }
 
 export default async function ServicesPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -22,7 +25,7 @@ export default async function ServicesPage({ params }: { params: Promise<{ local
   const [services, t] = await Promise.all([cms.services(), getTranslations({ locale, namespace: "site" })]);
   return (
     <>
-      <PageHead title={t("sections.servicesTitle")} lead={t("sections.servicesLead")} />
+      <PageHead locale={locale} crumbs={[{ name: t("nav.services"), path: "/services" }]} title={t("sections.servicesTitle")} lead={t("sections.servicesLead")} />
       <section className="mk-section">
         <div className="mk-wrap">
           <ul className="mk-services mk-services--detailed">

@@ -56,6 +56,18 @@ export async function SiteFooter({ locale, site }: { locale: string; site: SiteD
           </ul>
         </nav>
 
+        <nav aria-label={t("footerSeo.cities")}>
+          <p className="mk-footer__h">{t("footerSeo.cities")}</p>
+          <ul>
+            {(["riyadh", "makkah"] as const).map((c) => (
+              <li key={c}><Link href={L(`/real-estate/${c}`)}>{t(`city.${c}.title`)}</Link></li>
+            ))}
+            <li><Link href={L("/listings?purpose=rent")}>{t("listings.rent")}</Link></li>
+            <li><Link href={L("/listings?purpose=sale")}>{t("listings.sale")}</Link></li>
+            <li><Link href={L("/contact?kind=valuation")}>{t("valuation.cta")}</Link></li>
+          </ul>
+        </nav>
+
         <div>
           <p className="mk-footer__h">{t("footer.contact")}</p>
           <ul>
@@ -63,6 +75,7 @@ export async function SiteFooter({ locale, site }: { locale: string; site: SiteD
             {wa && <li><a href={wa} target="_blank" rel="noopener noreferrer">{t("contact.whatsapp")}</a></li>}
             {site.email && <li><a href={`mailto:${site.email}`}>{site.email}</a></li>}
             {tr(locale, site.address) && <li>{tr(locale, site.address)}</li>}
+            {tr(locale, site.working_hours) && <li>{tr(locale, site.working_hours)}</li>}
           </ul>
         </div>
 

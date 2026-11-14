@@ -16,6 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { p: "/news", pr: 0.6 },
     { p: "/careers", pr: 0.5 },
     { p: "/contact", pr: 0.8 },
+    { p: "/real-estate/riyadh", pr: 0.95 },
+    { p: "/real-estate/makkah", pr: 0.9 },
     ...listings.map((s) => ({ p: `/listings/${s.slug}`, lm: s.updated_at, pr: 0.9 })),
     ...services.map((s) => ({ p: `/services/${s.slug}`, lm: s.updated_at, pr: 0.8 })),
     ...projects.map((s) => ({ p: `/projects/${s.slug}`, lm: s.updated_at, pr: 0.7 })),
@@ -27,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}/${l}${p}`,
       lastModified: lm ? new Date(lm) : undefined,
       priority: pr,
-      alternates: { languages: { ar: `${SITE_URL}/ar${p}`, en: `${SITE_URL}/en${p}` } },
+      alternates: { languages: { ar: `${SITE_URL}/ar${p}`, en: `${SITE_URL}/en${p}`, "x-default": `${SITE_URL}/ar${p}` } },
     })),
   );
 }

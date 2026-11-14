@@ -43,17 +43,23 @@ export function ListingSpecs({ listing, locale }: { listing: Listing; locale: st
   );
 }
 
-export function ListingCard({ listing, locale }: { listing: Listing; locale: string }) {
+export function ListingCard({ listing, locale, index = 0 }: { listing: Listing; locale: string; index?: number }) {
   const t = useTranslations("site.listings");
   const title = pick(locale, listing, "title");
   const where = [pick(locale, listing, "district"), pick(locale, listing, "city")].filter(Boolean).join(locale === "ar" ? "، " : ", ");
   const closed = listing.status !== "available";
   return (
-    <Link href={`/${locale}/listings/${listing.slug}`} className={`mk-listing${closed ? " is-closed" : ""}`}>
+    <Link
+      href={`/${locale}/listings/${listing.slug}`}
+      className={`mk-listing${closed ? " is-closed" : ""}`}
+      data-reveal
+      data-spot
+      style={{ ["--i" as string]: index % 8 }}
+    >
       <div className="mk-listing__media">
         {listing.cover_url || listing.gallery[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={listing.cover_url || listing.gallery[0]} alt="" loading="lazy" />
+          <img src={listing.cover_url || listing.gallery[0]} alt={title} loading="lazy" decoding="async" />
         ) : (
           <FacadeArt variant={artVariant(listing.property_type)} />
         )}

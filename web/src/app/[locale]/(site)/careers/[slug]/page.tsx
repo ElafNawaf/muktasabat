@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { ApplyForm } from "@/components/site/ApplyForm";
 import { Markdown } from "@/components/site/Markdown";
 import { cms, pick, SITE_URL } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
   const j = await cms.job(slug);
   if (!j) return {};
-  return { title: pick(locale, j, "title"), alternates: { languages: { ar: `/ar/careers/${slug}`, en: `/en/careers/${slug}` } } };
+  return pageMeta({ locale, path: `/careers/${slug}`, title: pick(locale, j, "title") });
 }
 
 export default async function JobPage({ params }: P) {

@@ -75,6 +75,10 @@ class SiteData(_Base):
     hero_title: Bilingual = Bilingual()
     hero_subtitle: Bilingual = Bilingual()
     hero_image_url: SafeUrl = None
+    # Optional cinematic hero: a muted looping video (MP4/WebM URL) and/or a
+    # photo slideshow. Empty → the animated skyline artwork is shown.
+    hero_video_url: SafeUrl = None
+    hero_slides: list[SafeUrl] = Field(default_factory=list, max_length=6)
 
     about_title: Bilingual = Bilingual()
     about_body: Bilingual = Bilingual()

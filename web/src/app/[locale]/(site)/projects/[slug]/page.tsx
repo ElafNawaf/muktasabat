@@ -7,6 +7,7 @@ import { FacadeArt } from "@/components/site/FacadeArt";
 import { Markdown } from "@/components/site/Markdown";
 import { ProjectMap } from "@/components/site/ProjectMap";
 import { cms, pick } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -16,12 +17,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
   const p = await cms.project(slug);
   if (!p) return {};
-  return {
-    title: pick(locale, p, "title"),
-    description: pick(locale, p, "summary"),
-    alternates: { languages: { ar: `/ar/projects/${slug}`, en: `/en/projects/${slug}` } },
-    openGraph: p.cover_url ? { images: [p.cover_url] } : undefined,
-  };
+  return pageMeta({ locale, path: `/projects/${slug}`, title: pick(locale, p, "title"), description: pick(locale, p, "summary"), image: p.cover_url });
 }
 
 export default async function ProjectDetail({ params }: P) {

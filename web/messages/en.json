@@ -1283,7 +1283,161 @@
       "t_office": "Office",
       "t_shop": "Shop",
       "t_warehouse": "Warehouse",
-      "t_rest_house": "Rest house"
+      "t_rest_house": "Rest house",
+      "search": "Search",
+      "searchPh": "Search by district, city, type or reference",
+      "eyebrow": "Hand-picked properties"
+    },
+    "cinema": {
+      "kicker": "Muktasabat Real Estate · Property for rent & sale and property management in Riyadh and Makkah",
+      "badge": "Licensed real estate office",
+      "rotateLead": "We market, lease and sell",
+      "rotate": [
+        "apartments",
+        "villas",
+        "floors",
+        "land",
+        "offices",
+        "shops"
+      ],
+      "searchLabel": "Find a property",
+      "tabRent": "Rent",
+      "tabSale": "Buy",
+      "tabOwner": "I own a property",
+      "anyType": "All types",
+      "anyCity": "All cities",
+      "search": "Search",
+      "ownerCta": "Get a free rent estimate",
+      "ownerHint": "Tell us about your property and we'll reply with an estimate within one business day.",
+      "popular": "Popular searches",
+      "chips": [
+        [
+          "Apartments for rent in Riyadh",
+          "/listings?purpose=rent&type=apartment"
+        ],
+        [
+          "Villas for sale",
+          "/listings?purpose=sale&type=villa"
+        ],
+        [
+          "Land for sale",
+          "/listings?purpose=sale&type=land"
+        ],
+        [
+          "Makkah real estate",
+          "/real-estate/makkah"
+        ],
+        [
+          "Property management",
+          "/for-owners"
+        ]
+      ],
+      "scroll": "Discover more",
+      "prev": "Previous",
+      "next": "Next",
+      "pause": "Pause",
+      "play": "Play",
+      "slide": "Slide"
+    },
+    "ticker": [
+      "Exclusive property marketing",
+      "Full-service property management",
+      "Ejar-documented leases",
+      "Monthly financial reports",
+      "REGA-licensed adverts",
+      "Free rent estimate",
+      "Riyadh",
+      "Makkah"
+    ],
+    "why": {
+      "eyebrow": "Why Muktasabat",
+      "title": "One property partner, from the first advert to the last riyal on your statement",
+      "lead": "We serve property owners, tenants and buyers in Riyadh and Makkah: licensed adverts, careful tenant selection, leases documented on Ejar, rent collection, and a clear financial report for every owner, every month.",
+      "cards": [
+        [
+          "campaign",
+          "Marketing that finds the right tenant",
+          "Professional photos and copy, licensed adverts on the leading property platforms, and serious screening of every enquiry."
+        ],
+        [
+          "contract",
+          "Leases documented on Ejar",
+          "Every lease we sign is documented on the Ejar platform, protecting both owner and tenant."
+        ],
+        [
+          "monitoring",
+          "Live numbers for owners",
+          "A private portal with revenue, collections, occupancy and statements — any time."
+        ],
+        [
+          "handshake",
+          "Registered and transparent",
+          "A registered office with a verified Aqar account and REGA-licensed adverts."
+        ]
+      ],
+      "coverageTitle": "Covering Riyadh and Makkah",
+      "coverageBody": "A field team that knows every district and its real prices."
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Everything you want to know before you start",
+      "items": [
+        [
+          "What is Muktasabat Real Estate?",
+          "Muktasabat Real Estate (شركة مكتسبات العقارية) is a licensed real estate office in Saudi Arabia specialising in exclusive property marketing, brokerage and property management in Riyadh and Makkah."
+        ],
+        [
+          "How do I find an apartment or villa for rent in Riyadh?",
+          "Browse the listings page and filter by property type, city, district and price — or leave a request and we'll send you matching properties on WhatsApp as soon as they're available."
+        ],
+        [
+          "What does your property management service include?",
+          "Marketing vacant units, tenant selection, lease documentation on Ejar, rent collection and arrears follow-up, maintenance, and monthly financial reports available to the owner in the owner portal."
+        ],
+        [
+          "Are leases documented on Ejar?",
+          "Yes. Every lease we sign is documented on the Ejar platform, and owners can follow the documentation status from their portal."
+        ],
+        [
+          "How can I find out my property's rental value?",
+          "Send us the location and size of your property from the contact page and we'll reply within one business day with a free estimate based on real transactions in the district — no obligation."
+        ],
+        [
+          "Which cities do you cover?",
+          "We currently operate in Riyadh and Makkah, and welcome enquiries from owners and investors across the Kingdom."
+        ],
+        [
+          "What are your office hours and how do I reach you?",
+          "Saturday to Thursday, 9 AM to 9 PM. Call 920007039, message us on WhatsApp, or use the contact form on this site."
+        ]
+      ]
+    },
+    "city": {
+      "riyadh": {
+        "name": "Riyadh",
+        "title": "Property for rent and sale in Riyadh",
+        "metaTitle": "Property for Rent & Sale in Riyadh | Apartments, Villas, Land — Muktasabat",
+        "lead": "Apartments, floors, villas, land and offices for rent and sale across Riyadh's districts — marketed and managed by Muktasabat with licensed adverts and Ejar-documented leases.",
+        "body": "Riyadh is the Kingdom's largest property market, and rents and prices vary widely from one district to the next. Our team helps you choose the right district for your budget and needs — whether you're looking for a family apartment to rent, a villa or floor to buy, or land to invest in. For owners in Riyadh we offer full-service property management: marketing, tenant selection, lease documentation, collections, maintenance and monthly financial reports."
+      },
+      "makkah": {
+        "name": "Makkah",
+        "title": "Property for rent and sale in Makkah",
+        "metaTitle": "Makkah Real Estate for Rent & Sale | Apartments, Buildings — Muktasabat",
+        "lead": "Apartments, buildings, land and shops for rent and sale in Makkah, with professional property management for owners and investors.",
+        "body": "Makkah's market sees strong year-round demand for housing, residential buildings and retail units. We help tenants and buyers find the right property at clear prices, and help owners raise returns through exclusive marketing, hands-on management and monthly financial reports in the owner portal."
+      },
+      "browse": "Browse property in {city}",
+      "rentIn": "For rent in {city}",
+      "saleIn": "For sale in {city}",
+      "available": "Available in {city}",
+      "none": "No published listings in {city} right now. Leave a request and we'll send you the first match.",
+      "ownersTitle": "Own a property in {city}?",
+      "ownersBody": "Let us market and manage it — and follow its numbers in the owner portal.",
+      "other": "Other cities"
+    },
+    "footerSeo": {
+      "cities": "Property by city"
     }
   }
 }

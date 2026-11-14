@@ -25,6 +25,8 @@ export type SiteData = {
   hero_title: Bi;
   hero_subtitle: Bi;
   hero_image_url?: string | null;
+  hero_video_url?: string | null;
+  hero_slides?: (string | null)[];
   about_title: Bi;
   about_body: Bi;
   about_image_url?: string | null;
