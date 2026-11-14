@@ -1,12 +1,7 @@
 #!/bin/bash
-# Pass 10 — password-reset email for elaf.nawaf7@gmail.com
-docker exec muktasabat-api-1 python -c "
-from sqlalchemy import select, func
-from api.database import SessionLocal
-from api.models import User
-with SessionLocal() as db:
-    us=db.scalars(select(User).where(func.lower(User.email).like('%elaf.nawaf7%'))).all()
-    print('matching users:', [(u.id, u.username, u.email, u.role, u.is_active_user) for u in us])
+docker logs muktasabat-api-1 --since 3h 2>&1 | grep 'Failed to send email' | python3 -c "
+import sys, json
+for l in sys.stdin:
+    try: d=json.loads(l); print(d['ts'], d['exception'].strip().splitlines()[-1][:400])
+    except Exception as e: print('parse', e)
 "
-echo '--- email log lines (2h) ---'
-docker logs muktasabat-api-1 --since 2h 2>&1 | grep -iE 'email|ses|forgot|reset' | grep -v '\"path\": \"/api/v1/auth/me\"' | tail -15 | cut -c1-330
