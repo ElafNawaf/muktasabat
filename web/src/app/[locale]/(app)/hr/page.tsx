@@ -6,6 +6,7 @@ import type { HrReq } from "@/lib/hr-labels";
 import type { Asset, Company, ContractsDesk, ContractTemplate, Placeholder } from "@/lib/hr-people";
 import { canServer } from "@/lib/perm";
 import type { SitesData } from "@/components/hr/AttendanceZones";
+import type { Loan, PayRun, PaySettings } from "@/lib/payroll";
 
 import { HrClient, type Dash, type Emp, type Expiring, type Report, type HrSettings } from "./HrClient";
 
@@ -31,10 +32,19 @@ export default async function HrPage({ params }: { params: Promise<{ locale: str
     api.get<{ templates: ContractTemplate[]; placeholders: Placeholder[] }>(`/api/v1/hr/contract-templates?locale=${locale}`),
     api.get<SitesData>(`/api/v1/hr/sites?locale=${locale}`),
   ]);
+  // Salaries are only for HR approvers (HR manager, CEO, admins).
+  const canPay = await canServer(locale, "hr", "approve");
+  const payroll = canPay
+    ? await Promise.all([
+        api.get<PayRun[]>(`/api/v1/hr/payroll/runs?locale=${locale}`),
+        api.get<Loan[]>(`/api/v1/hr/payroll/loans?locale=${locale}`),
+        api.get<PaySettings>(`/api/v1/hr/payroll/settings`),
+      ]).then(([runs, loans, settings]) => ({ runs, loans, settings })).catch(() => null)
+    : null;
   return (
     <>
       <Topbar title={title} user={me} />
-      <HrClient locale={locale} dash={dash} requests={requests} employees={employees} settings={settings} report={report} month={month} canCreate={canCreate} assets={assets} companies={companies} expiring={expiring} desk={desk} templates={tpls.templates} placeholders={tpls.placeholders} sites={sites} />
+      <HrClient locale={locale} dash={dash} requests={requests} employees={employees} settings={settings} report={report} month={month} canCreate={canCreate} assets={assets} companies={companies} expiring={expiring} desk={desk} templates={tpls.templates} placeholders={tpls.placeholders} sites={sites} payroll={payroll} />
     </>
   );
 }

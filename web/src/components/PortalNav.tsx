@@ -163,6 +163,8 @@ const SUB_LABELS: Record<string, [string, string]> = {
   people: ["الموظفون", "Employees"],
   file: ["ملفي الوظيفي", "My employee file"],
   contracts: ["عقود العمل", "Employment contracts"],
+  payslips: ["رواتبي", "My pay"],
+  payroll: ["الرواتب", "Payroll"],
   attendance: ["لوحة الحضور", "Attendance dashboard"],
   leads: ["الاستفسارات", "Leads"],
   applications: ["طلبات التوظيف", "Applications"],
@@ -196,7 +198,7 @@ export function useTrail(title?: string): { crumbs: Crumb[]; parent: string } {
     const sub = SUB_LABELS[p];
     const label = nav?.label ?? (sub ? sub[ar ? 0 : 1] : last && title ? title : decodeURIComponent(p));
     // Folders without a page of their own point at the page that lists them.
-    const href = last ? undefined : acc.endsWith("/my-hr/contracts") ? `/${locale}/my-hr/file?tab=contracts` : acc;
+    const href = last ? undefined : acc.endsWith("/my-hr/contracts") ? `/${locale}/my-hr/file?tab=contracts` : acc.endsWith("/hr/payroll") ? `/${locale}/hr?tab=payroll` : acc;
     crumbs.push({ label: last && title && i > 0 && !sub ? title : label, href });
   });
   const parentParts = parts.slice(0, -1);

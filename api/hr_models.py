@@ -48,6 +48,8 @@ class HrProfile(Base):
     site_policy: Mapped[str] = mapped_column(String(10), default="company", nullable=False)
     site_ids: Mapped[Optional[str]] = mapped_column(String(200))
     checkout_rule: Mapped[str] = mapped_column(String(10), default="site", nullable=False)
+    # GOSI: auto (Saudi → existing scheme, others → hazards only) | old | new (first-time entrants since 3 Jul 2024) | expat | none
+    gosi_scheme: Mapped[str] = mapped_column(String(10), default="auto", nullable=False)
     emergency_contact: Mapped[Optional[str]] = mapped_column(String(160))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

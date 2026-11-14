@@ -165,6 +165,15 @@ def _hr_people(db: Session, user: User, n: N, base: str) -> None:
                       c.signed_note or c.number, c.signed_reviewed_at or c.accepted_at, f"{base}/my-hr/contracts/{c.id}", urgent=back)
     except Exception:
         db.rollback()
+    try:
+        from api.payroll_models import PayrollRun, Payslip
+        recent = db.execute(select(Payslip, PayrollRun).join(PayrollRun, PayrollRun.id == Payslip.run_id).where(
+            Payslip.user_id == user.id, PayrollRun.status == "paid", Payslip.excluded.is_(False)).order_by(PayrollRun.paid_at.desc()).limit(1)).first()
+        if recent and recent[1].paid_at and recent[1].paid_at >= datetime.utcnow() - timedelta(days=10):
+            n.add(f"pay:{recent[0].id}", "hr", "receipt_long", "info", ("قسيمة راتبك جاهزة", "Your payslip is ready"),
+                  recent[1].month, recent[1].paid_at, f"{base}/my-hr/payslips/{recent[0].id}")
+    except Exception:
+        db.rollback()
     for a in db.scalars(select(HrAsset).where(HrAsset.assigned_user_id == user.id, HrAsset.acknowledged_at.is_(None))).all():
         n.add(f"hra:{a.id}:{a.assigned_at}", "hr", "inventory_2", "warn", ("أكّد استلام عهدة", "Confirm receipt of an asset"),
               f"{a.name} · {a.tag}", a.assigned_at, f"{base}/my-hr/file?tab=assets")

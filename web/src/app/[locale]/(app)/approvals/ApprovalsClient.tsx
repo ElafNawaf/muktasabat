@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { markOwnerTransferred } from "@/lib/actions";
+import { payDecideLoan } from "@/lib/payroll-actions";
 import { decideApproval } from "@/lib/workflow-actions";
 
-type Kind = "work_order" | "renewal" | "payout" | "hr" | "bank" | "expense" | "form";
+type Kind = "work_order" | "renewal" | "payout" | "hr" | "bank" | "expense" | "form" | "payroll" | "loan";
 export type ChainStep = { step: number; label: string; approver: string; status: string; decided_by?: string | null; on_behalf?: boolean; decided_at?: string | null; overdue?: boolean; escalated?: boolean };
 export type Item = {
   kind: Kind; id: number; ref?: string | null; title?: string | null; where: string; owner?: string | null;
@@ -33,6 +34,8 @@ const KIND: Record<Kind, { icon: string; ar: string; en: string }> = {
   bank: { icon: "account_balance_wallet", ar: "تغيير حساب الراتب", en: "Salary account change" },
   expense: { icon: "receipt_long", ar: "اعتماد مصروف", en: "Expense approval" },
   form: { icon: "dynamic_form", ar: "تعديل نموذج", en: "Form change" },
+  payroll: { icon: "payments", ar: "مسير رواتب", en: "Payroll run" },
+  loan: { icon: "savings", ar: "سلفة / قرض موظف", en: "Staff advance / loan" },
 };
 const HR_KIND: Record<string, [string, string, string]> = {
   leave: ["beach_access", "طلب إجازة", "Leave request"], permission: ["schedule", "طلب استئذان", "Permission request"], ticket: ["flight", "طلب تذكرة سفر", "Travel ticket request"],
@@ -162,6 +165,9 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
     });
   }
   const decide = (approve: boolean) => {
+    if (i.kind === "loan") {
+      return run(() => payDecideLoan(i.id, { approve, note: note || null }), approve ? T("تمت الموافقة", "Approved") : T("تم الرفض", "Rejected"));
+    }
     if (i.kind === "form") {
       return run(() => (approve ? formApprove(i.id, note || undefined, locale) : formReject(i.id, note || (locale === "ar" ? "رُفض من صندوق الموافقات" : "Rejected from the approvals inbox"))), approve ? T("اعتُمد وطُبّق", "Approved & applied") : T("تم الرفض", "Rejected"));
     }
@@ -186,7 +192,7 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
           <span className="ap-kind">{i.kind === "hr" && i.hr_kind ? T(HR_KIND[i.hr_kind][1], HR_KIND[i.hr_kind][2]) : T(KIND[i.kind].ar, KIND[i.kind].en)}</span>
           {(i.steps ?? 0) > 0 && <span className="ap-step">{T(`الخطوة ${i.step} من ${i.steps}`, `Step ${i.step} of ${i.steps}`)} · {i.step_label}</span>}
           {i.overdue ? <span className="mx-sla mx-sla--breached">{i.escalated ? T("تجاوز وقت الاستجابة — صُعّد", "Past response time — escalated") : T("تجاوز وقت الاستجابة", "Past response time")}</span>
-          : i.urgent && <span className="mx-sla mx-sla--breached">{i.kind === "hr" ? T("يبدأ خلال يومين", "Starts within 2 days") : i.kind === "payout" ? T(`متأخر ${i.days_late} يوم`, `${i.days_late} days late`) : i.kind === "renewal" ? T(`العقد ينتهي خلال ${i.days_left} يوم`, `Lease ends in ${i.days_left} days`) : T("أولوية عالية", "High priority")}</span>}
+          : i.urgent && <span className="mx-sla mx-sla--breached">{i.kind === "payroll" ? T("يحتاج اعتمادًا قبل الصرف", "Needs approval before pay day") : i.kind === "hr" ? T("يبدأ خلال يومين", "Starts within 2 days") : i.kind === "payout" ? T(`متأخر ${i.days_late} يوم`, `${i.days_late} days late`) : i.kind === "renewal" ? T(`العقد ينتهي خلال ${i.days_left} يوم`, `Lease ends in ${i.days_left} days`) : T("أولوية عالية", "High priority")}</span>}
           <span className="ap-since">{i.kind === "payout" ? T(`دفع المستأجر ${ago(i.since, true)}`, `Tenant paid ${ago(i.since, false)}`) : i.waiting_on === "owner" ? T(`بانتظار المالك ${ago(i.since, true)}`, `Waiting for owner ${ago(i.since, false)}`) : T(`قُدّم ${ago(i.since, true)}`, `Submitted ${ago(i.since, false)}`)}</span>
         </div>
         <Link href={`/${locale}/${i.href}`} className="ap-title">{i.title || [i.ref, i.where].filter(Boolean).join(" — ")}</Link>
@@ -194,11 +200,13 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
         <div className="ap-money">
           {i.kind === "work_order" && <>{T("التقدير", "Estimate")} <strong>{sar(i.amount)}</strong> <span className="text-sec">· {T("الحد المفوَّض", "limit")} {sar(i.limit)}</span></>}
           {i.kind === "renewal" && <>{sar(i.current)} → <strong>{sar(i.amount)}</strong> {i.change_pct != null && <span className="rn-chg down" dir="ltr">{i.change_pct}%</span>}</>}
+          {(i.kind === "payroll" || i.kind === "loan") && <>{i.kind === "payroll" ? T("صافي الرواتب", "Net pay") : T("المبلغ", "Amount")} <strong>{sar(i.amount)}</strong></>}
           {i.kind === "hr" && i.amount != null && <>{T("التكلفة التقديرية", "Estimated cost")} <strong>{sar(i.amount)}</strong></>}
           {i.kind === "expense" && <>{T("المبلغ", "Amount")} <strong>{sar(i.amount)}</strong> {i.vendor && <span className="text-sec">· {i.vendor}</span>}</>}
           {i.kind === "payout" && <>{T("صافي المالك ≈", "Owner net ≈")} <strong>{sar(i.amount)}</strong> <span className="text-sec">· {T("من دفعة", "from")} {sar(i.gross)} · {T("الاستحقاق", "due")} {i.due}</span></>}
         </div>
-        {(i.kind === "hr" || i.kind === "form") && i.reason && <p className="ap-hint text-sec">{i.kind === "form" && i.requested_by ? `${i.requested_by}: ` : ""}{i.reason}</p>}
+        {i.kind === "payroll" && i.reason && <p className="ap-hint text-sec">{T(`رفعه ${i.reason}`, `Submitted by ${i.reason}`)}</p>}
+        {(i.kind === "hr" || i.kind === "form" || i.kind === "loan") && i.reason && <p className="ap-hint text-sec">{i.kind === "form" && i.requested_by ? `${i.requested_by}: ` : ""}{i.reason}</p>}
         {i.chain && i.chain.length > 1 && (
           <ol className="ap-chain" aria-label={T("مسار الاعتماد", "Approval chain")}>
             {i.chain.map((c) => (
@@ -214,6 +222,8 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
       <div className="ap-act">
         {done ? (
           <span className="mx-status mx-status--completed">{done}</span>
+        ) : i.kind === "payroll" ? (
+          <Link className="btn btn-primary btn-sm" href={`/${locale}/${i.href}`}>{T("مراجعة واعتماد", "Review & approve")}</Link>
         ) : i.kind === "payout" ? (
           <>
             <input className="input" placeholder={T("رقم مرجع التحويل", "Transfer reference")} value={ref} onChange={(e) => setRef(e.target.value)} dir="ltr" />

@@ -7,6 +7,8 @@ import { FilterBar, FilterSearch, FilterSelect } from "@/components/EntityFilter
 import { AssetsRegister } from "@/components/hr/AssetsRegister";
 import { AttendanceZones, type SitesData } from "@/components/hr/AttendanceZones";
 import { ContractsDesk as ContractsTab } from "@/components/hr/ContractsDesk";
+import { PayrollDesk } from "@/components/hr/PayrollDesk";
+import type { Loan, PayRun, PaySettings } from "@/lib/payroll";
 import { RequestDrawer, RequestModal } from "@/components/hr/HrForms";
 import { HP, lb, type Asset, type Company, type ContractsDesk, type ContractTemplate, type Placeholder } from "@/lib/hr-people";
 import { Modal } from "@/components/Modal";
@@ -39,12 +41,13 @@ export type HrSettings = {
   office_lat: number; office_lng: number; geofence_radius_m: number; max_accuracy_m: number; enforce_location: boolean; ping_minutes: number;
   left_alert_minutes: number; missing_checkout_minutes: number; checkin_reminder_minutes: number; daily_summary: boolean;
 };
-type Tab = "overview" | "requests" | "attendance" | "locations" | "employees" | "contracts" | "assets" | "settings";
+type Tab = "overview" | "requests" | "attendance" | "locations" | "employees" | "contracts" | "payroll" | "assets" | "settings";
 export type Expiring = { user_id: number; name: string; kind: string; date?: string | null; days: number; ref?: string };
 
-export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate, assets, companies, expiring, desk, templates, placeholders, sites }: {
+export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate, assets, companies, expiring, desk, templates, placeholders, sites, payroll }: {
   locale: string; dash: Dash; requests: HrReq[]; employees: Emp[]; settings: HrSettings; report: Report; month: string; canCreate: boolean;
   assets: Asset[]; companies: Company[]; expiring: Expiring[]; desk: ContractsDesk; templates: ContractTemplate[]; placeholders: Placeholder[]; sites: SitesData;
+  payroll: { runs: PayRun[]; loans: Loan[]; settings: PaySettings } | null;
 }) {
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
@@ -66,6 +69,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
     ["locations", T("مواقع الحضور", "Locations"), "pin_drop"],
     ["employees", T("الموظفون", "Employees"), "groups"],
     ["contracts", T("العقود", "Contracts"), "contract", desk.counts.signed_to_verify + desk.counts.missing_signed || undefined],
+    ...(payroll ? [["payroll", T("الرواتب", "Payroll"), "payments", (payroll.runs.filter((r) => r.status === "submitted").length + payroll.loans.filter((l) => l.status === "pending").length) || undefined] as [Tab, string, string, number?]] : []),
     ["assets", T("العُهد", "Assets"), "inventory_2"],
     ["settings", T("الإعدادات", "Settings"), "tune"],
   ];
@@ -100,6 +104,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
       {tab === "attendance" && <AttendanceTab locale={locale} board={dash.board} report={report} month={month} canEdit={can.edit} />}
       {tab === "employees" && <Employees locale={locale} rows={employees} canEdit={can.edit} companies={companies} />}
       {tab === "locations" && <AttendanceZones locale={locale} data={sites} companies={companies} canEdit={can.approve} />}
+      {tab === "payroll" && payroll && <PayrollDesk locale={locale} runs={payroll.runs} loans={payroll.loans} settings={payroll.settings} companies={companies} people={employees.map((e) => ({ id: e.user_id, name: e.name }))} />}
       {tab === "contracts" && <ContractsTab locale={locale} desk={desk} templates={templates} placeholders={placeholders} companies={companies} people={employees.map((e) => ({ id: e.user_id, name: e.name, company_id: e.company_id }))} canApprove={can.approve} />}
       {tab === "assets" && <AssetsRegister locale={locale} assets={assets} companies={companies} people={people} canEdit={can.edit} />}
       {tab === "settings" && <SettingsTab locale={locale} s={settings} canSave={can.approve} />}

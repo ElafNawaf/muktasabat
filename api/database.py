@@ -503,6 +503,7 @@ def ensure_hr_location_columns(engine) -> None:
         ("work_mode", "VARCHAR(10) DEFAULT 'office' NOT NULL"), ("remote_days", "VARCHAR(20)"),
         ("site_policy", "VARCHAR(10) DEFAULT 'company' NOT NULL"), ("site_ids", "VARCHAR(200)"),
         ("checkout_rule", "VARCHAR(10) DEFAULT 'site' NOT NULL"),
+        ("gosi_scheme", "VARCHAR(10) DEFAULT 'auto' NOT NULL"),
         ("company_id", "INTEGER"), ("department_id", "INTEGER"),
     ])
     _add_missing_columns(engine, "hr_requests", [("location_type", "VARCHAR(10)"), ("location_note", "VARCHAR(200)")])

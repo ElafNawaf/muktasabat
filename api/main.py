@@ -53,6 +53,7 @@ from api.routers import (
     hr_people,
     hr_contracts,
     hr_sites,
+    payroll,
     tenant_portal,
     entity_overview,
     people_overview,
@@ -282,6 +283,8 @@ app.include_router(hr.router, prefix=API_V1)
 app.include_router(hr_people.router, prefix=API_V1)
 app.include_router(hr_contracts.router, prefix=API_V1)
 app.include_router(hr_sites.router, prefix=API_V1)
+app.include_router(payroll.router, prefix=API_V1)
+app.include_router(payroll.me_router, prefix=API_V1)
 app.include_router(tenant_portal.router, prefix=API_V1)
 app.include_router(owner_portal_detail.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)

@@ -193,11 +193,37 @@ def inbox(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^
                 "urgent": False, "href": f"forms?entity={r.entity}&request={r.id}",
             })
 
+    if can["hr"]:
+        from api.models import User as _U2
+        from api.payroll_models import EmployeeLoan, PayrollRun, Payslip
+        from api.routers.hr import _uname as _un
+        from api.services.payroll import totals as _ptot
+
+        for pr in db.scalars(select(PayrollRun).where(PayrollRun.status == "submitted", PayrollRun.submitted_by_id != user.id)).all():
+            from api.hr_people_models import HrCompany as _C
+
+            co = db.get(_C, pr.company_id)
+            t = _ptot(db.scalars(select(Payslip).where(Payslip.run_id == pr.id)).all())
+            items.append({
+                "kind": "payroll", "id": pr.id, "ref": pr.month, "title": (co.name_ar if locale == "ar" else (co.name_en or co.name_ar)) if co else None,
+                "where": f"{t['employees']} " + ("موظف" if locale == "ar" else "employees"), "owner": None, "owner_id": None,
+                "amount": t["net"], "since": _iso(pr.submitted_at), "waiting_on": "company", "urgent": True, "href": f"hr/payroll/{pr.id}",
+                "reason": pr.submitted_by,
+            })
+        for ln in db.scalars(select(EmployeeLoan).where(EmployeeLoan.status == "pending", EmployeeLoan.user_id != user.id)).all():
+            items.append({
+                "kind": "loan", "id": ln.id, "ref": ln.number, "title": _un(db.get(_U2, ln.user_id), locale),
+                "where": (("سلفة" if ln.kind == "advance" else "قرض") if locale == "ar" else ln.kind.title()) + f" · {ln.installments}×",
+                "owner": None, "owner_id": None, "amount": ln.amount, "reason": ln.reason, "since": _iso(ln.created_at),
+                "waiting_on": "company", "urgent": False, "href": "hr?tab=payroll",
+            })
+
     def sort_key(i: dict):
         return (not i["urgent"], i.get("since") or "")
 
     items.sort(key=sort_key)
-    return {"items": items, "can": can, "counts": {k: sum(1 for i in items if i["kind"] == k) for k in can}}
+    kinds = list(can) + ["payroll", "loan"]
+    return {"items": items, "can": can, "counts": {k: sum(1 for i in items if i["kind"] == k) for k in kinds}}
 
 
 class DecisionIn(BaseModel):
