@@ -4,6 +4,7 @@ import { CashflowChart, OccupancyRing } from "@/components/owner/OwnerCharts";
 import { YearPicker } from "@/components/owner/OwnerShell";
 import { L, MONTHS, day, money, num, ownerApi } from "@/lib/owner";
 
+import { ActivityFeed } from "./ActivityFeed";
 import { load, one, type SP } from "./guard";
 
 export default async function OwnerOverview({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SP }) {
@@ -12,9 +13,9 @@ export default async function OwnerOverview({ params, searchParams }: { params: 
   const as = one(sp.as);
   const thisYear = new Date().getFullYear();
   const year = Number(one(sp.year)) || thisYear;
-  const res = await load(locale, () => Promise.all([ownerApi.overview(locale, year, as), ownerApi.me(locale, as)]));
+  const res = await load(locale, () => Promise.all([ownerApi.overview(locale, year, as), ownerApi.me(locale, as), ownerApi.activity(locale, as).catch(() => [])]));
   if ("error" in res) return res.error;
-  const [o, me] = res.data;
+  const [o, me, events] = res.data;
   const k = o.kpis;
   const qs = as ? `?as=${as}` : "";
   const t = (ar: string, en: string) => L(locale, ar, en);
@@ -116,7 +117,7 @@ export default async function OwnerOverview({ params, searchParams }: { params: 
                 {o.buildings.map((b) => (
                   <tr key={b.id}>
                     <td>
-                      <strong>{b.name}</strong>
+                      <Link className="ow-plain" href={`/${locale}/owner/properties/${b.id}${qs}`}><strong>{b.name}</strong></Link>
                       <small>{[b.district, b.city].filter(Boolean).join("، ")}</small>
                     </td>
                     <td>
@@ -133,6 +134,8 @@ export default async function OwnerOverview({ params, searchParams }: { params: 
           </div>
         )}
       </section>
+
+      <ActivityFeed locale={locale} events={events} qs={qs} />
 
       <section className="ow-grid2">
         <article className="ow-card">

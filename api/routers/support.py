@@ -70,14 +70,14 @@ def is_staff(db: Session, user: User) -> bool:
 
 def can_manage(t: SupportTicket, user: User, staff: bool) -> bool:
     """Support staff, or the technician the ticket is assigned to."""
-    return staff or (t.assignee_id == user.id and user.role != "owner")
+    return staff or (t.assignee_id == user.id and user.role not in ("owner", "tenant"))
 
 
 def _ticket_url(ticket: SupportTicket, locale: str | None, viewer: User | None = None) -> str:
     """Link for an e-mail. Owners live in the owner portal (/owner/…); staff
     pages redirect them away, so their links must point there."""
     loc = locale if locale in ("ar", "en") else "ar"
-    prefix = "/owner" if viewer is not None and viewer.role == "owner" else ""
+    prefix = f"/{viewer.role}" if viewer is not None and viewer.role in ("owner", "tenant") else ""
     return _absolute(f"/{loc}{prefix}/support/{ticket.id}")
 
 
@@ -260,7 +260,7 @@ def support_context(db: DbSession, user: CurrentUser):
     assigned = db.scalar(
         select(func.count()).select_from(SupportTicket).where(SupportTicket.assignee_id == user.id)
     ) or 0
-    return {"is_staff": staff, "is_technician": staff or (assigned > 0 and user.role != "owner")}
+    return {"is_staff": staff, "is_technician": staff or (assigned > 0 and user.role not in ("owner", "tenant"))}
 
 
 @router.get("/stats", response_model=TicketStats)
@@ -289,10 +289,10 @@ def ticket_stats(db: DbSession, user: CurrentUser):
 def staff_members(db: DbSession, user: CurrentUser):
     """Assignee picker: every active staff (non-owner) account. Support staff
     first; anyone else becomes a technician on the tickets assigned to them."""
-    if user.role == "owner":
+    if user.role in ("owner", "tenant"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Support staff only")
     users = db.scalars(
-        select(User).where(User.is_active_user.is_(True), User.role != "owner").order_by(User.username)
+        select(User).where(User.is_active_user.is_(True), User.role.not_in(("owner", "tenant"))).order_by(User.username)
     ).all()
     return sorted(users, key=lambda u: (not is_staff(db, u), (u.full_name or u.username).lower()))
 
@@ -499,7 +499,7 @@ def triage(ticket_id: int, payload: TicketUpdate, db: DbSession, user: CurrentUs
         t.assigned_at = None
     elif payload.assignee_id is not None and payload.assignee_id != t.assignee_id:
         new_assignee = db.get(User, payload.assignee_id)
-        if new_assignee is None or not new_assignee.is_active_user or new_assignee.role == "owner":
+        if new_assignee is None or not new_assignee.is_active_user or new_assignee.role in ("owner", "tenant"):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Assignee must be an active staff member")
         if not staff and new_assignee.id != user.id:
             # A technician without support.edit may only hand a ticket to support staff.

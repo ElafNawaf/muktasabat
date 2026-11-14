@@ -72,6 +72,7 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       items: [
         { id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users"), show: isAdmin },
         { id: "owner-access", href: L("owner-access"), icon: "key", label: t("ownerAccess"), show: v("owner_portal") },
+        { id: "tenant-access", href: L("tenant-access"), icon: "badge", label: t("tenantAccess"), show: v("tenants") },
         { id: "website", href: L("website"), icon: "language", label: t("website"), show: v("website") },
         { id: "data-management", href: L("data-management"), icon: "database", label: t("dataManagement"), show: v("data") },
         { id: "email-log", href: L("email-log"), icon: "outgoing_mail", label: t("emailLog"), show: !!user?.is_super_admin },

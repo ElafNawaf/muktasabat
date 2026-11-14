@@ -6,6 +6,8 @@ import { useMemo, useState, useTransition } from "react";
 
 import { FilterBar, FilterSearch, FilterStatusPills } from "@/components/EntityFilterBar";
 
+import { inviteTenant, revokeTenant } from "@/lib/tenant-actions";
+
 import { inviteOwner, revokeOwner } from "./actions";
 
 type Status = "all" | "active" | "pending" | "none" | "off";
@@ -14,6 +16,9 @@ const statusOf = (r: AccessRow): Exclude<Status, "all"> =>
 
 export type AccessRow = {
   owner_id: number;
+  /** Tenants only: has a current or future lease. */
+  has_lease?: boolean;
+  phone?: string | null;
   name: string;
   email?: string | null;
   has_account: boolean;
@@ -25,7 +30,9 @@ export type AccessRow = {
 
 const T = (l: string, ar: string, en: string) => (l === "ar" ? ar : en);
 
-export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale: string }) {
+export function OwnerAccessClient({ rows, locale, kind = "owner" }: { rows: AccessRow[]; locale: string; kind?: "owner" | "tenant" }) {
+  const isT = kind === "tenant";
+  const K = (arO: string, enO: string, arT: string, enT: string) => (isT ? T(locale, arT, enT) : T(locale, arO, enO));
   const router = useRouter();
   const [q, setQ] = useState("");
   const [inviting, setInviting] = useState<AccessRow | null>(null);
@@ -43,7 +50,7 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
     return rows.filter(
       (r) =>
         (status === "all" || statusOf(r) === status) &&
-        (!s || `${r.name} ${r.email ?? ""} ${r.username ?? ""}`.toLowerCase().includes(s)),
+        (!s || `${r.name} ${r.email ?? ""} ${r.username ?? ""} ${r.phone ?? ""}`.toLowerCase().includes(s)),
     );
   }, [rows, q, status]);
   const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("");
@@ -61,7 +68,7 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
     if (!inviting) return;
     setError(null);
     start(async () => {
-      const res = await inviteOwner(inviting.owner_id, email, lang);
+      const res = isT ? await inviteTenant(inviting.owner_id, email, lang) : await inviteOwner(inviting.owner_id, email, lang);
       if (!res.ok) return setError(res.error);
       setResult({ url: res.data.invite_url, username: res.data.username });
       router.refresh();
@@ -69,9 +76,9 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
   }
 
   function revoke(r: AccessRow) {
-    if (!window.confirm(T(locale, `إيقاف وصول ${r.name} إلى بوابة الملاك؟`, `Turn off portal access for ${r.name}?`))) return;
+    if (!window.confirm(T(locale, `إيقاف وصول ${r.name} إلى البوابة؟`, `Turn off portal access for ${r.name}?`))) return;
     start(async () => {
-      const res = await revokeOwner(r.owner_id);
+      const res = isT ? await revokeTenant(r.owner_id) : await revokeOwner(r.owner_id);
       if (!res.ok) setError(res.error);
       router.refresh();
     });
@@ -80,8 +87,12 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
   const waText = result
     ? T(
         locale,
-        `مرحباً، تم تفعيل حسابك في بوابة الملاك لدى شركة مكتسبات العقارية لمتابعة عقاراتك وإيراداتك. عيّن كلمة المرور من الرابط التالي (صالح 72 ساعة):\n${result.url}\nاسم المستخدم: ${result.username}`,
-        `Hello, your Muktasabat owner-portal account is ready. Set your password here (valid 72 hours):\n${result.url}\nUsername: ${result.username}`,
+        isT
+          ? `مرحباً، تم تفعيل حسابك في بوابة المستأجرين لدى شركة مكتسبات العقارية لمتابعة عقدك ومواعيد دفعاتك. عيّن كلمة المرور من الرابط التالي (صالح 72 ساعة):\n${result.url}\nاسم المستخدم: ${result.username}`
+          : `مرحباً، تم تفعيل حسابك في بوابة الملاك لدى شركة مكتسبات العقارية لمتابعة عقاراتك وإيراداتك. عيّن كلمة المرور من الرابط التالي (صالح 72 ساعة):\n${result.url}\nاسم المستخدم: ${result.username}`,
+        isT
+          ? `Hello, your Muktasabat tenant-portal account is ready. Set your password here (valid 72 hours):\n${result.url}\nUsername: ${result.username}`
+          : `Hello, your Muktasabat owner-portal account is ready. Set your password here (valid 72 hours):\n${result.url}\nUsername: ${result.username}`,
       )
     : "";
 
@@ -90,16 +101,16 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="page-header">
         <div>
-          <h2 className="page-title">{T(locale, "وصول الملاك إلى البوابة", "Owner portal access")}</h2>
+          <h2 className="page-title">{K("وصول الملاك إلى البوابة", "Owner portal access", "وصول المستأجرين إلى البوابة", "Tenant portal access")}</h2>
           <div className="page-subtitle">
-            {T(locale, "امنح الملاك المتعاقدين معنا حساباً لمتابعة عقاراتهم وعقودهم وإيراداتهم وكشوف حساباتهم.", "Give owners under contract a login to follow their properties, leases, revenue and statements.")}
+            {K("امنح الملاك المتعاقدين معنا حساباً لمتابعة عقاراتهم وعقودهم وإيراداتهم وكشوف حساباتهم.", "Give owners under contract a login to follow their properties, leases, revenue and statements.", "امنح المستأجرين حساباً للاطلاع على عقودهم ومواعيد دفعاتهم، والإبلاغ عن السداد، واستلام التذكيرات.", "Give tenants a login to see their lease and payment dates, report payments and get reminders.")}
           </div>
         </div>
       </div>
 
       <div className="kpi-grid oa-kpis">
         {([
-          ["group", T(locale, "إجمالي الملاك", "Owners"), rows.length, ""],
+          ["group", K("إجمالي الملاك", "Owners", "إجمالي المستأجرين", "Tenants"), rows.length, ""],
           ["verified_user", T(locale, "حسابات مفعّلة", "Active accounts"), count("active"), "success"],
           ["schedule_send", T(locale, "بانتظار التفعيل", "Invite pending"), count("pending"), "warning"],
           ["person_off", T(locale, "بدون حساب", "No account"), count("none"), ""],
@@ -126,7 +137,7 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
             ]}
           />
         }
-        search={<FilterSearch value={q} onChange={setQ} placeholder={T(locale, "بحث بالاسم أو البريد…", "Search name or email…")} />}
+        search={<FilterSearch value={q} onChange={setQ} placeholder={T(locale, "بحث بالاسم أو البريد أو الجوال…", "Search name, email or phone…")} />}
       />
 
       {error && !inviting && <p className="oa-err">{error}</p>}
@@ -135,7 +146,7 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
           <table className="tbl oa-table">
             <thead>
               <tr>
-                <th>{T(locale, "المالك", "Owner")}</th>
+                <th>{K("المالك", "Owner", "المستأجر", "Tenant")}</th>
                 <th>{T(locale, "حالة الحساب", "Account")}</th>
                 <th>{T(locale, "اسم المستخدم", "Username")}</th>
                 <th>{T(locale, "آخر دخول", "Last sign-in")}</th>
@@ -144,18 +155,18 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
             </thead>
             <tbody>
               {shown.length === 0 && (
-                <tr><td colSpan={5} className="oa-empty">{T(locale, "لا يوجد ملاك مطابقون.", "No owners match.")}</td></tr>
+                <tr><td colSpan={5} className="oa-empty">{K("لا يوجد ملاك مطابقون.", "No owners match.", "لا يوجد مستأجرون مطابقون.", "No tenants match.")}</td></tr>
               )}
               {shown.map((r) => {
                 const st = statusOf(r);
                 return (
                   <tr key={r.owner_id}>
-                    <td data-label={T(locale, "المالك", "Owner")}>
+                    <td data-label={K("المالك", "Owner", "المستأجر", "Tenant")}>
                       <div className="oa-who">
                         <span className="oa-avatar" aria-hidden>{initials(r.name)}</span>
                         <span>
                           <strong>{r.name}</strong>
-                          <small dir="ltr">{r.email ?? "—"}</small>
+                          <small dir="ltr">{r.email ?? r.phone ?? "—"}</small>{isT && r.has_lease === false && <small>{T(locale, "لا يوجد عقد ساري", "No current lease")}</small>}
                         </span>
                       </div>
                     </td>
@@ -175,7 +186,7 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
                           <span className="ms ms-sm">{r.has_account ? "forward_to_inbox" : "person_add"}</span>
                           {r.has_account ? T(locale, "إعادة الدعوة", "Re-invite") : T(locale, "دعوة", "Invite")}
                         </button>
-                        <Link className="icon-btn" href={`/${locale}/owner?as=${r.owner_id}`} target="_blank" title={T(locale, "معاينة كما يراها المالك", "Preview as owner")} aria-label={T(locale, "معاينة", "Preview")}>
+                        <Link className="icon-btn" href={`/${locale}/${kind}?as=${r.owner_id}`} target="_blank" title={K("معاينة كما يراها المالك", "Preview as owner", "معاينة كما يراها المستأجر", "Preview as tenant")} aria-label={T(locale, "معاينة", "Preview")}>
                           <span className="ms ms-sm">visibility</span>
                         </Link>
                         {r.active && (
@@ -197,12 +208,12 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
         <div className="oa-modal" role="dialog" aria-modal="true">
           <div className="oa-modal__bg" onClick={() => !pending && setInviting(null)} />
           <div className="oa-modal__panel">
-            <h2>{T(locale, "دعوة إلى بوابة الملاك", "Invite to the owner portal")}</h2>
+            <h2>{K("دعوة إلى بوابة الملاك", "Invite to the owner portal", "دعوة إلى بوابة المستأجرين", "Invite to the tenant portal")}</h2>
             <p className="oa-muted">{inviting.name}</p>
             {!result ? (
               <form onSubmit={send} className="oa-form">
                 <label>
-                  <span>{T(locale, "البريد الإلكتروني للمالك (اسم المستخدم)", "Owner's email (becomes the username)")}</span>
+                  <span>{K("البريد الإلكتروني للمالك (اسم المستخدم)", "Owner's email (becomes the username)", "البريد الإلكتروني للمستأجر (اسم المستخدم)", "Tenant's email (becomes the username)")}</span>
                   <input type="email" required dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </label>
                 <label>

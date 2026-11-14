@@ -749,6 +749,13 @@ def _job() -> None:
 
     with SessionLocal() as db:
         run_alerts(db)
+    try:
+        from api.routers.tenant_portal import run_tenant_reminders
+
+        with SessionLocal() as db:
+            run_tenant_reminders(db, riyadh_today())
+    except Exception:
+        logger.exception("tenant reminders failed")
 
 
 async def alert_loop(interval_seconds: int = 3600, first_delay: int = 90) -> None:

@@ -22,6 +22,7 @@ export default async function AppLayout({
   const user = await requireAuth(locale);
   // Property owners have their own scoped portal; staff screens are not for them.
   if (user.role === "owner") redirect(`/${locale}/owner`);
+  if (user.role === "tenant") redirect(`/${locale}/tenant`);
   const roles = await api.get<Role[]>("/api/v1/roles");
   const myRole = roles.find((r) => r.code === user.role);
 

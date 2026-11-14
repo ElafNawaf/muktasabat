@@ -1,4 +1,6 @@
-import { L, day, money, num, ownerApi } from "@/lib/owner";
+import Link from "next/link";
+
+import { L, day, money, num, ownerApi, unitType } from "@/lib/owner";
 
 import { load, one, type SP } from "../guard";
 
@@ -15,6 +17,7 @@ export default async function OwnerProperties({ params, searchParams }: { params
   if ("error" in res) return res.error;
   const t = (ar: string, en: string) => L(locale, ar, en);
   const list = res.data;
+  const qs = as ? `?as=${as}` : "";
   return (
     <>
       <section className="ow-hero"><div><h1>{t("عقاراتي", "My properties")}</h1><p className="ow-muted">{num(locale, list.length)} {t("عقار تحت إدارتنا", "properties under our management")}</p></div></section>
@@ -29,26 +32,24 @@ export default async function OwnerProperties({ params, searchParams }: { params
               <div className="ow-prop__img ow-prop__img--empty"><span className="ms">apartment</span></div>
             )}
             <div>
-              <h2>{b.name}</h2>
+              <h2><Link className="ow-plain" href={`/${locale}/owner/properties/${b.id}${qs}`}>{b.name}</Link></h2>
               <p className="ow-muted">{[b.district, b.city].filter(Boolean).join("، ")}{b.deed_number ? ` · ${t("صك", "Deed")} ${b.deed_number}` : ""}</p>
               <p><span className="ow-chip">{num(locale, b.occupied)}/{num(locale, b.units.length)} {t("مؤجرة", "leased")}</span></p>
             </div>
-            {b.lat != null && b.lng != null && (
-              <a className="ow-link" href={`https://www.google.com/maps?q=${b.lat},${b.lng}`} target="_blank" rel="noopener noreferrer">{t("الموقع على الخريطة", "View on map")}</a>
-            )}
+            <Link className="ow-btn ow-btn--ghost" href={`/${locale}/owner/properties/${b.id}${qs}`}>{t("التفاصيل الكاملة", "Full details")}</Link>
           </header>
           <div className="ow-table-wrap">
-            <table className="ow-table">
+            <table className="ow-table ow-table--cards">
               <thead><tr><th>{t("الوحدة", "Unit")}</th><th>{t("الحالة", "Status")}</th><th>{t("المستأجر", "Tenant")}</th><th>{t("نهاية العقد", "Lease ends")}</th><th className="num">{t("قيمة العقد", "Lease value")}</th><th>{t("إيجار", "Ejar")}</th></tr></thead>
               <tbody>
                 {b.units.map((u) => (
                   <tr key={u.id}>
-                    <td><strong>{u.number}</strong><small>{[u.type, u.area_sqm ? `${num(locale, u.area_sqm)} ${t("م²", "m²")}` : null].filter(Boolean).join(" · ")}</small></td>
-                    <td><span className={`ow-chip ${u.occupied ? "is-ok" : "is-muted"}`}>{u.occupied ? t("مؤجرة", "Leased") : t("شاغرة", "Vacant")}</span></td>
-                    <td>{u.tenant ?? "—"}</td>
-                    <td>{day(locale, u.lease_end)}</td>
-                    <td className="num">{u.lease_rent != null ? money(locale, u.lease_rent) : money(locale, u.listed_rent)}</td>
-                    <td>{u.ejar_status ? t(...(EJAR[u.ejar_status] ?? [u.ejar_status, u.ejar_status])) : "—"}</td>
+                    <td><strong>{u.number}</strong><small>{[unitType(locale, u.type), u.area_sqm ? `${num(locale, u.area_sqm)} ${t("م²", "m²")}` : null].filter(Boolean).join(" · ")}</small></td>
+                    <td data-label={t("الحالة", "Status")}><span className={`ow-chip ${u.occupied ? "is-ok" : "is-muted"}`}>{u.occupied ? t("مؤجرة", "Leased") : t("شاغرة", "Vacant")}</span></td>
+                    <td data-label={t("المستأجر", "Tenant")}>{u.tenant ?? "—"}</td>
+                    <td data-label={t("نهاية العقد", "Lease ends")}>{day(locale, u.lease_end)}</td>
+                    <td className="num" data-label={t("قيمة العقد", "Lease value")}>{u.lease_rent != null ? money(locale, u.lease_rent) : money(locale, u.listed_rent)}</td>
+                    <td data-label={t("إيجار", "Ejar")}>{u.ejar_status ? t(...(EJAR[u.ejar_status] ?? [u.ejar_status, u.ejar_status])) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

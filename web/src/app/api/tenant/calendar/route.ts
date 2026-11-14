@@ -1,0 +1,28 @@
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+
+import { API_BASE, TOKEN_COOKIE } from "@/lib/api";
+
+/** Tenant payment dates as an .ics file (auth + tenant scoping enforced by the API). */
+export async function GET(req: Request) {
+  const token = (await cookies()).get(TOKEN_COOKIE)?.value;
+  if (!token) return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });
+  const src = new URL(req.url).searchParams;
+  const p = new URLSearchParams();
+  for (const k of ["locale", "as_tenant"]) {
+    const v = src.get(k);
+    if (v && /^[a-z0-9]{1,8}$/i.test(v)) p.set(k, v);
+  }
+  const res = await fetch(`${API_BASE}/api/v1/tenant-portal/calendar.ics?${p}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return NextResponse.json({ detail: "Not available" }, { status: res.status });
+  return new NextResponse(res.body, {
+    headers: {
+      "Content-Type": "text/calendar; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="muktasabat-payments.ics"',
+      "Cache-Control": "no-store",
+    },
+  });
+}

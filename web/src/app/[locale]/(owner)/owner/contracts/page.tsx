@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { L, day, money, num, ownerApi } from "@/lib/owner";
 
 import { load, one, type SP } from "../guard";
@@ -9,6 +11,7 @@ export default async function OwnerContracts({ params, searchParams }: { params:
   if ("error" in res) return res.error;
   const t = (ar: string, en: string) => L(locale, ar, en);
   const { leases, management } = res.data;
+  const qs = as ? `?as=${as}` : "";
   const ejar = (s?: string | null) =>
     s === "registered" ? <span className="ow-chip is-ok">{t("موثّق", "Registered")}</span> : s === "pending" ? <span className="ow-chip">{t("قيد التوثيق", "Pending")}</span> : s ? <span className="ow-chip is-warn">{s}</span> : <span className="ow-muted">—</span>;
   return (
@@ -36,19 +39,19 @@ export default async function OwnerContracts({ params, searchParams }: { params:
           <p className="ow-muted">{t("لا توجد عقود إيجار بعد.", "No leases yet.")}</p>
         ) : (
           <div className="ow-table-wrap">
-            <table className="ow-table">
+            <table className="ow-table ow-table--cards">
               <thead><tr><th>{t("العقد", "Lease")}</th><th>{t("المستأجر", "Tenant")}</th><th>{t("المدة", "Term")}</th><th className="num">{t("قيمة العقد", "Value")}</th><th>{t("السداد", "Paid")}</th><th>{t("إيجار", "Ejar")}</th></tr></thead>
               <tbody>
                 {leases.map((c) => {
                   const pct = c.payments_total ? Math.round((100 * c.payments_paid) / c.payments_total) : 0;
                   return (
                     <tr key={c.id} className={c.active ? undefined : "is-dim"}>
-                      <td><strong>{c.building} · {c.unit}</strong><small dir="ltr">{c.contract_number}</small></td>
-                      <td>{c.tenant ?? "—"}</td>
-                      <td>{day(locale, c.start_date)}<small>{t("حتى", "to")} {day(locale, c.end_date)}</small></td>
-                      <td className="num">{money(locale, c.total_rent)}</td>
-                      <td><div className="ow-bar"><span style={{ width: `${pct}%` }} /></div><small>{pct}%</small></td>
-                      <td>{ejar(c.ejar_status)}</td>
+                      <td><Link className="ow-plain" href={`/${locale}/owner/contracts/${c.id}${qs}`}><strong>{c.building} · {c.unit}</strong></Link><small dir="ltr">{c.contract_number}</small></td>
+                      <td data-label={t("المستأجر", "Tenant")}>{c.tenant ?? "—"}</td>
+                      <td data-label={t("المدة", "Term")}>{day(locale, c.start_date)}<small>{t("حتى", "to")} {day(locale, c.end_date)}</small></td>
+                      <td className="num" data-label={t("قيمة العقد", "Value")}>{money(locale, c.total_rent)}</td>
+                      <td data-label={t("السداد", "Paid")}><div className="ow-bar"><span style={{ width: `${pct}%` }} /></div><small>{pct}%</small></td>
+                      <td data-label={t("إيجار", "Ejar")}>{ejar(c.ejar_status)}</td>
                     </tr>
                   );
                 })}

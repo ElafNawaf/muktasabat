@@ -41,6 +41,56 @@ export type Statement = {
   totals: { gross: number; management_fee: number; agent_fee: number; ejar_fee: number; expenses: number; net_payable: number };
 };
 
+export type CollectState = "paid" | "reported" | "overdue" | "due_soon" | "upcoming";
+export type TransferState = "not_paid" | "pending" | "late" | "transferred";
+
+export type LedgerItem = {
+  id: number; contract_id: number; contract_number: string; building_id: number; building: string; unit_id: number; unit: string;
+  tenant?: string | null; seq: number; of: number; due_date: string; days: number; status: CollectState;
+  paid_date?: string | null; method?: string | null; receipt?: string | null;
+  amount: number; management_fee: number; agent_fee: number; ejar_fee: number; fees: number; net: number;
+  transfer: { state: TransferState; due_date?: string | null; date?: string | null; reference?: string | null };
+};
+
+export type Ledger = {
+  as_of: string;
+  items: LedgerItem[];
+  totals: { due: number; collected: number; outstanding: number; upcoming: number; fees: number; owner_share: number; transferred: number; awaiting_transfer: number; late_transfers: number };
+  buildings: { id: number; name: string }[];
+};
+
+export type PropertyDetail = {
+  id: number; name: string; property_type?: string | null; city?: string | null; district?: string | null; address?: string | null;
+  deed_number?: string | null; deed_date?: string | null; lat?: number | null; lng?: number | null; images: string[];
+  kpis: { units: number; occupied: number; occupancy: number; annual_rent_roll: number; collected_12m: number; fees_12m: number; expenses_12m: number; net_12m: number; overdue: number };
+  units: {
+    id: number; number: string; type?: string | null; usage?: string | null; area_sqm?: number | null; rooms?: number | null; bathrooms?: number | null;
+    furnished?: boolean | null; listed_rent: number; occupied: boolean; vacant_days?: number | null;
+    lease: null | { id: number; contract_number: string; tenant?: string | null; start_date: string; end_date: string; days_left: number; annual_rent: number; ejar_status?: string | null };
+    next_due: null | { date: string; amount: number; status: CollectState };
+    overdue: number; collected_12m: number;
+    history: { id: number; contract_number: string; tenant?: string | null; start_date: string; end_date: string; annual_rent: number }[];
+  }[];
+  expenses: { date: string; category: string; description: string; unit?: string | null; vendor?: string | null; amount: number; paid_by: string; deducted: boolean; receipt?: string | null }[];
+  work_orders: { id: number; number: string; title: string; category?: string | null; priority?: string | null; status: string; unit?: string | null; created_at: string; completed_at?: string | null; estimate: number; cost: number; charge_to?: string | null }[];
+};
+
+export type LeaseDetail = {
+  id: number; contract_number: string; ejar_contract_number?: string | null; ejar_status?: string | null; type: string; status?: string | null; active: boolean;
+  building_id: number; building: string; unit: string; tenant: null | { name: string; type?: string | null; nationality?: string | null };
+  start_date: string; end_date: string; days_left: number; annual_rent: number; total_amount: number; payment_type?: string | null; payment_count: number;
+  management_pct: number; agent_pct: number; ejar_fee: number;
+  totals: { scheduled: number; collected: number; outstanding: number; fees: number; owner_share: number; transferred: number };
+  schedule: LedgerItem[];
+};
+
+export type ActivityEvent = {
+  at: string;
+  kind: "collected" | "transferred" | "missed" | "lease_started" | "lease_ended" | "expense" | "work_order";
+  amount?: number; net?: number; tenant?: string | null; building?: string | null; building_id?: number | null; unit?: string | null; contract_id?: number;
+  reference?: string | null; deducted?: boolean; category?: string; description?: string; title?: string; status?: string; number?: string;
+};
+
 function q(locale: string, as?: string | null, extra: Record<string, string | number | undefined | null> = {}) {
   const p = new URLSearchParams({ locale });
   if (as && /^\d+$/.test(as)) p.set("as_owner", as);
@@ -56,6 +106,11 @@ export const ownerApi = {
   payments: (locale: string, year: number, as?: string | null) => api.get<OwnerPayment[]>(`/api/v1/owner-portal/payments?${q(locale, as, { year })}`),
   renewals: (locale: string, as?: string | null) => api.get<OwnerRenewal[]>(`/api/v1/owner-portal/renewals?${q(locale, as)}`),
   workOrders: (locale: string, as?: string | null) => api.get<OwnerWorkOrder[]>(`/api/v1/owner-portal/work-orders?${q(locale, as)}`),
+  ledger: (locale: string, f: { year?: number | null; building?: number | null; contract?: number | null }, as?: string | null) =>
+    api.get<Ledger>(`/api/v1/owner-portal/ledger?${q(locale, as, { year: f.year, building_id: f.building, contract_id: f.contract })}`),
+  property: (locale: string, id: number, as?: string | null) => api.get<PropertyDetail>(`/api/v1/owner-portal/properties/${id}?${q(locale, as)}`),
+  lease: (locale: string, id: number, as?: string | null) => api.get<LeaseDetail>(`/api/v1/owner-portal/contracts/${id}?${q(locale, as)}`),
+  activity: (locale: string, as?: string | null) => api.get<ActivityEvent[]>(`/api/v1/owner-portal/activity?${q(locale, as)}`),
   statement: (locale: string, year: number, month: number | null, as?: string | null) =>
     api.get<Statement>(`/api/v1/owner-portal/statement?${q(locale, as, { year, month })}`),
 };
@@ -96,3 +151,15 @@ export type OwnerRenewal = {
   current_rent: number; proposed_rent?: number | null; change_pct?: number | null;
   owner_decision_by?: string | null; owner_decision_note?: string | null; lost_reason?: string | null; new_contract_number?: string | null;
 };
+
+const UNIT_TYPES: Record<string, [string, string]> = {
+  apartment: ["شقة", "Apartment"], villa: ["فيلا", "Villa"], studio: ["استوديو", "Studio"], floor: ["دور", "Floor"],
+  duplex: ["دوبلكس", "Duplex"], office: ["مكتب", "Office"], shop: ["محل", "Shop"], showroom: ["معرض", "Showroom"],
+  warehouse: ["مستودع", "Warehouse"], land: ["أرض", "Land"], room: ["غرفة", "Room"], building: ["مبنى", "Building"],
+};
+/** Human label for a unit type code ("apartment" → "شقة"). Unknown values pass through. */
+export function unitType(locale: string, v?: string | null) {
+  if (!v) return null;
+  const m = UNIT_TYPES[v.toLowerCase()];
+  return m ? (locale === "ar" ? m[0] : m[1]) : v;
+}

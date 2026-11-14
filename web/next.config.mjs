@@ -35,7 +35,7 @@ const PRIVATE_SECTIONS = [
   "login", "register", "forgot-password", "reset-password", "verify-email", "confirm-email",
   "dashboard", "properties", "owners", "agents", "tenants", "contracts", "management-contracts",
   "payments", "expenses", "users", "website", "owner", "owner-access", "account", "support",
-  "data-management", "employees", "roles", "reports", "settings", "maintenance", "renewals",
+  "data-management", "employees", "roles", "reports", "settings", "maintenance", "tenant", "tenant-access", "renewals",
 ];
 
 /** @type {import('next').NextConfig} */

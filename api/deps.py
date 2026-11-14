@@ -26,6 +26,14 @@ OWNER_ALLOWED_PREFIXES = (
     "/api/v1/support/",
 )
 
+# Tenant accounts (role "tenant"): same idea, scoped to the tenant portal.
+TENANT_ALLOWED_PREFIXES = (
+    "/api/v1/tenant-portal/",
+    "/api/v1/auth/me",
+    "/api/v1/account/",
+    "/api/v1/support/",
+)
+
 
 def get_current_user(
     db: DbSession,
@@ -55,6 +63,10 @@ def get_current_user(
         path = request.url.path
         if not path.startswith(OWNER_ALLOWED_PREFIXES) or path.startswith("/api/v1/owner-portal/admin"):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Owner accounts can only use the owner portal")
+    if user.role == "tenant":
+        path = request.url.path
+        if not path.startswith(TENANT_ALLOWED_PREFIXES) or path.startswith("/api/v1/tenant-portal/admin"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Tenant accounts can only use the tenant portal")
     # Revoked by a password change or "sign out of all devices".
     if not token_matches_user(payload, user):
         raise credentials_error

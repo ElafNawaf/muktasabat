@@ -24,6 +24,7 @@ import {
 
 import { OwnerTransferModal } from "./OwnerTransferModal";
 import { PayModal } from "./PayModal";
+import { TenantReports, type TenantReport } from "./TenantReports";
 
 export type PaymentRow = {
   id: number;
@@ -51,6 +52,7 @@ export function PaymentsClient({
   tenants,
   buildings,
   locale,
+  reports = [],
 }: {
   payments: PaymentRow[];
   contracts: Contract[];
@@ -58,6 +60,7 @@ export function PaymentsClient({
   tenants: Tenant[];
   buildings: Building[];
   locale: string;
+  reports?: TenantReport[];
 }) {
   const t = useTranslations("paymentsPage");
   const tCommon = useTranslations("common");
@@ -157,7 +160,9 @@ export function PaymentsClient({
         </div>
       </div>
 
-      <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
+      <TenantReports reports={reports} locale={locale} canEdit={can("payments", "edit")} />
+
+      <div className="kpi-grid kpi-grid--4">
         <Kpi icon="payments" label={t("total")} value={String(totals.total)} />
         <Kpi
           icon="pending"

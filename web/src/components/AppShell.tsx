@@ -3,6 +3,7 @@
 import { CommandPalette } from "./CommandPalette";
 import { MobileNavBackdrop, MobileNavProvider } from "./MobileNavProvider";
 import { PortalNavProvider, type PortalUser } from "./PortalNav";
+import { ResponsiveTables } from "./ResponsiveTables";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ user, children }: { user: PortalUser; children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export function AppShell({ user, children }: { user: PortalUser; children: React
           <MobileNavBackdrop />
         </div>
         <CommandPalette />
+        <ResponsiveTables />
       </PortalNavProvider>
     </MobileNavProvider>
   );
