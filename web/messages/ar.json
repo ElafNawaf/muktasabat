@@ -709,6 +709,15 @@
     "registerOnEjar": "تسجيل في إيجار"
   },
   "paymentsPage": {
+    "ownerPayout": "تحويل المالك",
+    "ownerDue": "مستحق {date}",
+    "ownerSent": "حُوِّل {date}",
+    "markTransferred": "تم التحويل",
+    "transferTitle": "تسجيل تحويل حصة المالك",
+    "transferSubtitle": "حصة المالك من دفعة {amount} ر.س. يُسجَّل التحويل وتتوقف تنبيهات التحويل.",
+    "transferDate": "تاريخ التحويل",
+    "transferReference": "مرجع الحوالة",
+    "confirmTransfer": "تأكيد التحويل",
     "title": "المدفوعات",
     "subtitle": "جدول التحصيل والسجل.",
     "total": "إجمالي المدفوعات",

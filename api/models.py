@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -505,12 +506,46 @@ class Payment(Base):
     payment_method: Mapped[Optional[str]] = mapped_column(String(50))
     receipt_number: Mapped[Optional[str]] = mapped_column(String(50))
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    # ── Owner remittance (تحويل حصة المالك) ──────────────────────────────────
+    # موعد تحويل حصة المالك — set when the tenant pays (paid_date + OWNER_TRANSFER_DAYS)
+    owner_transfer_due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # تاريخ التحويل الفعلي للمالك — stops the owner-transfer alerts
+    owner_transferred_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # مرجع الحوالة البنكية
+    owner_transfer_reference: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     contract: Mapped["Contract"] = relationship(back_populates="payments")
     splits: Mapped[list["PaymentSplit"]] = relationship(
         back_populates="payment", cascade="all, delete-orphan"
     )
+
+
+class PaymentAlertLog(Base):
+    """One row per payment alert e-mail (تنبيهات الدفعات).
+
+    The unique key (payment, kind, stage) is what makes the scheduler safe to
+    run repeatedly — and from more than one process (the deploy preflight
+    container shares the database): a stage is *claimed* by inserting its row
+    before the e-mail goes out, so it can never be sent twice.
+    """
+
+    __tablename__ = "payment_alert_logs"
+    __table_args__ = (UniqueConstraint("payment_id", "kind", "stage", name="uq_payment_alert"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payment_id: Mapped[int] = mapped_column(
+        ForeignKey("payments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # tenant_due | tenant_overdue | tenant_paid | owner_due | owner_overdue | owner_paid
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    # "d-7", "d0", "d+1", "now" …
+    stage: Mapped[str] = mapped_column(String(20), nullable=False)
+    to_email: Mapped[Optional[str]] = mapped_column(String(255))
+    cc_emails: Mapped[Optional[str]] = mapped_column(String(500))
+    delivered: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    error: Mapped[Optional[str]] = mapped_column(String(120))
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class PaymentSplit(Base):

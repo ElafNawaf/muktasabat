@@ -22,6 +22,7 @@ import {
   type Unit,
 } from "@/lib/types";
 
+import { OwnerTransferModal } from "./OwnerTransferModal";
 import { PayModal } from "./PayModal";
 
 export type PaymentRow = {
@@ -34,6 +35,9 @@ export type PaymentRow = {
   payment_method: string | null;
   receipt_number: string | null;
   notes: string | null;
+  owner_transfer_due_date?: string | null;
+  owner_transferred_date?: string | null;
+  owner_transfer_reference?: string | null;
   created_at: string;
   splits?: { id: number; split_type: string; amount: number; description: string | null }[];
 };
@@ -64,6 +68,7 @@ export function PaymentsClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [paying, setPaying] = useState<PaymentRow | null>(null);
+  const [transferring, setTransferring] = useState<PaymentRow | null>(null);
   const [confirmDel, setConfirmDel] = useState<PaymentRow | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -219,6 +224,7 @@ export function PaymentsClient({
                 <th className="num">{t("amount")}</th>
                 <th>{tCommon("status")}</th>
                 <th>{t("paidDate")}</th>
+                <th>{t("ownerPayout")}</th>
                 <th></th>
               </tr>
             </thead>
@@ -269,6 +275,23 @@ export function PaymentsClient({
                     <td className="text-sec" style={{ fontSize: 12 }}>
                       {p.paid_date ? fmtDate(p.paid_date) : "—"}
                     </td>
+                    <td style={{ fontSize: 12 }}>
+                      {p.owner_transferred_date ? (
+                        <span className="badge badge-success">
+                          <span className="dot" /> {t("ownerSent", { date: fmtDate(p.owner_transferred_date) })}
+                        </span>
+                      ) : p.owner_transfer_due_date ? (
+                        <span
+                          className={
+                            "badge " + (p.owner_transfer_due_date < today ? "badge-danger" : "badge-warning")
+                          }
+                        >
+                          <span className="dot" /> {t("ownerDue", { date: fmtDate(p.owner_transfer_due_date) })}
+                        </span>
+                      ) : (
+                        <span className="text-sec">—</span>
+                      )}
+                    </td>
                     <td>
                       <div className="actions" style={{ display: "flex", gap: 4 }}>
                         {eff !== "paid" && (
@@ -278,6 +301,12 @@ export function PaymentsClient({
                           >
                             <span className="ms ms-sm">paid</span>
                             {t("markPaid")}
+                          </button>
+                        )}
+                        {eff === "paid" && !p.owner_transferred_date && (
+                          <button className="btn btn-sm btn-secondary" onClick={() => setTransferring(p)}>
+                            <span className="ms ms-sm">send_money</span>
+                            {t("markTransferred")}
                           </button>
                         )}
                         {canDelete && (
@@ -296,7 +325,7 @@ export function PaymentsClient({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>
+                  <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>
                     {tCommon("noResults")}
                   </td>
                 </tr>
@@ -311,6 +340,14 @@ export function PaymentsClient({
           open={Boolean(paying)}
           onClose={() => setPaying(null)}
           payment={paying}
+        />
+      )}
+
+      {transferring && (
+        <OwnerTransferModal
+          open={Boolean(transferring)}
+          onClose={() => setTransferring(null)}
+          payment={transferring}
         />
       )}
 

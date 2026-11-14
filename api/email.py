@@ -26,6 +26,7 @@ class EmailMessage:
     subject: str
     text_body: str
     html_body: str | None = None
+    cc: list[str] | None = None
 
 
 def _send_via_ses(msg: EmailMessage) -> None:
@@ -44,7 +45,7 @@ def _send_via_ses(msg: EmailMessage) -> None:
 
     kwargs = {
         "Source": settings.ses_from_email,
-        "Destination": {"ToAddresses": [msg.to]},
+        "Destination": {"ToAddresses": [msg.to], **({"CcAddresses": msg.cc} if msg.cc else {})},
         "Message": {
             "Subject": {"Data": msg.subject, "Charset": "UTF-8"},
             "Body": body,
@@ -56,23 +57,40 @@ def _send_via_ses(msg: EmailMessage) -> None:
     client.send_email(**kwargs)
 
 
-def send_email(msg: EmailMessage) -> None:
+_last_error: str | None = None
+
+
+def last_send_error() -> str | None:
+    """Reason the most recent send_email() failed (None after a success)."""
+    return _last_error
+
+
+def send_email(msg: EmailMessage) -> bool:
     """Best-effort send. SES errors are logged, never raised — auth flows stay
     user-facing-friendly even if email infrastructure has a hiccup."""
+    global _last_error
     settings = get_settings()
+    # SES's sandbox recipient check is case-sensitive; mailboxes aren't.
+    msg.to = (msg.to or "").strip().lower()
+    msg.cc = [c for c in dict.fromkeys((c or "").strip().lower() for c in (msg.cc or [])) if c and c != msg.to] or None
     if not settings.ses_region or not settings.ses_from_email:
         logger.info(
-            "[email:console] to=%s subject=%r\n%s",
+            "[email:console] to=%s cc=%s subject=%r\n%s",
             msg.to,
+            ",".join(msg.cc or []),
             msg.subject,
             msg.text_body,
         )
-        return
+        return True
+    _last_error = None
     try:
         _send_via_ses(msg)
         logger.info("Sent email to %s via SES (subject=%r)", msg.to, msg.subject)
-    except Exception:
+        return True
+    except Exception as e:
+        _last_error = "ses_sandbox_unverified_recipient" if "not verified" in str(e) else "send_failed"
         logger.exception("Failed to send email to %s via SES", msg.to)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +124,24 @@ def _block(lang: str, paragraphs: list[str], button: tuple[str, str] | None) -> 
         f'<div dir="{"rtl" if rtl else "ltr"}" lang="{lang}" '
         f'style="text-align:{"right" if rtl else "left"};font-family:Tahoma,Arial,sans-serif;'
         f'font-size:15px;line-height:1.7;color:#1f2937">{body}</div>'
+    )
+
+
+def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
+    """Arabic section then English section in the house frame (used by the
+    payment alerts, whose bodies are pre-built HTML)."""
+    pre = (
+        f"<div style='display:none;max-height:0;overflow:hidden;opacity:0'>{preheader}</div>" if preheader else ""
+    )
+    return (
+        f'{pre}<div style="max-width:640px;margin:0 auto;padding:24px">'
+        f'<div style="font-weight:700;color:{_BRAND};font-size:18px;margin-bottom:16px">'
+        "مكتسبات · Muktasabat</div>"
+        f'<div dir="rtl" lang="ar" style="text-align:right;font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.8;color:#1f2937">{inner_ar}</div>'
+        '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">'
+        f'<div dir="ltr" lang="en" style="text-align:left;font-family:Tahoma,Arial,sans-serif;font-size:14.5px;line-height:1.7;color:#1f2937">{inner_en}</div>'
+        '<p style="color:#9ca3af;font-size:12px;margin-top:24px">'
+        "شركة مكتسبات العقارية · Muktasabat Real Estate</p></div>"
     )
 
 

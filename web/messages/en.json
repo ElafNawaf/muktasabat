@@ -709,6 +709,15 @@
     "registerOnEjar": "Register on Ejar"
   },
   "paymentsPage": {
+    "ownerPayout": "Owner payout",
+    "ownerDue": "Due {date}",
+    "ownerSent": "Sent {date}",
+    "markTransferred": "Transferred",
+    "transferTitle": "Owner payout sent",
+    "transferSubtitle": "Owner's share of SAR {amount}. Records the transfer and stops the payout reminders.",
+    "transferDate": "Transfer date",
+    "transferReference": "Transfer reference",
+    "confirmTransfer": "Confirm transfer",
     "title": "Payments",
     "subtitle": "Collection schedule and history.",
     "total": "Total payments",
