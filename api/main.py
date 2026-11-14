@@ -99,6 +99,9 @@ async def lifespan(app: FastAPI):
         migrate_cms_v2(db)
         migrate_cms_v3(db)
         migrate_cms_v4(db)
+        from api.bootstrap_roles import fix_rbac_defaults_v1
+
+        fix_rbac_defaults_v1(db)
         migrate_cms_v5(db)
 
     # Pydantic EmailStr rejects .local; fix legacy bootstrap row so /auth/login can return UserRead.

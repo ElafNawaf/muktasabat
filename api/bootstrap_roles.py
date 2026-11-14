@@ -194,10 +194,12 @@ def _derive(module: str, perms: dict) -> dict:
     if module == "management_contracts":
         return get("contracts")  # management contracts used to be governed by `contracts`
     if module == "owner_portal":
+        # Owner logins are sensitive: only roles that can already edit owners.
         o = get("owners")
-        return dict(_NONE, view=o["view"], create=o["edit"], edit=o["edit"], delete=o["edit"])
+        return dict(_NONE, view=o["edit"], create=o["edit"], edit=o["edit"], delete=o["edit"])
     if module == "dashboard":
-        return dict(_NONE, view=int(any((v or {}).get("view") for v in perms.values() if isinstance(v, dict))))
+        # Company-wide finance figures: only roles that already see money or properties.
+        return dict(_NONE, view=int(bool(get("payments")["view"] or get("properties")["view"])))
     if module == "company":
         return dict(_NONE, view=get("contracts")["view"])
     return dict(_NONE)
@@ -228,3 +230,29 @@ def sync_missing_module_permissions(db: Session) -> None:
             changed = True
     if changed:
         db.commit()
+
+
+def fix_rbac_defaults_v1(db: Session) -> None:
+    """One-time correction (2026-11-14) of the first back-fill, which gave the
+    content editor the finance dashboard and read-only roles owner-portal access.
+    Recorded in cms_site_settings.private._migrations so it never runs twice."""
+    from api.cms_models import SiteSettings
+
+    row = db.get(SiteSettings, 1)
+    done = set(((row.private or {}).get("_migrations") or [])) if row else set()
+    if row is None or "rbac-fix-1" in done:
+        return
+    for role in db.scalars(select(Role)).all():
+        if role.code in ("admin", "owner"):
+            continue
+        perms = dict(role.permissions or {})
+        owners = perms.get("owners") or {}
+        if not owners.get("edit"):
+            perms["owner_portal"] = dict(_NONE)
+        if not ((perms.get("payments") or {}).get("view") or (perms.get("properties") or {}).get("view")):
+            perms["dashboard"] = dict(_NONE)
+        role.permissions = perms
+    private = dict(row.private or {})
+    private["_migrations"] = sorted(done | {"rbac-fix-1"})
+    row.private = private
+    db.commit()
