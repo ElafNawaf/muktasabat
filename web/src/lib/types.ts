@@ -403,7 +403,9 @@ export type ModuleId =
   | "agents"
   | "tenants"
   | "expenses"
-  | "users";
+  | "users"
+  | "website"
+  | "support";
 
 export type Role = {
   code: string;
@@ -425,6 +427,8 @@ export const MODULE_IDS: ModuleId[] = [
   "tenants",
   "expenses",
   "users",
+  "website",
+  "support",
 ];
 
 export const PERMISSION_ACTIONS: PermissionAction[] = [
@@ -449,3 +453,88 @@ export function localized<T extends Record<string, unknown>>(
   if (locale.startsWith("en") && en) return en;
   return primary ?? "";
 }
+
+// -------- My account --------
+
+export type Profile = {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  email_verified: boolean;
+  created_at: string;
+  full_name: string | null;
+  full_name_ar: string | null;
+  phone: string | null;
+  job_title: string | null;
+  avatar_url: string | null;
+  preferred_locale: "ar" | "en";
+  notify_ticket_updates: boolean;
+  pending_email: string | null;
+  password_changed_at: string | null;
+  last_login_at: string | null;
+};
+
+export type AccountActivity = {
+  timestamp: string;
+  ip_address: string | null;
+  action: string;
+};
+
+// -------- Support tickets --------
+
+export const TICKET_CATEGORIES = ["technical", "account", "data", "billing", "feature", "other"] as const;
+export const TICKET_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+export const TICKET_STATUSES = ["open", "in_progress", "waiting_user", "resolved", "closed"] as const;
+export type TicketCategory = (typeof TICKET_CATEGORIES)[number];
+export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
+export type TicketStatus = (typeof TICKET_STATUSES)[number];
+
+export type TicketUser = {
+  id: number;
+  username: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
+export type TicketMessage = {
+  id: number;
+  body: string;
+  is_staff: boolean;
+  internal: boolean;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  created_at: string;
+  author: TicketUser | null;
+};
+
+export type TicketSummary = {
+  id: number;
+  reference: string;
+  subject: string;
+  category: TicketCategory;
+  priority: TicketPriority;
+  status: TicketStatus;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  user: TicketUser;
+  assignee: TicketUser | null;
+  message_count: number;
+  awaiting_me: boolean;
+};
+
+export type TicketDetail = TicketSummary & {
+  page_url: string | null;
+  user_agent: string | null;
+  messages: TicketMessage[];
+};
+
+export type TicketStats = {
+  open: number;
+  in_progress: number;
+  waiting_user: number;
+  resolved: number;
+  closed: number;
+  urgent_open: number;
+};

@@ -4,7 +4,7 @@ import { API_BASE } from "@/lib/api";
 import { forwardHeaders } from "@/lib/forward";
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as { email?: string };
+  const body = (await req.json()) as { email?: string; locale?: string };
   if (!body.email) {
     return NextResponse.json({ error: "Email required" }, { status: 400 });
   }
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   const res = await fetch(`${API_BASE}/api/v1/auth/forgot-password`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ email: body.email }),
+    body: JSON.stringify({ email: body.email, locale: body.locale }),
     cache: "no-store",
   });
 

@@ -37,3 +37,6 @@ next-env.d.ts
 
 # Local upload fallback (when S3_BUCKET is unset)
 uploads/
+
+# Data-management exports (contain customer personal data)
+exports/

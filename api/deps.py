@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from api.database import get_db
 from api.models import User
-from api.security import decode_token
+from api.security import decode_token, token_matches_user
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -36,6 +36,9 @@ def get_current_user(
 
     user = db.get(User, user_id)
     if user is None or not user.is_active_user:
+        raise credentials_error
+    # Revoked by a password change or "sign out of all devices".
+    if not token_matches_user(payload, user):
         raise credentials_error
     return user
 

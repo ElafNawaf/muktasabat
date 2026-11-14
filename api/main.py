@@ -25,27 +25,33 @@ from api.database import (
     migrate_tenant_escorts_to_companions,
     ensure_user_email_verification_columns,
     ensure_user_password_reset_columns,
+    ensure_user_profile_columns,
 )
 from api.logging_config import setup_logging
 from api.request_logging import RequestLoggingMiddleware
 from api.storage import local_upload_root, uses_local_storage
 from api.routers import (
+    account,
     agents,
     analytics,
     auth,
     buildings,
     contracts,
+    data_io,
     employees,
     expenses,
     management,
     owners,
     payments,
     roles,
+    support,
     tenants,
     translate,
     units,
 )
 from api.bootstrap_roles import seed_default_roles
+from api.cms_seed import seed_cms
+from api.routers import cms
 
 
 # Configure JSON logging before anything else grabs a handler.
@@ -57,11 +63,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Create database tables on startup (same schema as api.models). For production, use managed migrations."""
     import api.models  # noqa: F401 — register ORM mappers with Base.metadata
+    import api.cms_models  # noqa: F401 — public-website CMS tables
     from api.models import User
 
     Base.metadata.create_all(bind=engine)
     ensure_user_password_reset_columns(engine)
     ensure_user_email_verification_columns(engine)
+    ensure_user_profile_columns(engine)
     ensure_building_assignee_column(engine)
     ensure_building_location_columns(engine)
     ensure_building_extended_columns(engine)
@@ -78,6 +86,10 @@ async def lifespan(app: FastAPI):
 
     with SessionLocal() as db:
         seed_default_roles(db)
+
+    # Public website: fill an empty CMS with starter content (no-op afterwards).
+    with SessionLocal() as db:
+        seed_cms(db)
 
     # Pydantic EmailStr rejects .local; fix legacy bootstrap row so /auth/login can return UserRead.
     with SessionLocal() as db:
@@ -165,6 +177,9 @@ def health():
 
 API_V1 = "/api/v1"
 app.include_router(auth.router, prefix=API_V1)
+# Self-service profile / credentials / sessions + support tickets
+app.include_router(account.router, prefix=API_V1)
+app.include_router(support.router, prefix=API_V1)
 app.include_router(owners.router, prefix=API_V1)
 app.include_router(agents.router, prefix=API_V1)
 app.include_router(buildings.router, prefix=API_V1)
@@ -178,6 +193,11 @@ app.include_router(expenses.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)
+# Admin bulk data management — Excel export / validate / import
+app.include_router(data_io.router, prefix=API_V1)
+# Public website CMS — /api/v1/cms/public/* (anonymous) and /api/v1/cms/admin/*
+app.include_router(cms.public, prefix=API_V1)
+app.include_router(cms.admin, prefix=API_V1)
 
 # Serve local uploads (used when S3 is unset or AWS credentials are missing).
 app.mount(

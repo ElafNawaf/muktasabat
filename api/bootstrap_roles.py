@@ -19,6 +19,9 @@ _MODULES = [
     "tenants",
     "expenses",
     "users",
+    "website",
+    # Support tickets: `edit` = support staff (sees all tickets, triages, replies).
+    "support",
 ]
 _ALL = {m: {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1} for m in _MODULES}
 
@@ -118,6 +121,20 @@ DEFAULT_ROLES: list[dict] = [
                 "owners": {"view": 1},
                 "agents": {"view": 1},
                 "tenants": {"view": 1},
+            }
+        ),
+    },
+    {
+        "code": "content_editor",
+        "label_en": "Content Editor",
+        "label_ar": "محرر المحتوى",
+        "description_en": "Manages the public website: pages, projects, news, careers and enquiries.",
+        "description_ar": "إدارة الموقع العام: الصفحات والمشاريع والأخبار والوظائف والاستفسارات.",
+        "color": "#0F766E",
+        "system": False,
+        "permissions": _build(
+            {
+                "website": {"view": 1, "create": 1, "edit": 1},
             }
         ),
     },

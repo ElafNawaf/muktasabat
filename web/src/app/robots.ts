@@ -1,0 +1,18 @@
+import type { MetadataRoute } from "next";
+
+import { SITE_URL } from "@/lib/cms";
+
+const PORTAL = ["dashboard", "properties", "owners", "agents", "tenants", "contracts", "management-contracts", "payments", "expenses", "users", "website", "login", "register", "forgot-password", "reset-password", "verify-email"];
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/api/", ...PORTAL.flatMap((p) => [`/ar/${p}`, `/en/${p}`])],
+      },
+    ],
+    sitemap: `${SITE_URL}/sitemap.xml`,
+  };
+}

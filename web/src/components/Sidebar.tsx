@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { BrandLogo } from "./BrandLogo";
+import { UserAvatar } from "./UserAvatar";
 import { useMobileNav } from "./MobileNavProvider";
 
 type NavItem = { id: string; href: string; icon: string; label: string; badge?: number };
@@ -19,7 +20,11 @@ function roleDisplayName(role: string, tr: (key: AppRole) => string): string {
   return role;
 }
 
-export function Sidebar({ user }: { user: { username: string; role: string } | null }) {
+export function Sidebar({
+  user,
+}: {
+  user: { username: string; role: string; full_name?: string | null; avatar_url?: string | null } | null;
+}) {
   const t = useTranslations("nav");
   const locale = useLocale();
   const pathname = usePathname();
@@ -53,6 +58,21 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
         { id: "expenses", href: `/${locale}/expenses`, icon: "receipt_long", label: t("expenses") },
       ],
     },
+    ...(user?.role === "admin" || user?.role === "content_editor"
+      ? [
+          {
+            label: t("website"),
+            items: [{ id: "website", href: `/${locale}/website`, icon: "language", label: t("website") }],
+          },
+        ]
+      : []),
+    {
+      label: t("myAccount"),
+      items: [
+        { id: "account", href: `/${locale}/account`, icon: "account_circle", label: t("profile") },
+        { id: "support", href: `/${locale}/support`, icon: "support_agent", label: t("support") },
+      ],
+    },
     ...(user?.role === "admin"
       ? [
           {
@@ -64,6 +84,12 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
                 icon: "admin_panel_settings",
                 label: t("users"),
               },
+              {
+                id: "data-management",
+                href: `/${locale}/data-management`,
+                icon: "database",
+                label: t("dataManagement"),
+              },
             ],
           },
         ]
@@ -71,9 +97,7 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
   ];
 
   const otherLocale = locale === "en" ? "ar" : "en";
-  const initials = user
-    ? user.username.slice(0, 2).toUpperCase()
-    : "—";
+  const displayName = user ? user.full_name || user.username : "—";
 
   return (
     <aside className={"sidebar" + (collapsed ? " collapsed" : "") + (mobileOpen ? " mobile-open" : "")}>
@@ -123,13 +147,20 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
       </nav>
 
       <div className="sidebar-foot">
-        <div className="avatar">{initials}</div>
-        {!collapsed && user && (
-          <div className="user-info">
-            <div className="name">{user.username}</div>
-            <div className="role">{roleDisplayName(user.role, roleLabel)}</div>
-          </div>
-        )}
+        <Link
+          href={`/${locale}/account`}
+          className="sidebar-user-link"
+          title={collapsed ? displayName : undefined}
+          onClick={closeMobile}
+        >
+          <UserAvatar name={displayName} url={user?.avatar_url} size={32} />
+          {!collapsed && user && (
+            <div className="user-info">
+              <div className="name">{displayName}</div>
+              <div className="role">{roleDisplayName(user.role, roleLabel)}</div>
+            </div>
+          )}
+        </Link>
         <Link
           href={pathname.replace(`/${locale}`, `/${otherLocale}`)}
           className="lang-toggle"

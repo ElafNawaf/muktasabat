@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-Role = Literal["admin", "manager", "accountant", "agent", "viewer", "owner"]
+Role = Literal["admin", "manager", "accountant", "agent", "viewer", "owner", "content_editor"]
 
 
 class UserRead(BaseModel):
@@ -12,16 +12,23 @@ class UserRead(BaseModel):
     id: int
     username: str
     email: EmailStr
-    role: Role
+    # Plain str (not the Role literal): custom roles created in the roles
+    # matrix (e.g. content_editor) must still be able to sign in.
+    role: str
     is_active_user: bool
     email_verified: bool = False
     created_at: datetime
+    full_name: str | None = None
+    full_name_ar: str | None = None
+    avatar_url: str | None = None
+    preferred_locale: str = "ar"
+    last_login_at: datetime | None = None
 
 
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
     email: EmailStr
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class LoginResponse(BaseModel):
@@ -46,6 +53,8 @@ class RoleUpdateRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    # UI locale the request came from — used for the link in the email.
+    locale: str | None = None
 
 
 class ForgotPasswordResponse(BaseModel):
@@ -56,7 +65,7 @@ class ForgotPasswordResponse(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=10, max_length=256)
-    new_password: str = Field(min_length=6, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class VerifyEmailRequest(BaseModel):
