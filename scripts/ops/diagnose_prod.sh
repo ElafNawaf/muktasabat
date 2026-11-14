@@ -1,7 +1,7 @@
 #!/bin/bash
 # 1) Inspect the account owner's login record (masked). 2) Re-invite all users except 'admin'.
 cat /home/ubuntu/muktasabat/.last_deployed_sha
-docker exec muktasabat-api-1 python - <<'PY'
+docker exec -i muktasabat-api-1 python - <<'PY'
 from sqlalchemy import func, select
 from api.database import SessionLocal
 from api.models import User
