@@ -54,6 +54,7 @@ export const ownerApi = {
   properties: (locale: string, as?: string | null) => api.get<OwnerProperty[]>(`/api/v1/owner-portal/properties?${q(locale, as)}`),
   contracts: (locale: string, as?: string | null) => api.get<OwnerContracts>(`/api/v1/owner-portal/contracts?${q(locale, as)}`),
   payments: (locale: string, year: number, as?: string | null) => api.get<OwnerPayment[]>(`/api/v1/owner-portal/payments?${q(locale, as, { year })}`),
+  renewals: (locale: string, as?: string | null) => api.get<OwnerRenewal[]>(`/api/v1/owner-portal/renewals?${q(locale, as)}`),
   workOrders: (locale: string, as?: string | null) => api.get<OwnerWorkOrder[]>(`/api/v1/owner-portal/work-orders?${q(locale, as)}`),
   statement: (locale: string, year: number, month: number | null, as?: string | null) =>
     api.get<Statement>(`/api/v1/owner-portal/statement?${q(locale, as, { year, month })}`),
@@ -87,4 +88,11 @@ export type OwnerWorkOrder = {
   building: string; unit?: string | null; assignee?: string | null; vendor_name?: string | null;
   estimate_amount?: number | null; actual_cost?: number | null; charge_to: string; approval_limit?: number | null;
   approved_by?: string | null; decision_note?: string | null; created_at: string; completed_at?: string | null; resolution?: string | null;
+};
+
+export type OwnerRenewal = {
+  id: number; contract_number?: string | null; stage: string; tenant_intent: string; end_date: string; days_left: number;
+  building?: string | null; unit?: string | null; tenant?: string | null; assignee?: string | null;
+  current_rent: number; proposed_rent?: number | null; change_pct?: number | null;
+  owner_decision_by?: string | null; owner_decision_note?: string | null; lost_reason?: string | null; new_contract_number?: string | null;
 };

@@ -202,7 +202,7 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
         b = b_by_id.get(u.building_id) if u else None
         alerts.append({"level": "high" if days <= 30 else "medium", "kind": "expiring", "ref": c.contract_number,
                        "where": f"{_name(b, locale)} · {u.number}" if (u and b) else None, "days": days,
-                       "amount": c.total_rent_amount, "href": "contracts"})
+                       "amount": c.total_rent_amount, "href": "renewals"})
     for c in active_contracts:
         if (c.ejar_status or "") not in ("registered", "active"):
             alerts.append({"level": "low", "kind": "ejar", "ref": c.contract_number, "href": "contracts"})
@@ -238,6 +238,18 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
             alerts.append({"level": "high" if any(w.priority == "emergency" for w in late) else "medium",
                            "kind": "wo_overdue", "count": len(late), "href": "maintenance"})
     except Exception:  # maintenance module optional; never break the dashboard
+        pass
+    try:
+        from api.renewal_models import LeaseRenewal
+        rn = db.scalars(select(LeaseRenewal).where(LeaseRenewal.stage.in_(["due", "awaiting_owner"]))).all()
+        cold = [r for r in rn if r.stage == "due" and (r.end_date - today).days <= 60]
+        if cold:
+            alerts.append({"level": "high" if any((r.end_date - today).days <= 30 for r in cold) else "medium",
+                           "kind": "rn_no_contact", "count": len(cold), "href": "renewals"})
+        waiting = [r for r in rn if r.stage == "awaiting_owner"]
+        if waiting:
+            alerts.append({"level": "medium", "kind": "rn_owner", "count": len(waiting), "href": "renewals"})
+    except Exception:  # never break the dashboard
         pass
     alerts.sort(key=lambda a: (order[a["level"]], -(a.get("amount") or 0)))
 

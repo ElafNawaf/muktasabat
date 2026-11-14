@@ -98,11 +98,13 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
       case "mgmt_expiring": return T(`عقد إدارة ${a.ref} ينتهي خلال ${a.days} يومًا`, `Management contract ${a.ref} ends in ${a.days} days`);
       case "wo_approval": return T(`${a.count} طلبات صيانة بانتظار موافقة المالك (${sar(a.amount || 0)})`, `${a.count} work orders are waiting for owner approval (${sar(a.amount || 0)})`);
       case "wo_overdue": return T(`${a.count} طلبات صيانة تجاوزت مهلة الاستجابة`, `${a.count} work orders are past their response time`);
+      case "rn_no_contact": return T(`${a.count} عقود تنتهي خلال 60 يومًا ولم يُتواصل مع مستأجريها`, `${a.count} leases end within 60 days and the tenant hasn't been contacted`);
+      case "rn_owner": return T(`${a.count} عروض تجديد بانتظار موافقة المالك`, `${a.count} renewal offers are waiting for the owner`);
       case "expense_spike": return T(`مصروفات هذا الشهر أعلى بكثير من المعتاد (المتوسط ${sar(a.baseline || 0)})`, `This month's expenses are well above normal (avg ${sar(a.baseline || 0)})`);
       default: return a.kind;
     }
   };
-  const alertIcon: Record<string, string> = { overdue: "schedule", expiring: "event_busy", ejar: "gavel", low_occupancy: "domain_disabled", owner_payout: "account_balance", mgmt_expiring: "handshake", expense_spike: "trending_up", wo_approval: "gavel", wo_overdue: "timer_off" };
+  const alertIcon: Record<string, string> = { overdue: "schedule", expiring: "event_busy", ejar: "gavel", low_occupancy: "domain_disabled", owner_payout: "account_balance", mgmt_expiring: "handshake", expense_spike: "trending_up", wo_approval: "gavel", wo_overdue: "timer_off", rn_no_contact: "phone_missed", rn_owner: "autorenew" };
 
   return (
     <div className="bi">

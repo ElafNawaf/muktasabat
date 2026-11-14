@@ -50,6 +50,7 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       label: t("contractsGroup"),
       items: [
         { id: "contracts", href: L("contracts"), icon: "description", label: t("leaseContracts"), show: v("contracts") },
+        { id: "renewals", href: L("renewals"), icon: "autorenew", label: t("renewals"), show: v("contracts") },
         { id: "management-contracts", href: L("management-contracts"), icon: "handshake", label: t("managementContracts"), show: v("management_contracts") },
       ],
     },
