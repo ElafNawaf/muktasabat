@@ -22,6 +22,15 @@ const ACCENTS = ["#7B1A1A", "#b7832a", "#2f6b5a", "#2d6fa3", "#7a4fa0", "#c0603a
 const PIN_KEY = "mk-sb-pins";
 const CLOSED_KEY = "mk-sb-closed";
 const RAIL_KEY = "mk-sb-rail";
+const MODE_KEY = "mk-nav-mode";
+
+export type NavMode = "full" | "rail" | "hover" | "top";
+const MODES: { id: NavMode; icon: string; ar: string; en: string; arHint: string; enHint: string }[] = [
+  { id: "full", icon: "view_sidebar", ar: "قائمة جانبية كاملة", en: "Full sidebar", arHint: "الأسماء والأيقونات ظاهرة دائماً", enHint: "Names and icons always visible" },
+  { id: "rail", icon: "view_compact_alt", ar: "أيقونات فقط", en: "Icons only", arHint: "مساحة أكبر للمحتوى", enHint: "More room for content" },
+  { id: "hover", icon: "swipe_right", ar: "تتوسع عند المرور", en: "Expand on hover", arHint: "أيقونات تتوسع عند وضع المؤشر", enHint: "Icons that open when you point" },
+  { id: "top", icon: "toolbar", ar: "قائمة علوية", en: "Top menu bar", arHint: "القوائم في شريط أعلى الصفحة", enHint: "Menus in a bar across the top" },
+];
 
 function readJSON<T>(key: string, fallback: T): T {
   try {
@@ -51,7 +60,11 @@ export function Sidebar({
   const roleLabel = useTranslations("roles");
   const { sections, openPalette } = usePortalNav();
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [mode, setMode] = useState<NavMode>("full");
+  const [narrow, setNarrow] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const asideRef = useRef<HTMLElement>(null);
   const [pins, setPins] = useState<string[]>([]);
   const [closed, setClosed] = useState<string[]>([]);
   const [tip, setTip] = useState<null | { label: string; top: number }>(null);
@@ -61,8 +74,52 @@ export function Sidebar({
   useEffect(() => {
     setPins(readJSON<string[]>(PIN_KEY, []));
     setClosed(readJSON<string[]>(CLOSED_KEY, []));
-    setCollapsed(readJSON<boolean>(RAIL_KEY, false));
+    const saved = readJSON<NavMode | null>(MODE_KEY, null);
+    setMode(saved ?? (readJSON<boolean>(RAIL_KEY, false) ? "rail" : "full"));
+    const mq = window.matchMedia("(max-width: 767px)");
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
   }, []);
+
+  // Phones always get the slide-in drawer; the chosen layout applies from tablet up.
+  const eff: NavMode = narrow ? "full" : mode;
+  const collapsed = eff === "rail" || eff === "hover";
+  useEffect(() => {
+    const app = asideRef.current?.parentElement;
+    if (!app) return;
+    app.setAttribute("data-nav", eff);
+    app.classList.add("nav-anim");
+  }, [eff]);
+  const chooseMode = (m: NavMode) => {
+    setMode(m);
+    writeJSON(MODE_KEY, m);
+    setPicker(false);
+    setOpenGroup(null);
+  };
+  useEffect(() => {
+    if (!picker && !openGroup) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".sb2-picker, .sb2-pickbtn, .sb2-tg")) {
+        setPicker(false);
+        setOpenGroup(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPicker(false);
+        setOpenGroup(null);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [picker, openGroup]);
+  useEffect(() => setOpenGroup(null), [pathname]);
 
   const allItems = useMemo(() => sections.flatMap((s) => s.items), [sections]);
   const activeId = useMemo(() => {
@@ -88,11 +145,7 @@ export function Sidebar({
       writeJSON(CLOSED_KEY, next);
       return next;
     });
-  const toggleRail = () =>
-    setCollapsed((c) => {
-      writeJSON(RAIL_KEY, !c);
-      return !c;
-    });
+  const toggleRail = () => chooseMode(mode === "full" ? "rail" : "full");
 
   // Sliding highlight that glides to the current page.
   const placeIndicator = useCallback(() => {
@@ -112,17 +165,24 @@ export function Sidebar({
   }, []);
   useLayoutEffect(() => {
     placeIndicator();
-  }, [placeIndicator, activeId, closed, pins, collapsed, sections]);
+  }, [placeIndicator, activeId, closed, pins, eff, sections]);
   useEffect(() => {
-    const t = setTimeout(placeIndicator, 320); // after group open/close animation
+    const t = setTimeout(placeIndicator, 380); // after open/close and width animations
     return () => clearTimeout(t);
-  }, [placeIndicator, closed, collapsed]);
+  }, [placeIndicator, closed, eff]);
+
+  // Expand-on-hover changes heights while it animates: re-place the highlight as it settles.
+  const settle = () => {
+    requestAnimationFrame(placeIndicator);
+    setTimeout(placeIndicator, 200);
+    setTimeout(placeIndicator, 420);
+  };
 
   const otherLocale = locale === "en" ? "ar" : "en";
   const displayName = user ? user.full_name || user.username : "—";
 
   const showTip = (e: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>, label: string) => {
-    if (!collapsed) return;
+    if (eff !== "rail") return;
     const r = e.currentTarget.getBoundingClientRect();
     setTip({ label, top: r.top + r.height / 2 });
   };
@@ -136,7 +196,7 @@ export function Sidebar({
           href={it.href}
           className={"sb2-item" + (isActive ? " is-active" : "")}
           aria-current={isActive ? "page" : undefined}
-          aria-label={collapsed ? it.label : undefined}
+          aria-label={eff === "rail" ? it.label : undefined}
           onClick={closeMobile}
           onMouseEnter={(e) => showTip(e, it.label)}
           onMouseLeave={() => setTip(null)}
@@ -147,7 +207,7 @@ export function Sidebar({
           <span className="sb2-label">{it.label}</span>
           {it.badge ? <span className="sb2-badge">{it.badge}</span> : null}
         </Link>
-        {!collapsed && (
+        {eff !== "rail" && (
           <button
             type="button"
             className={"sb2-pin" + (isPinned ? " is-on" : "")}
@@ -163,8 +223,70 @@ export function Sidebar({
     );
   };
 
+  const pickerEl = picker && (
+    <div className="sb2-picker" role="dialog" aria-label={ar ? "شكل القائمة" : "Menu layout"}>
+      <p className="sb2-picker__h">{ar ? "اختر شكل القائمة" : "Choose the menu layout"}</p>
+      <div className="sb2-picker__grid">
+        {MODES.map((m) => (
+          <button key={m.id} type="button" className={"sb2-mode" + (mode === m.id ? " is-on" : "")} onClick={() => chooseMode(m.id)} aria-pressed={mode === m.id}>
+            <span className={`sb2-mini sb2-mini--${m.id}`} aria-hidden><i /><b /><u /></span>
+            <span className="sb2-mode__t"><b>{ar ? m.ar : m.en}</b><small>{ar ? m.arHint : m.enHint}</small></span>
+            {mode === m.id && <span className="ms ms-sm sb2-mode__ok">check_circle</span>}
+          </button>
+        ))}
+      </div>
+      {narrow && <p className="sb2-picker__note">{ar ? "على الجوال تظهر القائمة كدرج جانبي دائماً." : "On phones the menu always slides in from the side."}</p>}
+    </div>
+  );
+  const pickBtn = (
+    <button type="button" className={"sb2-iconbtn sb2-pickbtn" + (picker ? " is-on" : "")} onClick={() => setPicker((v) => !v)} aria-expanded={picker} title={ar ? "شكل القائمة" : "Menu layout"} aria-label={ar ? "شكل القائمة" : "Menu layout"}>
+      <span className="ms ms-sm">dashboard_customize</span>
+    </button>
+  );
+
+  if (eff === "top") {
+    return (
+      <aside ref={asideRef} className="sidebar sb2 sb2--top">
+        <Link href={`/${locale}/dashboard`} className="sb2-brand">
+          <span className="sb2-brand__mark"><BrandLogo size={22} /></span>
+          <span className="sb2-brand__text"><b>{ar ? "مكتسبات" : "Muktasabat"}</b></span>
+        </Link>
+        <nav className="sb2-topnav" aria-label={ar ? "القائمة الرئيسية" : "Main menu"}>
+          {pinned.length > 0 && (
+            <div className={"sb2-tg" + (openGroup === "__pins" ? " is-open" : "")} style={{ ["--ac" as string]: "#b7832a" }}>
+              <button type="button" className="sb2-tg__b" onClick={() => setOpenGroup(openGroup === "__pins" ? null : "__pins")} aria-expanded={openGroup === "__pins"}>
+                <span className="ms ms-sm">push_pin</span>{ar ? "المثبّتة" : "Pinned"}<span className="ms ms-sm sb2-tg__chev">expand_more</span>
+              </button>
+              <div className="sb2-dd">{pinned.map((it, i) => renderItem(it, "#b7832a", i, true))}</div>
+            </div>
+          )}
+          {groups.map((g) => (
+            <div key={g.label} className={"sb2-tg" + (g.hasActive ? " has-active" : "") + (openGroup === g.label ? " is-open" : "")} style={{ ["--ac" as string]: g.accent }}>
+              <button type="button" className="sb2-tg__b" onClick={() => setOpenGroup(openGroup === g.label ? null : g.label)} aria-expanded={openGroup === g.label}>
+                <span className="sb2-gh__dot" />{g.label}<span className="ms ms-sm sb2-tg__chev">expand_more</span>
+              </button>
+              <div className="sb2-dd">{g.items.map((it, i) => renderItem(it, g.accent, i))}</div>
+            </div>
+          ))}
+        </nav>
+        <div className="sb2-toptools">
+          <button type="button" className="sb2-iconbtn" onClick={openPalette} title={ar ? "بحث وانتقال سريع" : "Search & jump"} aria-label={ar ? "بحث" : "Search"}><span className="ms ms-sm">search</span></button>
+          {pickBtn}
+          <Link href={pathname.replace(`/${locale}`, `/${otherLocale}`)} className="sb2-iconbtn sb2-lang" title={ar ? "English" : "العربية"}>{locale === "en" ? "ع" : "EN"}</Link>
+          {pickerEl}
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <aside className={"sidebar sb2" + (collapsed ? " collapsed" : "") + (mobileOpen ? " mobile-open" : "")}>
+    <aside
+      ref={asideRef}
+      className={"sidebar sb2" + (collapsed ? " sb2--" + eff : "") + (mobileOpen ? " mobile-open" : "")}
+      onMouseEnter={eff === "hover" ? settle : undefined}
+      onMouseLeave={eff === "hover" ? settle : undefined}
+      onTransitionEnd={eff === "hover" ? placeIndicator : undefined}
+    >
       <div className="sb2-hd">
         <Link href={`/${locale}/dashboard`} className="sb2-brand" onClick={closeMobile}>
           <span className="sb2-brand__mark"><BrandLogo size={26} /></span>
@@ -226,6 +348,7 @@ export function Sidebar({
           )}
         </Link>
         <div className="sb2-foot__tools">
+          {!narrow && pickBtn}
           <Link href={pathname.replace(`/${locale}`, `/${otherLocale}`)} className="sb2-iconbtn sb2-lang" title={ar ? "English" : "العربية"}>
             {locale === "en" ? "ع" : "EN"}
           </Link>
@@ -235,7 +358,8 @@ export function Sidebar({
         </div>
       </div>
 
-      {collapsed && tip && (
+      {pickerEl}
+      {eff === "rail" && tip && (
         <span className="sb2-tip" style={{ top: tip.top }} role="tooltip">{tip.label}</span>
       )}
     </aside>

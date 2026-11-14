@@ -48,7 +48,7 @@ SITE = {
         {"value": 0, "suffix": "+", "label": _b("مشروع منجز", "Projects delivered")},
         {"value": 0, "suffix": "", "label": _b("سنوات خبرة", "Years of experience")},
     ],
-    "portal_title": _b("بوابة الملاك", "Owner Portal"),
+    "portal_title": _b("بوابة إدارة الأملاك", "Owner Portal"),
     "portal_body": _b(
         "تابع عقودك ومدفوعاتك وتقارير أملاكك وطلبات المستأجرين في مكان واحد، على مدار الساعة.",
         "Track your contracts, payments, property reports and tenant requests in one place, around the clock.",
@@ -221,7 +221,7 @@ V2_COPY = {
     "about_body": (
         {_OLD_ABOUT_AR},
         _b(
-            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك مكتب عقاري نظامي وموثّق. نسوّق ونؤجر ونبيع الشقق والأدوار والفلل والأراضي والعقارات التجارية في الرياض ومكة المكرمة، وندير الأملاك نيابةً عن ملاكها: إعلانات مرخّصة، وفرز للمستأجرين، وتوثيق العقود عبر منصة إيجار، وتحصيل منتظم، وصيانة، وتقارير مالية يطّلع عليها المالك في أي وقت عبر بوابة الملاك.",
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك مكتب عقاري نظامي وموثّق. نسوّق ونؤجر ونبيع الشقق والأدوار والفلل والأراضي والعقارات التجارية في الرياض ومكة المكرمة، وندير الأملاك نيابةً عن ملاكها: إعلانات مرخّصة، وفرز للمستأجرين، وتوثيق العقود عبر منصة إيجار، وتحصيل منتظم، وصيانة، وتقارير مالية يطّلع عليها المالك في أي وقت عبر بوابة إدارة الأملاك.",
             "Muktasabat Real Estate Company for Marketing and Property Management is a licensed, verified real estate office. We market, lease and sell apartments, floors, villas, land and commercial property in Riyadh and Makkah, and manage properties on behalf of their owners: licensed adverts, tenant screening, Ejar-registered contracts, steady collection, maintenance, and financial reports owners can open any time in the owner portal.",
         ),
     ),
@@ -235,7 +235,7 @@ V2_COPY = {
     "seo_description": (
         {_OLD_SEO_DESC_AR},
         _b(
-            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك: عقارات للإيجار والبيع في الرياض ومكة المكرمة، تسويق عقاري حصري، وساطة، وإدارة أملاك مع بوابة ملاك وتقارير مالية.",
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك: عقارات للإيجار والبيع في الرياض ومكة المكرمة، تسويق عقاري حصري، وساطة، وإدارة أملاك مع بوابة إدارة أملاك وتقارير مالية.",
             "Muktasabat Real Estate: property for rent and sale in Riyadh and Makkah, exclusive marketing, brokerage and property management with an owner portal and financial reports.",
         ),
     ),
@@ -448,18 +448,47 @@ V5_COPY = {
     "about_body": (
         V2_COPY["about_body"][1],
         _b(
-            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك مكتب عقاري نظامي وموثّق. نسوّق ونؤجر ونبيع الشقق والأدوار والفلل والأراضي والعقارات التجارية، وندير الأملاك نيابةً عن ملاكها: إعلانات مرخّصة، وفرز للمستأجرين، وتوثيق العقود عبر منصة إيجار، وتحصيل منتظم، وصيانة، وتقارير مالية يطّلع عليها المالك في أي وقت عبر بوابة الملاك.",
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك مكتب عقاري نظامي وموثّق. نسوّق ونؤجر ونبيع الشقق والأدوار والفلل والأراضي والعقارات التجارية، وندير الأملاك نيابةً عن ملاكها: إعلانات مرخّصة، وفرز للمستأجرين، وتوثيق العقود عبر منصة إيجار، وتحصيل منتظم، وصيانة، وتقارير مالية يطّلع عليها المالك في أي وقت عبر بوابة إدارة الأملاك.",
             "Muktasabat Real Estate Company for Marketing and Property Management is a licensed, verified real estate office. We market, lease and sell apartments, floors, villas, land and commercial property, and manage properties on behalf of their owners: licensed adverts, tenant screening, Ejar-registered contracts, steady collection, maintenance, and financial reports owners can open any time in the owner portal.",
         ),
     ),
     "seo_description": (
         V2_COPY["seo_description"][1],
         _b(
-            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك: عقارات للإيجار والبيع، شقق وفلل وأراضٍ، تسويق عقاري حصري، وساطة، وإدارة أملاك مع بوابة ملاك وتقارير مالية.",
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك: عقارات للإيجار والبيع، شقق وفلل وأراضٍ، تسويق عقاري حصري، وساطة، وإدارة أملاك مع بوابة إدارة أملاك وتقارير مالية.",
             "Muktasabat Real Estate: property for rent and sale — apartments, villas and land — exclusive marketing, brokerage and property management with an owner portal and financial reports.",
         ),
     ),
 }
+
+
+# ── v6 (Nov 2026): the portal is "بوابة إدارة الأملاك" on the public site ──
+V6_RENAMES = (("بوابة الملاك", "بوابة إدارة الأملاك"), ("بوابة ملاك", "بوابة إدارة أملاك"))
+
+
+def _rename(v):
+    if isinstance(v, str):
+        for a, b in V6_RENAMES:
+            v = v.replace(a, b)
+        return v
+    if isinstance(v, dict):
+        return {k: _rename(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_rename(x) for x in v]
+    return v
+
+
+def migrate_cms_v6(db: Session) -> None:
+    row = db.get(SiteSettings, 1)
+    if row is None or _done(row, "v6-portal-name"):
+        return
+    row.data = _rename(dict(row.data or {}))
+    for s in db.scalars(select(CmsService)).all():
+        for f in ("title_ar", "summary_ar", "body_ar"):
+            if hasattr(s, f) and getattr(s, f) is not None:
+                setattr(s, f, _rename(getattr(s, f)))
+    _mark(row, "v6-portal-name")
+    db.commit()
 
 
 def migrate_cms_v5(db: Session) -> None:
