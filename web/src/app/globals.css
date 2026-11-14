@@ -4704,13 +4704,13 @@ tr.xl-focus td:first-child { box-shadow: inset 3px 0 0 var(--color-primary); }
 
 /* ═══ 2026-11q: menu layouts — full · icons · expand-on-hover · top bar ═══ */
 .sb2-close { display: none; }
-@media (max-width: 767px) {
+@media (max-width: 519px) {
   .sb2-close { display: inline-grid; }
   .sb2-foot .sb2-rail { display: none; }
   .sidebar.sb2 { box-shadow: 0 20px 60px -12px rgba(31,35,40,.35); }
   .sb2-pin { opacity: .35; transform: none; }
 }
-@media (min-width: 768px) {
+@media (min-width: 520px) {
   .app[data-nav] { grid-template-columns: var(--nav-w, 272px) minmax(0, 1fr) !important; grid-template-rows: minmax(0, 1fr); }
   .app.nav-anim { transition: grid-template-columns .42s cubic-bezier(.22,1,.36,1); }
   .app[data-nav="full"] { --nav-w: 272px; }
@@ -4795,7 +4795,7 @@ tr.xl-focus td:first-child { box-shadow: inset 3px 0 0 var(--color-primary); }
 .sb2-mini--top u { inset: 24px 5px 5px; }
 .sb2-mode:hover .sb2-mini i { filter: brightness(1.1); }
 @media (prefers-reduced-motion: reduce) { .app.nav-anim, .app[data-nav="hover"] > .sidebar.sb2 { transition: none; } .sb2-picker, .sb2-dd { animation: none; } }
-@media (min-width: 768px) { .app[data-nav] .topbar-brand { display: none !important; } }
+@media (min-width: 520px) { .app[data-nav] .topbar-brand { display: none !important; } }
 /* ── Contract paper (screen, template preview, print/PDF) ───────── */
 .cp { --cp-accent: #7B1A1A; --cp-ink: #1c1c1e; --cp-mute: #6b6b70; --cp-line: #e6e1d8;
   position: relative; overflow: hidden; max-width: 880px; margin: 0 auto; padding: 44px 56px 30px;
