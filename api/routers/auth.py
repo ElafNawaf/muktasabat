@@ -2,7 +2,9 @@ import hashlib
 import logging
 import secrets
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, Optional
+
+from pydantic import BaseModel
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -20,6 +22,7 @@ from api.email import (
 )
 from api.models import AuditLog, User
 from api.schemas.auth import (
+    MeRead,
     AdminSetPasswordRequest,
     ReinviteRequest,
     AccessTokenResponse,
@@ -266,9 +269,13 @@ def refresh(payload: RefreshRequest, db: DbSession):
     )
 
 
-@router.get("/me", response_model=UserRead)
-def me(user: CurrentUser):
-    return user
+@router.get("/me", response_model=MeRead)
+def me(user: CurrentUser, db: DbSession):
+    from api.permissions import effective_permissions
+
+    out = MeRead.model_validate(user)
+    out.permissions = effective_permissions(db, user)
+    return out
 
 
 @router.get("/users", response_model=list[UserRead])
@@ -303,6 +310,56 @@ def change_role(
     db.commit()
     db.refresh(user)
     return user
+
+
+class PermissionOverridesIn(BaseModel):
+    # {"module": {"action": 1 | 0 | null}}  — null / missing = follow the role
+    overrides: dict[str, dict[str, Optional[int]]] = {}
+
+
+@router.get("/admin/users/{user_id}/permissions")
+def get_user_permissions(user_id: int, db: DbSession, _admin: AdminUser):
+    """The person's role matrix, their extras and the resulting access."""
+    from api.models import Role
+    from api.permissions import effective_permissions
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    role = db.get(Role, user.role)
+    return {
+        "user_id": user.id, "role": user.role, "is_admin": user.is_admin,
+        "role_permissions": (role.permissions if role else {}) or {},
+        "overrides": user.permission_overrides or {},
+        "effective": effective_permissions(db, user),
+    }
+
+
+@router.put("/admin/users/{user_id}/permissions")
+def set_user_permissions(user_id: int, payload: PermissionOverridesIn, db: DbSession, admin: AdminUser):
+    from api.bootstrap_roles import _MODULES
+    from api.models import AuditLog
+    from api.permissions import ACTIONS, effective_permissions
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if user.role in ("owner", "tenant"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Portal accounts don't use staff permissions")
+    clean: dict = {}
+    for m, acts in (payload.overrides or {}).items():
+        if m not in _MODULES or not isinstance(acts, dict):
+            continue
+        cell = {a: (1 if v else 0) for a, v in acts.items() if a in ACTIONS and v is not None}
+        if cell:
+            clean[m] = cell
+    before = user.permission_overrides or {}
+    user.permission_overrides = clean or None
+    db.add(AuditLog(user_id=admin.id, username=admin.username, action="permission_overrides", entity_type="user",
+                    entity_id=str(user.id), details={"before": before, "after": clean}))
+    db.commit()
+    db.refresh(user)
+    return {"user_id": user.id, "overrides": user.permission_overrides or {}, "effective": effective_permissions(db, user)}
 
 
 @router.put("/admin/users/{user_id}/toggle-active", response_model=UserRead)

@@ -37,7 +37,7 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       label: t("overview"),
       items: [
         { id: "dashboard", href: L("dashboard"), icon: "space_dashboard", label: t("dashboard"), show: v("dashboard") },
-        { id: "approvals", href: L("approvals"), icon: "approval", label: t("approvals"), show: isAdmin || can("maintenance", "approve") || can("contracts", "approve") || can("payments", "approve") || can("hr", "approve") },
+        { id: "approvals", href: L("approvals"), icon: "approval", label: t("approvals"), show: true },
       ],
     },
     {

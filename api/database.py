@@ -62,6 +62,7 @@ def ensure_user_profile_columns(engine) -> None:
         "pending_email": "VARCHAR(120)",
         "email_change_token": "VARCHAR(128)",
         "email_change_expires": ts,
+        "permission_overrides": "JSON",
     }
     stmts = [
         f"ALTER TABLE users ADD COLUMN {col} {ddl}"
@@ -446,6 +447,15 @@ def ensure_payment_report_receipt_columns(engine) -> None:
         engine,
         "payment_reports",
         [("receipt_key", "VARCHAR(255)"), ("receipt_url", "VARCHAR(500)"), ("receipt_name", "VARCHAR(255)")],
+    )
+
+
+def ensure_expense_approval_columns(engine) -> None:
+    """Approval workflow on expenses (existing rows count as approved)."""
+    _add_missing_columns(
+        engine,
+        "expenses",
+        [("approval_status", "VARCHAR(20) NOT NULL DEFAULT 'approved'"), ("created_by_id", "INTEGER")],
     )
 
 

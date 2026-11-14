@@ -386,6 +386,7 @@ def _equal(a: Any, b: Any) -> bool:
 
 
 def validate_workbook(db: Session, data: bytes) -> Report:
+    db.info["all_expenses"] = True  # the workbook round-trips pending expenses too
     report = Report()
     wb = _open(data)
     try:
@@ -601,6 +602,7 @@ def _summarise(report: Report, ctx: Context) -> None:
 
 def apply_workbook(db: Session, report: Report) -> None:
     """Write a validated report in one transaction (caller commits / rolls back)."""
+    db.info["all_expenses"] = True
     from api.contract_totals import compute_contract_totals
     from api.models import Contract, ManagementContract
     from api.routers.management import _apply_fee_totals

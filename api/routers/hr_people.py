@@ -24,6 +24,7 @@ from api.hr_people_models import (
 from api.services.hr_contract_docs import refresh_body
 from api.models import User
 from api.permissions import Perm, has_permission
+from api.services import workflows as wf
 from api.routers.hr import NON_STAFF, _approvers, _base, _cc, _profile, _require_staff, _send, _staff, _uname, today_riyadh
 
 logger = logging.getLogger(__name__)
@@ -414,14 +415,17 @@ def request_bank_change(payload: BankIn, db: DbSession, user: CurrentUser):
     per = _personal(db, user.id)
     per.pending_bank_name, per.pending_iban, per.pending_account_holder = payload.bank_name.strip(), payload.iban, payload.account_holder.strip()
     per.pending_bank_at = datetime.utcnow()
+    tasks = wf.start(db, "bank_change", user.id, {"requester_id": user.id})
     db.commit()
-    for a in _approvers(db, exclude_user_id=user.id):
-        _send(a.email, [], f"طلب تغيير الحساب البنكي — {_uname(user, 'ar')} | Bank account change — {_uname(user, 'en')}",
+    if not tasks:  # workflow switched off → applies straight away
+        _apply_bank(db, user.id, True, None)
+        return {"ok": True, "pending": False}
+    wf.notify(db, tasks[0], f"طلب تغيير الحساب البنكي — {_uname(user, 'ar')}", f"Bank account change — {_uname(user, 'en')}",
               f"<p>طلب <strong>{escape(_uname(user, 'ar'))}</strong> تغيير حساب الراتب إلى {escape(payload.bank_name)} — {escape(_mask(payload.iban))}. "
               "يرجى التحقق من شهادة الآيبان قبل الاعتماد.</p>",
               f"<p><strong>{escape(_uname(user, 'en'))}</strong> asked to change their salary account to {escape(payload.bank_name)} — {escape(_mask(payload.iban))}. "
               "Please check the IBAN certificate before approving.</p>",
-              f"{_base()}/ar/hr/people/{user.id}", "مراجعة الطلب", "Review request")
+              f"{_base()}/ar/approvals")
     return {"ok": True, "pending": True}
 
 
@@ -546,13 +550,8 @@ def set_bank(user_id: int, payload: BankIn, db: DbSession, user: Perm("hr", "app
     return {"ok": True}
 
 
-@router.post("/people/{user_id}/bank/decision")
-def decide_bank(user_id: int, db: DbSession, user: Perm("hr", "approve"), approve: bool = Query(...)):
-    if user_id == user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't approve your own bank change.")
+def _apply_bank(db: Session, user_id: int, approve: bool, by: Optional[User]) -> None:
     per = _personal(db, user_id)
-    if not per.pending_iban:
-        raise HTTPException(status.HTTP_409_CONFLICT, "No bank change is waiting.")
     if approve:
         per.bank_name, per.iban, per.account_holder = per.pending_bank_name, per.pending_iban, per.pending_account_holder
         per.bank_verified_at = datetime.utcnow()
@@ -561,10 +560,32 @@ def decide_bank(user_id: int, db: DbSession, user: Perm("hr", "approve"), approv
     db.commit()
     emp = db.get(User, user_id)
     ok_ar, ok_en = ("اعتُمد", "approved") if approve else ("رُفض", "declined")
+    who_ar, who_en = (_uname(by, "ar"), _uname(by, "en")) if by else ("اعتماد تلقائي", "automatic approval")
     _send(emp.email if emp else None, [], f"{ok_ar} تغيير الحساب البنكي | Bank account change {ok_en}",
-          f"<p>{ok_ar} طلب تغيير حساب الراتب من قِبل {escape(_uname(user, 'ar'))}.</p>",
-          f"<p>Your salary account change was {ok_en} by {escape(_uname(user, 'en'))}.</p>", f"{_base()}/ar/my-hr/file", "ملفي الوظيفي", "My file")
-    return {"ok": True}
+          f"<p>{ok_ar} طلب تغيير حساب الراتب من قِبل {escape(who_ar)}.</p>",
+          f"<p>Your salary account change was {ok_en} by {escape(who_en)}.</p>", f"{_base()}/ar/my-hr/file", "ملفي الوظيفي", "My file")
+
+
+def workflow_decide_bank(db: Session, user_id: int, user: User, approve: bool, note: Optional[str] = None) -> str:
+    if user_id == user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't approve your own bank change.")
+    per = _personal(db, user_id)
+    if not per.pending_iban:
+        raise HTTPException(status.HTTP_409_CONFLICT, "No bank change is waiting.")
+    result, nxt = wf.decide(db, "bank_change", user_id, user, approve, note, ctx_fn=lambda: {"requester_id": user_id})
+    if result == "pending":
+        db.commit()
+        emp = db.get(User, user_id)
+        wf.notify(db, nxt, f"تغيير حساب بنكي — {_uname(emp, 'ar')}", f"Bank account change — {_uname(emp, 'en')}",
+                  "<p>طلب تغيير حساب الراتب بانتظار اعتمادك.</p>", "<p>A salary account change is waiting for your approval.</p>", f"{_base()}/ar/approvals")
+        return "pending"
+    _apply_bank(db, user_id, result == "approved", user)
+    return result
+
+
+@router.post("/people/{user_id}/bank/decision")
+def decide_bank(user_id: int, db: DbSession, user: CurrentUser, approve: bool = Query(...)):
+    return {"ok": True, "result": workflow_decide_bank(db, user_id, user, approve)}
 
 
 @router.post("/people/{user_id}/family", status_code=201)

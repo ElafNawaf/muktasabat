@@ -27,6 +27,7 @@ from api.email import EmailMessage, _branded, _button, send_email
 from api.hr_models import Attendance, HrProfile, HrRequest, HrRequestEvent, HrSettings, LocationPing
 from api.models import User
 from api.permissions import Perm, has_permission
+from api.services import workflows as wf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/hr", tags=["hr"])
@@ -259,6 +260,7 @@ def _out(db: Session, r: HrRequest, locale: str, detail: bool = False) -> dict:
                        for e in db.scalars(select(HrRequestEvent).where(HrRequestEvent.request_id == r.id).order_by(HrRequestEvent.id)).all()]
         if r.kind == "leave" and r.leave_type == ANNUAL:
             d["balance"] = balance(db, r.user_id, r.start_date.year if r.start_date else None)
+        d["approval_chain"] = wf.chain_json(db, "hr_request", r.id, locale)
     return d
 
 
@@ -752,13 +754,13 @@ def create_request(payload: RequestIn, db: DbSession, user: CurrentUser, locale:
     db.refresh(r)
 
     emp = db.get(User, target_id)
-    cc = _cc(db) if r.kind in ("leave", "ticket") else []
-    url = f"{_base()}/ar/hr?open={r.id}"
-    for a in _approvers(db, exclude_user_id=target_id):
-        _send(a.email, cc, f"{KIND_AR[r.kind]} بانتظار موافقتك — {_uname(emp, 'ar')} | {KIND_EN[r.kind]} awaiting approval — {_uname(emp, 'en')} ({r.number})",
-              f"<p>قدّم <strong>{escape(_uname(emp, 'ar'))}</strong> {KIND_AR[r.kind]}:</p><p>{escape(_summary(r, 'ar'))}</p>" + (f"<p>السبب: {escape(r.reason)}</p>" if r.reason else ""),
-              f"<p><strong>{escape(_uname(emp, 'en'))}</strong> submitted a {KIND_EN[r.kind].lower()}:</p><p>{escape(_summary(r, 'en'))}</p>" + (f"<p>Reason: {escape(r.reason)}</p>" if r.reason else ""),
-              url, "مراجعة الطلب", "Review request")
+    # Approval chain from the "hr_request" workflow (default: the HR approver).
+    tasks = wf.start(db, "hr_request", r.id, _wf_ctx(r))
+    db.commit()
+    if not tasks:
+        _finalize(db, r, None, True, None)
+    else:
+        _wf_notify_step(db, r, emp, tasks[0])
     out = _out(db, r, locale, detail=True)
     out["warning"] = warn
     return out
@@ -806,31 +808,74 @@ def list_requests(db: DbSession, user: Perm("hr", "view"), locale: str = Query("
     return [_out(db, r, locale) for r in rows]
 
 
-@router.post("/requests/{rid}/decision")
-def decide(rid: int, payload: DecisionIn, db: DbSession, user: Perm("hr", "approve"), locale: str = Query("ar", pattern="^(ar|en)$")):
-    r = _get(db, rid)
+def _wf_ctx(r: HrRequest) -> dict:
+    return {"kind": r.kind, "days": float(r.days or 0), "amount": float(r.estimated_cost) if r.kind == "ticket" and r.estimated_cost else None,
+            "requester_id": r.user_id, "ref": r.number}
+
+
+def _wf_notify_step(db: Session, r: HrRequest, emp: Optional[User], t) -> None:
+    cc = _cc(db) if r.kind in ("leave", "ticket") and t.step_index == 0 else []
+    extra_ar = f"<p>السبب: {escape(r.reason)}</p>" if r.reason else ""
+    extra_en = f"<p>Reason: {escape(r.reason)}</p>" if r.reason else ""
+    wf.notify(db, t, f"{KIND_AR[r.kind]} بانتظار موافقتك — {_uname(emp, 'ar')} ({r.number})",
+              f"{KIND_EN[r.kind]} awaiting approval — {_uname(emp, 'en')} ({r.number})",
+              f"<p>قدّم <strong>{escape(_uname(emp, 'ar'))}</strong> {KIND_AR[r.kind]}:</p><p>{escape(_summary(r, 'ar'))}</p>{extra_ar}",
+              f"<p><strong>{escape(_uname(emp, 'en'))}</strong> submitted a {KIND_EN[r.kind].lower()}:</p><p>{escape(_summary(r, 'en'))}</p>{extra_en}",
+              f"{_base()}/ar/approvals")
+    for e in cc:  # keep copying the CEO on leave / tickets, as before
+        _send(e, [], f"{KIND_AR[r.kind]} — {_uname(emp, 'ar')} ({r.number}) | {KIND_EN[r.kind]} — {_uname(emp, 'en')}",
+              f"<p>{escape(_summary(r, 'ar'))}</p>", f"<p>{escape(_summary(r, 'en'))}</p>", f"{_base()}/ar/hr?open={r.id}", "عرض", "Open")
+
+
+def _finalize(db: Session, r: HrRequest, user: Optional[User], approve: bool, note: Optional[str]) -> None:
+    """Apply the final decision (after the last approval step, or automatically)."""
+    if approve and r.kind == "leave" and r.leave_type == ANNUAL:
+        b = balance(db, r.user_id, r.start_date.year if r.start_date else None)
+        if (r.days or 0) > b["remaining"] + (r.days or 0):  # pending already counted in remaining
+            raise HTTPException(status.HTTP_409_CONFLICT, "Not enough annual leave balance.")
+    r.status = "approved" if approve else "rejected"
+    r.decided_by_id, r.decided_at, r.decision_note = (user.id if user else None), datetime.utcnow(), note
+    who_ar = _uname(user, "ar") if user else "اعتماد تلقائي"
+    who_en = _uname(user, "en") if user else "automatic approval"
+    _log(db, r, who_ar, r.status if user else "auto_approved", note)
+    db.commit()
+    emp = db.get(User, r.user_id)
+    cc = _cc(db) if r.kind in ("leave", "ticket") else []
+    ok_ar, ok_en = ("تمت الموافقة على", "approved") if approve else ("تم رفض", "rejected")
+    note_ar = f"<p>ملاحظة: {escape(note)}</p>" if note else ""
+    _send(emp.email if emp else None, cc,
+          f"{ok_ar} {KIND_AR[r.kind]} {r.number} | {KIND_EN[r.kind]} {r.number} {ok_en}",
+          f"<p>{ok_ar} {KIND_AR[r.kind]} لـ <strong>{escape(_uname(emp, 'ar'))}</strong> من قِبل {escape(who_ar)}.</p><p>{escape(_summary(r, 'ar'))}</p>{note_ar}",
+          f"<p>The {KIND_EN[r.kind].lower()} of <strong>{escape(_uname(emp, 'en'))}</strong> was {ok_en} by {escape(who_en)}.</p><p>{escape(_summary(r, 'en'))}</p>"
+          + (f"<p>Note: {escape(note)}</p>" if note else ""),
+          f"{_base()}/ar/my-hr", "عرض طلباتي", "View my requests")
+    wf.notify_final(db, "hr_request", f"{KIND_EN[r.kind]} {r.number} {ok_en}", f"<p>{escape(_summary(r, 'ar'))}</p>", f"<p>{escape(_summary(r, 'en'))}</p>", f"{_base()}/ar/hr?open={r.id}")
+
+
+def workflow_decide(db: Session, r: HrRequest, user: User, approve: bool, note: Optional[str]) -> str:
     if r.status != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, f"This request is already {r.status}.")
     if r.user_id == user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't approve your own request.")
-    if payload.approve and r.kind == "leave" and r.leave_type == ANNUAL:
+    if approve and r.kind == "leave" and r.leave_type == ANNUAL:
         b = balance(db, r.user_id, r.start_date.year if r.start_date else None)
-        if (r.days or 0) > b["remaining"] + (r.days or 0):  # pending already counted in remaining
+        if (r.days or 0) > b["remaining"] + (r.days or 0):
             raise HTTPException(status.HTTP_409_CONFLICT, "Not enough annual leave balance.")
-    r.status = "approved" if payload.approve else "rejected"
-    r.decided_by_id, r.decided_at, r.decision_note = user.id, datetime.utcnow(), payload.note
-    _log(db, r, _uname(user, "ar"), r.status, payload.note)
-    db.commit()
-    emp = db.get(User, r.user_id)
-    cc = _cc(db) if r.kind in ("leave", "ticket") else []
-    ok_ar, ok_en = ("تمت الموافقة على", "approved") if payload.approve else ("تم رفض", "rejected")
-    note_ar = f"<p>ملاحظة: {escape(payload.note)}</p>" if payload.note else ""
-    _send(emp.email if emp else None, cc,
-          f"{ok_ar} {KIND_AR[r.kind]} {r.number} | {KIND_EN[r.kind]} {r.number} {ok_en}",
-          f"<p>{ok_ar} {KIND_AR[r.kind]} لـ <strong>{escape(_uname(emp, 'ar'))}</strong> من قِبل {escape(_uname(user, 'ar'))}.</p><p>{escape(_summary(r, 'ar'))}</p>{note_ar}",
-          f"<p>The {KIND_EN[r.kind].lower()} of <strong>{escape(_uname(emp, 'en'))}</strong> was {ok_en} by {escape(_uname(user, 'en'))}.</p><p>{escape(_summary(r, 'en'))}</p>"
-          + (f"<p>Note: {escape(payload.note)}</p>" if payload.note else ""),
-          f"{_base()}/ar/my-hr", "عرض طلباتي", "View my requests")
+    result, nxt = wf.decide(db, "hr_request", r.id, user, approve, note, ctx_fn=lambda: _wf_ctx(r))
+    if result == "pending":
+        _log(db, r, _uname(user, "ar"), "step_approved", note)
+        db.commit()
+        _wf_notify_step(db, r, db.get(User, r.user_id), nxt)
+        return "pending"
+    _finalize(db, r, user, result == "approved", note)
+    return result
+
+
+@router.post("/requests/{rid}/decision")
+def decide(rid: int, payload: DecisionIn, db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^(ar|en)$")):
+    # Who may decide comes from the workflow (line manager, HR approver, CEO…).
+    r = _get(db, rid)
+    workflow_decide(db, r, user, payload.approve, payload.note)
     return _out(db, r, locale, detail=True)
 
 

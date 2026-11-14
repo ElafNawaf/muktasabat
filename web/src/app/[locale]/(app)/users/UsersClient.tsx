@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import {
   changeUserRole,
@@ -37,6 +37,10 @@ import { InviteUserModal } from "./InviteUserModal";
 import { ReinviteModal } from "./ReinviteModal";
 import { SetPasswordModal } from "./SetPasswordModal";
 import { reinviteAllUsers, type ReinviteResult } from "@/lib/actions";
+import { loadRecommendedRoles, type PermMatrix, type RecommendedRole } from "@/lib/workflow-actions";
+import { RoleRecommendation } from "./RoleRecommendation";
+import { UserPermissionsModal } from "./UserPermissionsModal";
+import { WorkflowsAdmin } from "./WorkflowsAdmin";
 
 export type AdminUserRow = {
   id: number;
@@ -68,7 +72,7 @@ const MODULE_ICON: Record<ModuleId, string> = {
   support: "support",
 };
 
-type Tab = "users" | "roles";
+type Tab = "users" | "roles" | "workflows";
 
 export function UsersClient({
   users,
@@ -105,6 +109,11 @@ export function UsersClient({
   const [linking, setLinking] = useState<"invite" | "reset" | null>(null);
   const [setPwUser, setSetPwUser] = useState<AdminUserRow | null>(null);
   const [confirmSuper, setConfirmSuper] = useState<AdminUserRow | null>(null);
+  const [permUser, setPermUser] = useState<AdminUserRow | null>(null);
+  const [recommended, setRecommended] = useState<Record<string, RecommendedRole> | null>(null);
+  useEffect(() => {
+    if (tab === "roles" && !recommended) loadRecommendedRoles().then((r) => r.ok && setRecommended(r.data));
+  }, [tab, recommended]);
   const hasSuper = users.some((u) => u.is_super_admin);
   // The first super admin is picked by the built-in `admin` account; after
   // that only the current super admin can hand it over.
@@ -343,6 +352,12 @@ export function UsersClient({
         >
           <span className="ms ms-sm">shield_person</span> {t("rolesTab")}
           <span className="tab-count">{rolesState.length}</span>
+        </button>
+        <button
+          className={"tab" + (tab === "workflows" ? " active" : "")}
+          onClick={() => setTab("workflows")}
+        >
+          <span className="ms ms-sm">account_tree</span> {locale === "ar" ? "مسارات الاعتماد" : "Approval workflows"}
         </button>
       </div>
 
@@ -607,6 +622,17 @@ export function UsersClient({
                                 >
                                   <span className="ms ms-sm">devices_off</span>
                                 </button>
+                                {u.role !== "admin" && u.role !== "owner" && u.role !== "tenant" && (
+                                  <button
+                                    className="icon-btn"
+                                    title={locale === "ar" ? "صلاحيات خاصة بالمستخدم" : "Personal permissions"}
+                                    aria-label={locale === "ar" ? "صلاحيات خاصة بالمستخدم" : "Personal permissions"}
+                                    onClick={() => setPermUser(u)}
+                                    disabled={isBusy}
+                                  >
+                                    <span className="ms ms-sm">tune</span>
+                                  </button>
+                                )}
                                 <button
                                   className="icon-btn"
                                   title={t("setPassword")}
@@ -760,6 +786,22 @@ export function UsersClient({
               </div>
             </div>
 
+            {!selectedRole.system && recommended?.[selectedRole.code] && (
+              <RoleRecommendation
+                locale={locale}
+                current={selectedRole.permissions as PermMatrix}
+                rec={recommended[selectedRole.code]}
+                moduleLabel={(m) => tCommon(`modules.${m}`)}
+                actionLabel={(a) => tPerms(a)}
+                busy={savingRole}
+                onApply={(perms) => {
+                  const next: Role = { ...selectedRole, permissions: perms as Role["permissions"] };
+                  setRolesState((prev) => prev.map((r) => (r.code === next.code ? next : r)));
+                  persistRole(next);
+                }}
+              />
+            )}
+
             <div className="card card-tight">
               <div
                 style={{
@@ -879,6 +921,19 @@ export function UsersClient({
         </div>
       )}
 
+      {tab === "workflows" && <WorkflowsAdmin locale={locale} moduleLabel={(m) => tCommon(`modules.${m}`)} />}
+
+      <UserPermissionsModal
+        user={permUser}
+        locale={locale}
+        roleLabel={(code) => {
+          const r = rolesState.find((x) => x.code === code);
+          return r ? (locale === "ar" ? r.label_ar : r.label_en) : code;
+        }}
+        moduleLabel={(m) => tCommon(`modules.${m}`)}
+        actionLabel={(a) => tPerms(a)}
+        onClose={() => setPermUser(null)}
+      />
       <ReinviteModal result={reinvite} locale={locale} onClose={() => setReinvite(null)} />
       <SetPasswordModal
         user={setPwUser}

@@ -70,6 +70,9 @@ class User(Base):
     # Exactly one account at most: sees the e-mail log and is the only one who
     # can grant/remove admin rights or hand super-admin over.
     is_super_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Per-person permission extras on top of the role: {"module": {"action": 1|0}}
+    # 1 = granted to this person, 0 = taken away from this person.
+    permission_overrides: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     password_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
@@ -607,6 +610,10 @@ class Expense(Base):
     vendor_name: Mapped[Optional[str]] = mapped_column(String(150))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # approved | pending | rejected — only approved expenses count anywhere
+    # (reports, balances, owner statements); see api/services/expense_scope.py.
+    approval_status: Mapped[str] = mapped_column(String(20), default="approved", server_default="approved")
+    created_by_id: Mapped[Optional[int]] = mapped_column(Integer)
 
     owner: Mapped[Optional["Owner"]] = relationship(back_populates="expenses")
     building: Mapped[Optional["Building"]] = relationship(back_populates="expenses")

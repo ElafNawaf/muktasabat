@@ -24,11 +24,14 @@ export default async function AppLayout({
   // Property owners have their own scoped portal; staff screens are not for them.
   if (user.role === "owner") redirect(`/${locale}/owner`);
   if (user.role === "tenant") redirect(`/${locale}/tenant`);
-  const roles = await api.get<Role[]>("/api/v1/roles");
-  const myRole = roles.find((r) => r.code === user.role);
+  // /auth/me carries the effective matrix (role + per-user overrides);
+  // fall back to the role's matrix for older API builds.
+  const myPermissions = user.permissions
+    ? (user.permissions as Role["permissions"])
+    : (await api.get<Role[]>("/api/v1/roles")).find((r) => r.code === user.role)?.permissions ?? {};
 
   return (
-    <PermissionsProvider role={user.role} permissions={myRole?.permissions ?? {}}>
+    <PermissionsProvider role={user.role} permissions={myPermissions}>
       <AppShell
         user={{
           username: user.username,

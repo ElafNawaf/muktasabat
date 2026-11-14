@@ -24,6 +24,12 @@ class UserRead(BaseModel):
     preferred_locale: str = "ar"
     last_login_at: datetime | None = None
     is_super_admin: bool = False
+    permission_overrides: dict | None = None
+
+
+class MeRead(UserRead):
+    # Effective module × action matrix (role + this person's extras).
+    permissions: dict = {}
 
 
 class RegisterRequest(BaseModel):
