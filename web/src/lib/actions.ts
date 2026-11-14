@@ -1002,7 +1002,14 @@ export async function syncEjarManagementContracts(): Promise<
 // -------- Re-invite all users --------
 
 export type ReinviteLink = { id: number; username: string; email: string; role: string; emailed: boolean; url: string; reason?: string | null };
-export type ReinviteResult = { sent: string[]; failed: string[]; skipped: string[]; links: ReinviteLink[] };
+export type ReinviteResult = {
+  sent: string[];
+  failed: string[];
+  skipped: string[];
+  links: ReinviteLink[];
+  kind?: "invite" | "reset";
+  hours?: number;
+};
 
 export async function reinviteAllUsers(): Promise<ActionResult<ReinviteResult>> {
   try {

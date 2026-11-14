@@ -26,7 +26,8 @@
     "dataManagement": "Data management",
     "myAccount": "My account",
     "profile": "Profile & security",
-    "support": "Help & support"
+    "support": "Help & support",
+    "emailLog": "Email log"
   },
   "roles": {
     "admin": "Administrator",
@@ -595,7 +596,23 @@
     "sendResetLink": "Email a password-reset link",
     "signOutEverywhere": "Sign out of all devices",
     "resetSent": "Password-reset link sent to {email}.",
-    "sessionsRevoked": "{username} was signed out of all devices."
+    "sessionsRevoked": "{username} was signed out of all devices.",
+    "superAdmin": "Super admin",
+    "superAdminHint": "Full system administration, including the email log and administrator rights.",
+    "makeSuperAdmin": "Make super admin",
+    "makeMeSuperAdmin": "Make me super admin",
+    "superConfirm": "Make {username} the super admin? They'll be the only account that can see the email log and grant or remove administrator rights.",
+    "handoverConfirm": "Hand super admin over to {username}? You'll stay an administrator but lose super-admin rights.",
+    "superAdminSet": "{username} is now the super admin.",
+    "setPassword": "Set password",
+    "bulkActions": "Bulk actions",
+    "selectAllShown": "Select all shown users",
+    "selectedCount": "{count} selected",
+    "selectUsersHint": "Select users to send them a link",
+    "sendInvitation": "Send invitation",
+    "sendResetLinks": "Send reset link",
+    "clearSelection": "Clear",
+    "selectUser": "Select {username}"
   },
   "contractsPage": {
     "title": "Contracts",
@@ -1696,5 +1713,54 @@
     "browser": "Browser",
     "triage": "Manage ticket",
     "me": "me"
+  },
+  "emailLog": {
+    "title": "Email log",
+    "subtitle": "Every email the system sent or tried to send — payment alerts, invitations, password resets, support and more.",
+    "kpiAll": "All emails",
+    "kpiSent": "Delivered to SES",
+    "kpiFailed": "Failed",
+    "kpiConsole": "Not sent (dev mode)",
+    "searchPlaceholder": "Search recipient, Cc or subject…",
+    "categoryLabel": "Type",
+    "allCategories": "All types",
+    "periodLabel": "Period",
+    "lastDays": "Last {days, plural, =1 {24 hours} other {# days}}",
+    "search": "Search",
+    "empty": "No emails match these filters.",
+    "when": "When",
+    "recipient": "Recipient",
+    "subject": "Subject",
+    "status": "Status",
+    "view": "View email",
+    "statusValue": {
+      "sent": "Sent",
+      "failed": "Failed",
+      "console": "Not sent"
+    },
+    "prev": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {pages} · {total} emails",
+    "redactedNote": "One-time links (reset, invitation, verification) are hidden in the log for security.",
+    "asReceived": "As received",
+    "plainText": "Plain text",
+    "category": {
+      "payment_alert": "Payment alert",
+      "invite": "Invitation",
+      "password_reset": "Password reset",
+      "verification": "Email verification",
+      "account": "Account notice",
+      "support": "Support ticket",
+      "website": "Website enquiry",
+      "owner_portal": "Owner portal",
+      "system": "System"
+    },
+    "reason": {
+      "ses_sandbox_unverified_recipient": "Recipient not verified (SES sandbox)",
+      "ses_sender_not_verified": "Sender address not verified in SES",
+      "ses_permission_denied": "AWS permissions block sending",
+      "ses_quota_exceeded": "Daily sending limit reached",
+      "send_failed": "Sending failed"
+    }
   }
 }

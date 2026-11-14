@@ -21,19 +21,26 @@ export function ReinviteModal({ result, locale, onClose }: { result: ReinviteRes
       /* clipboard blocked */
     }
   }
+  const reset = result.kind === "reset";
+  const hours = result.hours ?? 72;
   const message = (username: string, url: string) =>
-    T(
-      `دعوة إلى نظام شركة مكتسبات العقارية\nاسم المستخدم: ${username}\nعيّن كلمة المرور (صالح 72 ساعة):\n${url}`,
-      `Your Muktasabat invitation\nUsername: ${username}\nSet your password (valid 72 hours):\n${url}`,
-    );
+    reset
+      ? T(
+          `رابط تعيين كلمة مرور جديدة لحسابك في مكتسبات\nاسم المستخدم: ${username}\nالرابط (صالح ${hours} ساعة):\n${url}`,
+          `Set a new password for your Muktasabat account\nUsername: ${username}\nLink (valid ${hours} hours):\n${url}`,
+        )
+      : T(
+          `دعوة إلى نظام شركة مكتسبات العقارية\nاسم المستخدم: ${username}\nعيّن كلمة المرور (صالح ${hours} ساعة):\n${url}`,
+          `Your Muktasabat invitation\nUsername: ${username}\nSet your password (valid ${hours} hours):\n${url}`,
+        );
   return (
     <Modal
       open
       onClose={onClose}
-      title={T("نتيجة إعادة إرسال الدعوات", "Invitations re-sent")}
+      title={reset ? T("نتيجة إرسال روابط إعادة التعيين", "Reset links sent") : T("نتيجة إعادة إرسال الدعوات", "Invitations re-sent")}
       subtitle={T(
-        `أُرسلت ${result.sent.length} بالبريد، وتعذّر إرسال ${result.failed.length}. الروابط صالحة 72 ساعة.`,
-        `${result.sent.length} emailed, ${result.failed.length} could not be emailed. Links are valid for 72 hours.`,
+        `أُرسلت ${result.sent.length} بالبريد، وتعذّر إرسال ${result.failed.length}${result.skipped.length ? `، وتُخطّي ${result.skipped.length}` : ""}. الروابط صالحة ${hours} ساعة.`,
+        `${result.sent.length} emailed, ${result.failed.length} could not be emailed${result.skipped.length ? `, ${result.skipped.length} skipped` : ""}. Links are valid for ${hours} hours.`,
       )}
       footer={<button className="btn btn-primary" onClick={onClose}>{T("تم", "Done")}</button>}
     >
@@ -72,7 +79,7 @@ export function ReinviteModal({ result, locale, onClose }: { result: ReinviteRes
             <div className="reinvite-actions">
               <button className="btn btn-sm btn-secondary" onClick={() => copy(l.id, message(l.username, l.url))}>
                 <span className="ms ms-sm">{copied === l.id ? "check" : "content_copy"}</span>
-                {copied === l.id ? T("نُسخ", "Copied") : T("نسخ الدعوة", "Copy invite")}
+                {copied === l.id ? T("نُسخ", "Copied") : reset ? T("نسخ الرابط", "Copy link") : T("نسخ الدعوة", "Copy invite")}
               </button>
               <a className="btn btn-sm btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(message(l.username, l.url))}`} target="_blank" rel="noopener noreferrer">
                 <span className="ms ms-sm">chat</span>

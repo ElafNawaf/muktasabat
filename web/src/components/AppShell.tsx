@@ -7,7 +7,13 @@ export function AppShell({
   user,
   children,
 }: {
-  user: { username: string; role: string; full_name?: string | null; avatar_url?: string | null };
+  user: {
+    username: string;
+    role: string;
+    full_name?: string | null;
+    avatar_url?: string | null;
+    is_super_admin?: boolean;
+  };
   children: React.ReactNode;
 }) {
   return (

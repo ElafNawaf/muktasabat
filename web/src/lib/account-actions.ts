@@ -10,6 +10,9 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
 import { api, ApiError, REFRESH_COOKIE, TOKEN_COOKIE } from "./api";
+import type { EmailLogDetail } from "@/app/[locale]/(app)/email-log/EmailLogClient";
+
+import type { ReinviteResult } from "./actions";
 import type { AccountActivity, Profile, TicketDetail, TicketPriority, TicketStatus } from "./types";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -174,4 +177,36 @@ export async function adminRevokeSessions(userId: number): Promise<Result<null>>
 /** Public: confirm a pending email change from the emailed link. */
 export async function confirmEmailChange(token: string): Promise<Result<{ email: string }>> {
   return run(() => api.post<{ email: string }>("/api/v1/account/confirm-email", { token }));
+}
+
+// ------------------------------------------- admin: links, passwords, roles
+
+
+/** E-mail chosen users a set-password link: "invite" (72 h) or "reset" (24 h). */
+export async function sendUserLinks(
+  userIds: number[],
+  kind: "invite" | "reset",
+): Promise<Result<ReinviteResult>> {
+  return run(
+    () => api.post<ReinviteResult>("/api/v1/auth/admin/users/reinvite", { user_ids: userIds, kind }),
+    ["/[locale]/(app)/users"],
+  );
+}
+
+export async function adminSetPassword(userId: number, newPassword: string, notify: boolean): Promise<Result<null>> {
+  return run(async () => {
+    await api.post(`/api/v1/auth/admin/users/${userId}/set-password`, { new_password: newPassword, notify });
+    return null;
+  });
+}
+
+export async function makeSuperAdmin(userId: number): Promise<Result<unknown>> {
+  return run(() => api.post(`/api/v1/auth/admin/super-admin/${userId}`), ["/[locale]"]);
+}
+
+// ------------------------------------------------ super admin: e-mail log
+
+
+export async function getEmailLog(id: number): Promise<Result<EmailLogDetail>> {
+  return run(() => api.get<EmailLogDetail>(`/api/v1/admin/email-logs/${id}`));
 }

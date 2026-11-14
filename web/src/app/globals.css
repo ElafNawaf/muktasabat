@@ -2510,3 +2510,30 @@ a.user-menu__item .ms { color: var(--color-text-secondary); }
 .err-card p { margin: 0; color: var(--color-text-secondary); line-height: 1.8; }
 .err-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 6px; }
 .err-code { color: var(--color-text-tertiary); font-size: 12px; }
+
+/* Users page: selection, bulk bar, super-admin badge */
+.bulk-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 12px; border: 1px dashed var(--color-border); border-radius: 12px; background: var(--color-surface); }
+.bulk-bar.is-on { border-style: solid; border-color: var(--color-primary); background: var(--color-primary-soft); }
+.bulk-all { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.user-card-check { width: 16px; height: 16px; margin-top: 4px; accent-color: var(--color-primary); cursor: pointer; flex-shrink: 0; }
+.user-card.is-selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-soft); }
+.super-badge { margin-inline-start: 8px; font-size: 10.5px; padding: 2px 8px; gap: 4px; }
+
+/* Email log */
+.kpi-btn { text-align: start; cursor: pointer; font: inherit; color: inherit; }
+.kpi-btn.is-active { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-soft); }
+.email-log-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px; margin: 16px 0; }
+.email-log-filters .topbar-search { display: flex; }
+.email-log-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.email-log-table th { text-align: start; font-weight: 600; font-size: 12px; color: var(--color-text-secondary); padding: 10px 14px; border-bottom: 1px solid var(--color-border); white-space: nowrap; }
+.email-log-table td { padding: 10px 14px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+.email-log-table tr.clickable { cursor: pointer; }
+.email-log-table tr.clickable:hover td { background: var(--color-bg); }
+.email-log-table .nowrap { white-space: nowrap; }
+.email-log-subject { max-width: 420px; overflow-wrap: anywhere; }
+.email-log-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px; }
+.email-log-meta { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+.email-log-meta dt { color: var(--color-text-secondary); }
+.email-log-meta dd { margin: 0; overflow-wrap: anywhere; }
+.email-log-frame { width: 100%; height: 60vh; border: 1px solid var(--color-border); border-radius: 10px; background: #fff; }
+.email-log-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 10px; padding: 14px; max-height: 60vh; overflow: auto; margin: 0; }

@@ -26,7 +26,8 @@
     "dataManagement": "إدارة البيانات",
     "myAccount": "حسابي",
     "profile": "الملف الشخصي والأمان",
-    "support": "المساعدة والدعم"
+    "support": "المساعدة والدعم",
+    "emailLog": "سجل البريد"
   },
   "roles": {
     "admin": "مسؤول النظام",
@@ -595,7 +596,23 @@
     "sendResetLink": "إرسال رابط إعادة تعيين كلمة المرور",
     "signOutEverywhere": "تسجيل الخروج من جميع الأجهزة",
     "resetSent": "تم إرسال رابط إعادة التعيين إلى {email}.",
-    "sessionsRevoked": "تم تسجيل خروج {username} من جميع الأجهزة."
+    "sessionsRevoked": "تم تسجيل خروج {username} من جميع الأجهزة.",
+    "superAdmin": "المدير الأعلى",
+    "superAdminHint": "صلاحيات إدارة النظام كاملة، بما فيها سجل البريد ومنح صلاحية المدير.",
+    "makeSuperAdmin": "تعيين مديرًا أعلى",
+    "makeMeSuperAdmin": "اجعلني المدير الأعلى",
+    "superConfirm": "تعيين {username} مديرًا أعلى؟ سيكون الحساب الوحيد الذي يرى سجل البريد ويمنح صلاحية المدير أو يسحبها.",
+    "handoverConfirm": "نقل صلاحية المدير الأعلى إلى {username}؟ ستبقى مديرًا لكن تفقد صلاحيات المدير الأعلى.",
+    "superAdminSet": "أصبح {username} المدير الأعلى.",
+    "setPassword": "تعيين كلمة المرور",
+    "bulkActions": "إجراءات جماعية",
+    "selectAllShown": "تحديد كل المستخدمين المعروضين",
+    "selectedCount": "تم تحديد {count}",
+    "selectUsersHint": "حدّد مستخدمين لإرسال رابط لهم",
+    "sendInvitation": "إرسال دعوة",
+    "sendResetLinks": "إرسال رابط إعادة التعيين",
+    "clearSelection": "إلغاء التحديد",
+    "selectUser": "تحديد {username}"
   },
   "contractsPage": {
     "title": "العقود",
@@ -1696,5 +1713,54 @@
     "browser": "المتصفح",
     "triage": "إدارة التذكرة",
     "me": "أنا"
+  },
+  "emailLog": {
+    "title": "سجل البريد",
+    "subtitle": "كل رسالة أرسلها النظام أو حاول إرسالها — تنبيهات الدفعات والدعوات وإعادة تعيين كلمات المرور والدعم وغيرها.",
+    "kpiAll": "كل الرسائل",
+    "kpiSent": "سُلّمت إلى SES",
+    "kpiFailed": "فشلت",
+    "kpiConsole": "لم تُرسل (وضع التطوير)",
+    "searchPlaceholder": "ابحث بالمستلم أو النسخة أو الموضوع…",
+    "categoryLabel": "النوع",
+    "allCategories": "كل الأنواع",
+    "periodLabel": "الفترة",
+    "lastDays": "{days, plural, =1 {آخر 24 ساعة} other {آخر # يومًا}}",
+    "search": "بحث",
+    "empty": "لا توجد رسائل مطابقة.",
+    "when": "الوقت",
+    "recipient": "المستلم",
+    "subject": "الموضوع",
+    "status": "الحالة",
+    "view": "عرض الرسالة",
+    "statusValue": {
+      "sent": "أُرسلت",
+      "failed": "فشلت",
+      "console": "لم تُرسل"
+    },
+    "prev": "السابق",
+    "next": "التالي",
+    "pageOf": "صفحة {page} من {pages} · {total} رسالة",
+    "redactedNote": "الروابط ذات الاستخدام الواحد (إعادة التعيين والدعوة والتأكيد) مخفية في السجل لأسباب أمنية.",
+    "asReceived": "كما وصلت",
+    "plainText": "نص عادي",
+    "category": {
+      "payment_alert": "تنبيه دفعة",
+      "invite": "دعوة",
+      "password_reset": "إعادة تعيين كلمة المرور",
+      "verification": "تأكيد البريد",
+      "account": "إشعار حساب",
+      "support": "تذكرة دعم",
+      "website": "استفسار من الموقع",
+      "owner_portal": "بوابة الملاك",
+      "system": "النظام"
+    },
+    "reason": {
+      "ses_sandbox_unverified_recipient": "المستلم غير موثّق (وضع SES التجريبي)",
+      "ses_sender_not_verified": "عنوان المرسل غير موثّق في SES",
+      "ses_permission_denied": "صلاحيات AWS تمنع الإرسال",
+      "ses_quota_exceeded": "تم تجاوز حد الإرسال اليومي",
+      "send_failed": "تعذّر الإرسال"
+    }
   }
 }

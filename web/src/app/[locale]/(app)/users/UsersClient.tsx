@@ -10,7 +10,12 @@ import {
   updateRolePermissions,
   type RolePermissions,
 } from "@/lib/actions";
-import { adminRevokeSessions, adminSendResetLink } from "@/lib/account-actions";
+import {
+  adminRevokeSessions,
+  adminSendResetLink,
+  makeSuperAdmin,
+  sendUserLinks,
+} from "@/lib/account-actions";
 import { formatDate } from "@/lib/format";
 import {
   MODULE_IDS,
@@ -30,6 +35,7 @@ import {
 import { usePermissions } from "@/components/PermissionsProvider";
 import { InviteUserModal } from "./InviteUserModal";
 import { ReinviteModal } from "./ReinviteModal";
+import { SetPasswordModal } from "./SetPasswordModal";
 import { reinviteAllUsers, type ReinviteResult } from "@/lib/actions";
 
 export type AdminUserRow = {
@@ -39,6 +45,7 @@ export type AdminUserRow = {
   role: string;
   is_active_user: boolean;
   created_at: string;
+  is_super_admin?: boolean;
 };
 
 const MODULE_ICON: Record<ModuleId, string> = {
@@ -60,11 +67,15 @@ export function UsersClient({
   users,
   roles,
   meId,
+  meUsername,
+  meIsSuper,
   locale,
 }: {
   users: AdminUserRow[];
   roles: Role[];
   meId: number;
+  meUsername: string;
+  meIsSuper: boolean;
   locale: string;
 }) {
   const t = useTranslations("usersPage");
@@ -83,6 +94,47 @@ export function UsersClient({
   const [, start] = useTransition();
   const [reinvite, setReinvite] = useState<ReinviteResult | null>(null);
   const [reinviting, setReinviting] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [linking, setLinking] = useState<"invite" | "reset" | null>(null);
+  const [setPwUser, setSetPwUser] = useState<AdminUserRow | null>(null);
+  const [confirmSuper, setConfirmSuper] = useState<AdminUserRow | null>(null);
+  const hasSuper = users.some((u) => u.is_super_admin);
+  // The first super admin is picked by the built-in `admin` account; after
+  // that only the current super admin can hand it over.
+  const canAssignSuper = meIsSuper || (!hasSuper && meUsername === "admin");
+  const toggleSelected = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const sendLinks = (kind: "invite" | "reset") => {
+    if (selected.size === 0) return;
+    setError(null);
+    setNotice(null);
+    setLinking(kind);
+    start(async () => {
+      const res = await sendUserLinks(Array.from(selected), kind);
+      setLinking(null);
+      if (!res.ok) return setError(res.error);
+      setSelected(new Set());
+      setReinvite(res.data);
+    });
+  };
+  const doMakeSuper = () => {
+    if (!confirmSuper) return;
+    const target = confirmSuper;
+    setError(null);
+    setBusyId(target.id);
+    start(async () => {
+      const res = await makeSuperAdmin(target.id);
+      setBusyId(null);
+      setConfirmSuper(null);
+      if (!res.ok) return setError(res.error);
+      setNotice({ text: t("superAdminSet", { username: target.username }) });
+    });
+  };
 
   // Local mirror of roles so the matrix updates immediately on toggle while the
   // server action runs in the background. revalidatePath then re-fetches.
@@ -362,6 +414,40 @@ export function UsersClient({
               {tCommon("noResults")}
             </div>
           ) : (
+            <>
+            {(() => {
+              const selectable = filtered.filter((u) => u.id !== meId && u.is_active_user).map((u) => u.id);
+              const allOn = selectable.length > 0 && selectable.every((id) => selected.has(id));
+              return (
+                <div className={"bulk-bar" + (selected.size ? " is-on" : "")} role="region" aria-label={t("bulkActions")}>
+                  <label className="bulk-all">
+                    <input
+                      type="checkbox"
+                      checked={allOn}
+                      onChange={() =>
+                        setSelected(allOn ? new Set() : new Set([...Array.from(selected), ...selectable]))
+                      }
+                      aria-label={t("selectAllShown")}
+                    />
+                    {selected.size ? t("selectedCount", { count: selected.size }) : t("selectUsersHint")}
+                  </label>
+                  <div style={{ flex: 1 }} />
+                  <button className="btn btn-secondary btn-sm" disabled={!selected.size || linking !== null} onClick={() => sendLinks("invite")}>
+                    <span className="ms ms-sm">forward_to_inbox</span>
+                    {linking === "invite" ? "…" : t("sendInvitation")}
+                  </button>
+                  <button className="btn btn-secondary btn-sm" disabled={!selected.size || linking !== null} onClick={() => sendLinks("reset")}>
+                    <span className="ms ms-sm">lock_reset</span>
+                    {linking === "reset" ? "…" : t("sendResetLinks")}
+                  </button>
+                  {selected.size > 0 && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => setSelected(new Set())}>
+                      {t("clearSelection")}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <div className="owner-grid">
               {filtered.map((u) => {
                 const isMe = u.id === meId;
@@ -370,8 +456,17 @@ export function UsersClient({
                 const color = role?.color ?? "#6B7280";
                 const initials = u.username.slice(0, 2).toUpperCase();
                 return (
-                  <div className="user-card" key={u.id}>
+                  <div className={"user-card" + (selected.has(u.id) ? " is-selected" : "")} key={u.id}>
                     <div className="user-card-hd">
+                      {!isMe && u.is_active_user && (
+                        <input
+                          type="checkbox"
+                          className="user-card-check"
+                          checked={selected.has(u.id)}
+                          onChange={() => toggleSelected(u.id)}
+                          aria-label={t("selectUser", { username: u.username })}
+                        />
+                      )}
                       <div
                         className="user-card-avatar"
                         style={{
@@ -393,6 +488,11 @@ export function UsersClient({
                               }}
                             >
                               {t("you")}
+                            </span>
+                          )}
+                          {u.is_super_admin && (
+                            <span className="badge badge-primary super-badge" title={t("superAdminHint")}>
+                              <span className="ms ms-sm">verified_user</span> {t("superAdmin")}
                             </span>
                           )}
                         </div>
@@ -463,7 +563,32 @@ export function UsersClient({
                           >
                             <span className="ms ms-sm">devices_off</span>
                           </button>
+                          <button
+                            className="icon-btn"
+                            title={t("setPassword")}
+                            aria-label={t("setPassword")}
+                            onClick={() => setSetPwUser(u)}
+                            disabled={isBusy}
+                          >
+                            <span className="ms ms-sm">password</span>
+                          </button>
+                          {canAssignSuper && u.role === "admin" && !u.is_super_admin && (
+                            <button
+                              className="icon-btn"
+                              title={t("makeSuperAdmin")}
+                              aria-label={t("makeSuperAdmin")}
+                              onClick={() => setConfirmSuper(u)}
+                              disabled={isBusy}
+                            >
+                              <span className="ms ms-sm">verified_user</span>
+                            </button>
+                          )}
                         </>
+                      )}
+                      {isMe && canAssignSuper && u.role === "admin" && !u.is_super_admin && (
+                        <button className="btn btn-sm btn-secondary" onClick={() => setConfirmSuper(u)} disabled={isBusy}>
+                          <span className="ms ms-sm">verified_user</span> {t("makeMeSuperAdmin")}
+                        </button>
                       )}
                       {canDeleteUser && !isMe && (
                         <button
@@ -496,6 +621,7 @@ export function UsersClient({
                 );
               })}
             </div>
+            </>
           )}
         </>
       )}
@@ -722,6 +848,31 @@ export function UsersClient({
       )}
 
       <ReinviteModal result={reinvite} locale={locale} onClose={() => setReinvite(null)} />
+      <SetPasswordModal
+        user={setPwUser}
+        locale={locale}
+        onClose={() => setSetPwUser(null)}
+        onDone={(text) => {
+          setSetPwUser(null);
+          setNotice({ text });
+        }}
+      />
+      <ConfirmDialog
+        open={confirmSuper !== null}
+        onClose={() => setConfirmSuper(null)}
+        onConfirm={doMakeSuper}
+        title={t("makeSuperAdmin")}
+        message={
+          confirmSuper
+            ? meIsSuper && confirmSuper.id !== meId
+              ? t("handoverConfirm", { username: confirmSuper.username })
+              : t("superConfirm", { username: confirmSuper.username })
+            : ""
+        }
+        confirmLabel={t("makeSuperAdmin")}
+        cancelLabel={tCommon("cancel")}
+        loading={busyId === confirmSuper?.id}
+      />
       {inviteOpen && (
         <InviteUserModal
           open={inviteOpen}

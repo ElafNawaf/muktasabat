@@ -450,6 +450,7 @@ def build_email(payment: Payment, kind: str, offset: int, rcpt: Recipients, toda
         subject=_subject(kind, offset, contract.contract_number),
         text_body=text,
         html_body=html,
+        category="payment_alert",
     )
 
 

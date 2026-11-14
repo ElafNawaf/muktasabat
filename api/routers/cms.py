@@ -247,7 +247,7 @@ def _notify(recipients: list[str], subject: str, lines: list[tuple[str, str | No
         f"<p style='margin:0;color:#5D636B'>{escape(en_title or ar_title)}. Details are listed above (Arabic labels with English beside them).</p>",
     )
     for to in recipients:
-        send_email(EmailMessage(to=to, subject=title, text_body=text, html_body=html))
+        send_email(EmailMessage(to=to, subject=title, text_body=text, html_body=html, category="website"))
 
 
 @public.post("/leads", status_code=status.HTTP_201_CREATED)

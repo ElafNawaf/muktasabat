@@ -39,6 +39,7 @@ from api.routers import (
     buildings,
     contracts,
     data_io,
+    email_logs,
     employees,
     expenses,
     management,
@@ -195,6 +196,8 @@ app.include_router(auth.router, prefix=API_V1)
 # Self-service profile / credentials / sessions + support tickets
 app.include_router(account.router, prefix=API_V1)
 app.include_router(support.router, prefix=API_V1)
+# Super-admin e-mail log
+app.include_router(email_logs.router, prefix=API_V1)
 app.include_router(owners.router, prefix=API_V1)
 app.include_router(agents.router, prefix=API_V1)
 app.include_router(buildings.router, prefix=API_V1)

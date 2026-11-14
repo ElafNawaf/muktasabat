@@ -12,6 +12,7 @@ export type Me = {
   full_name_ar?: string | null;
   avatar_url?: string | null;
   preferred_locale?: string;
+  is_super_admin?: boolean;
 };
 
 /**

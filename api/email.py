@@ -25,6 +25,9 @@ class EmailMessage:
     text_body: str
     html_body: str | None = None
     cc: list[str] | None = None
+    # Shown in the super-admin e-mail log: payment_alert, invite, password_reset,
+    # verification, account, support, website, owner_portal, system…
+    category: str = "system"
 
 
 def _send_via_ses(msg: EmailMessage) -> None:
@@ -100,18 +103,61 @@ def send_email(msg: EmailMessage) -> bool:
             msg.subject,
             msg.text_body,
         )
+        _record(msg, "console", None)
         return True
     _last.error = None
     try:
         _send_via_ses(msg)
         logger.info("Sent email to %s via SES (subject=%r)", _mask(msg.to), msg.subject)
+        _record(msg, "sent", None)
         return True
     except Exception:
         import sys
 
         _last.error = _reason(sys.exc_info()[1])
         logger.exception("Failed to send email to %s via SES (%s)", _mask(msg.to), _last.error)
+        _record(msg, "failed", _last.error)
         return False
+
+
+_TOKEN_RE = None
+
+
+def _redact(body: str | None) -> str | None:
+    """Strip one-time tokens (reset / invite / verify / confirm links)."""
+    global _TOKEN_RE
+    if not body:
+        return body
+    if _TOKEN_RE is None:
+        import re
+
+        _TOKEN_RE = re.compile(r"(token=)[A-Za-z0-9_\-]+")
+    return _TOKEN_RE.sub(r"\1[redacted]", body)
+
+
+def _record(msg: EmailMessage, status: str, error: str | None) -> None:
+    """Append to the super-admin e-mail log. Never raises — logging must not
+    break the flow that sent the e-mail."""
+    try:
+        from api.database import SessionLocal
+        from api.models import EmailLog
+
+        with SessionLocal() as db:
+            db.add(
+                EmailLog(
+                    category=(msg.category or "system")[:40],
+                    to_email=(msg.to or "")[:255],
+                    cc_emails=",".join(msg.cc or [])[:1000] or None,
+                    subject=(msg.subject or "")[:500],
+                    status=status,
+                    error=(error or None) and error[:120],
+                    text_body=_redact(msg.text_body),
+                    html_body=_redact(msg.html_body),
+                )
+            )
+            db.commit()
+    except Exception:
+        logger.exception("Could not write e-mail log row")
 
 
 def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
@@ -165,30 +211,39 @@ def _button(url: str, label: str) -> str:
     )
 
 
-def send_password_reset_email(to: str, reset_url: str, username: str | None = None) -> None:
+def send_password_reset_email(
+    to: str, reset_url: str, username: str | None = None, *, hours: int = 1, by_admin: bool = False
+) -> bool:
+    """Reset link. `by_admin` = an administrator triggered it (not the user)."""
     from html import escape
 
     u = escape(username or "")
+    v_ar = "ساعة واحدة" if hours == 1 else f"{hours} ساعة"
+    v_en = "1 hour" if hours == 1 else f"{hours} hours"
+    lead_ar = "أرسل لك مدير النظام رابطًا لتعيين كلمة مرور جديدة لحسابك في مكتسبات." if by_admin else "طلبت إعادة تعيين كلمة المرور لحسابك في مكتسبات."
+    lead_en = "Your administrator sent you a link to set a new password for your Muktasabat account." if by_admin else "You requested a password reset for your Muktasabat account."
+    tail_ar = "إن لم تتوقع هذه الرسالة فتواصل مع الدعم الفني." if by_admin else "إن لم تطلب ذلك فتجاهل الرسالة."
+    tail_en = "If you weren't expecting this, contact support." if by_admin else "If you didn't ask for this, ignore this email."
     text = (
-        "طلبت إعادة تعيين كلمة المرور لحسابك في مكتسبات.\n"
+        f"{lead_ar}\n"
         + (f"اسم المستخدم: {username}\n" if username else "")
-        + f"افتح الرابط لتعيين كلمة مرور جديدة (صالح لساعة واحدة):\n{reset_url}\n\n"
-        "You requested a password reset for your Muktasabat account.\n"
+        + f"افتح الرابط لتعيين كلمة مرور جديدة (صالح {v_ar}):\n{reset_url}\n\n"
+        f"{lead_en}\n"
         + (f"Username: {username}\n" if username else "")
-        + f"Open this link to set a new password (expires in 1 hour):\n{reset_url}\n\n"
-        "If you didn't request this, ignore this message — your password stays the same."
+        + f"Open this link to set a new password (expires in {v_en}):\n{reset_url}\n\n"
+        + tail_en
     )
     html = _branded(
-        "<p>طلبت إعادة تعيين كلمة المرور لحسابك.</p>"
+        f"<p>{lead_ar}</p>"
         + (f"<p>اسم المستخدم للدخول: <strong dir='ltr'>{u}</strong></p>" if u else "")
         + _button(reset_url, "تعيين كلمة مرور جديدة")
-        + "<p style='color:#5D636B;font-size:13px'>الرابط صالح لساعة واحدة. إن لم تطلب ذلك فتجاهل الرسالة.</p>",
-        "<p>You requested a password reset.</p>"
+        + f"<p style='color:#5D636B;font-size:13px'>الرابط صالح {v_ar}. {tail_ar}</p>",
+        f"<p>{lead_en}</p>"
         + (f"<p>Your username: <strong>{u}</strong></p>" if u else "")
         + _button(reset_url, "Set a new password")
-        + "<p style='color:#5D636B;font-size:13px'>The link expires in 1 hour. If you didn't ask for this, ignore this email.</p>",
+        + f"<p style='color:#5D636B;font-size:13px'>The link expires in {v_en}. {tail_en}</p>",
     )
-    send_email(EmailMessage(to=to, subject="إعادة تعيين كلمة المرور | Reset your Muktasabat password", text_body=text, html_body=html))
+    return send_email(EmailMessage(to=to, subject="إعادة تعيين كلمة المرور | Reset your Muktasabat password", text_body=text, html_body=html, category="password_reset"))
 
 
 def send_account_invite(to: str, username: str, url: str, hours: int, portal: str) -> bool:
@@ -214,7 +269,7 @@ def send_account_invite(to: str, username: str, url: str, hours: int, portal: st
         + _button(url, "Set your password")
         + f"<p style='color:#5D636B;font-size:13px'>The link is valid for {hours} hours.</p>",
     )
-    return send_email(EmailMessage(to=to, subject="دعوة إلى مكتسبات | Your Muktasabat invitation", text_body=text, html_body=html))
+    return send_email(EmailMessage(to=to, subject="دعوة إلى مكتسبات | Your Muktasabat invitation", text_body=text, html_body=html, category="invite"))
 
 
 def send_email_verification(to: str, verify_url: str) -> None:
@@ -232,7 +287,7 @@ def send_email_verification(to: str, verify_url: str) -> None:
         + _button(verify_url, "Confirm email")
         + "<p style='color:#5D636B;font-size:13px'>The link is valid for 24 hours.</p>",
     )
-    send_email(EmailMessage(to=to, subject="تأكيد البريد الإلكتروني | Verify your Muktasabat email", text_body=text, html_body=html))
+    send_email(EmailMessage(to=to, subject="تأكيد البريد الإلكتروني | Verify your Muktasabat email", text_body=text, html_body=html, category="verification"))
 
 
 ROLE_NAMES = {
@@ -266,7 +321,7 @@ def send_user_invite(to: str, username: str, role: str, accept_url: str) -> None
         + _button(accept_url, "Set your password")
         + "<p style='color:#5D636B;font-size:13px'>The link expires in 24 hours.</p>",
     )
-    send_email(EmailMessage(to=to, subject="دعوة إلى مكتسبات | You're invited to Muktasabat", text_body=text, html_body=html))
+    send_email(EmailMessage(to=to, subject="دعوة إلى مكتسبات | You're invited to Muktasabat", text_body=text, html_body=html, category="invite"))
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +342,7 @@ def _notice(
     en: str,
     button: tuple[str, str, str] | None = None,  # (url, label_ar, label_en)
     preheader: str = "",
+    category: str = "account",
 ) -> bool:
     """Send one bilingual notice. `ar` / `en` are HTML paragraphs; escape any
     user-supplied values with `_esc` before passing them in."""
@@ -303,6 +359,7 @@ def _notice(
             subject=f"{subject_ar} | {subject_en}",
             text_body=text,
             html_body=_branded(ar, en, preheader=preheader),
+            category=category,
         )
     )
 
@@ -357,6 +414,7 @@ def send_ticket_created_to_staff(
     s, r, p = _esc(subject), _esc(requester), _esc(priority)
     return _notice(
         to,
+        category="support",
         subject_ar=f"تذكرة دعم جديدة {ticket_ref}",
         subject_en=f"New support ticket {ticket_ref}",
         ar=f"<p>فتح <strong>{r}</strong> تذكرة دعم جديدة.</p><p>الموضوع: <strong>{s}</strong><br>الأولوية: {p}</p>",
@@ -369,6 +427,7 @@ def send_ticket_received(to: str, ticket_ref: str, subject: str, url: str, local
     s = _esc(subject)
     return _notice(
         to,
+        category="support",
         subject_ar=f"استلمنا طلبك {ticket_ref}",
         subject_en=f"We received your request {ticket_ref}",
         ar=f"<p>شكرًا لتواصلك. استلمنا تذكرتك <strong>{s}</strong> برقم {ticket_ref}.</p>"
@@ -386,6 +445,7 @@ def send_ticket_reply_to_user(
     quote = f"<p style='border-inline-start:3px solid #E5DCCB;padding:4px 12px;color:#374151'>{x}</p>"
     return _notice(
         to,
+        category="support",
         subject_ar=f"رد جديد على تذكرتك {ticket_ref}",
         subject_en=f"New reply on your ticket {ticket_ref}",
         ar=f"<p>رد فريق الدعم على تذكرتك <strong>{s}</strong>:</p>{quote}",
@@ -406,6 +466,7 @@ def send_ticket_status_to_user(
     s = _esc(subject)
     return _notice(
         to,
+        category="support",
         subject_ar=f"تحديث حالة التذكرة {ticket_ref}",
         subject_en=f"Ticket {ticket_ref} updated",
         ar=f"<p>تم تحديث حالة تذكرتك <strong>{s}</strong> إلى: <strong>{_esc(status_ar)}</strong>.</p>",
@@ -418,6 +479,7 @@ def send_ticket_user_reply_to_staff(to: str, ticket_ref: str, subject: str, requ
     s, r = _esc(subject), _esc(requester)
     return _notice(
         to,
+        category="support",
         subject_ar=f"رد من المستخدم على {ticket_ref}",
         subject_en=f"Customer replied on {ticket_ref}",
         ar=f"<p>أضاف <strong>{r}</strong> ردًا على التذكرة <strong>{s}</strong>.</p>",

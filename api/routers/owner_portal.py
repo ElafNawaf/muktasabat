@@ -704,7 +704,7 @@ def _send_owner_invite(to: str, owner_name: str, url: str, locale: Locale) -> No
         + "<p style='color:#5D636B;font-size:13px'>The link is valid for 72 hours.</p>",
         preheader="دعوة إلى بوابة الملاك · Your owner portal invitation",
     )
-    send_email(EmailMessage(to=to, subject=subject, text_body=text, html_body=html))
+    send_email(EmailMessage(to=to, subject=subject, text_body=text, html_body=html, category="owner_portal"))
 
 
 @router.post("/admin/owners/{owner_id}/invite")

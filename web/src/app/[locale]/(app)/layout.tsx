@@ -28,6 +28,7 @@ export default async function AppLayout({
           role: user.role,
           full_name: locale === "ar" ? user.full_name_ar || user.full_name : user.full_name || user.full_name_ar,
           avatar_url: user.avatar_url,
+          is_super_admin: !!user.is_super_admin,
         }}
       >{children}</AppShell>
     </PermissionsProvider>

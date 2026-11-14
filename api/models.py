@@ -67,6 +67,9 @@ class User(Base):
     # Bumped on password change / "sign out everywhere". Every JWT carries the
     # version it was issued at; a mismatch invalidates the token.
     token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Exactly one account at most: sees the e-mail log and is the only one who
+    # can grant/remove admin rights or hand super-admin over.
+    is_super_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     password_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
@@ -1019,3 +1022,25 @@ class SupportTicketMessage(Base):
 
     ticket: Mapped["SupportTicket"] = relationship(back_populates="messages")
     author: Mapped[Optional["User"]] = relationship()
+
+
+class EmailLog(Base):
+    """Every e-mail the system tried to send (alerts, invites, resets, tickets…).
+
+    Written by api.email.send_email(); one-time links are redacted before
+    storage so the log can't be used to take over an account.
+    """
+
+    __tablename__ = "email_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    category: Mapped[str] = mapped_column(String(40), nullable=False, default="system", index=True)
+    to_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    cc_emails: Mapped[Optional[str]] = mapped_column(String(1000))
+    subject: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    # sent | failed | console (dev mode: printed, not sent)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
+    error: Mapped[Optional[str]] = mapped_column(String(120))
+    text_body: Mapped[Optional[str]] = mapped_column(Text)
+    html_body: Mapped[Optional[str]] = mapped_column(Text)

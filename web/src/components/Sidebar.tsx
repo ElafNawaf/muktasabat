@@ -24,7 +24,13 @@ function roleDisplayName(role: string, tr: (key: AppRole) => string): string {
 export function Sidebar({
   user,
 }: {
-  user: { username: string; role: string; full_name?: string | null; avatar_url?: string | null } | null;
+  user: {
+    username: string;
+    role: string;
+    full_name?: string | null;
+    avatar_url?: string | null;
+    is_super_admin?: boolean;
+  } | null;
 }) {
   const t = useTranslations("nav");
   const locale = useLocale();
@@ -72,6 +78,7 @@ export function Sidebar({
       items: [
         ...(isAdmin ? [{ id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users") }] : []),
         ...(isAdmin ? [{ id: "data-management", href: L("data-management"), icon: "database", label: t("dataManagement") }] : []),
+        ...(user?.is_super_admin ? [{ id: "email-log", href: L("email-log"), icon: "outgoing_mail", label: t("emailLog") }] : []),
         ...(isAdmin || can("owners", "view")
           ? [{ id: "owner-access", href: L("owner-access"), icon: "key", label: t("ownerAccess") }]
           : []),

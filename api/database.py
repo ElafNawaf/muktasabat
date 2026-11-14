@@ -56,6 +56,7 @@ def ensure_user_profile_columns(engine) -> None:
         "preferred_locale": "VARCHAR(5) DEFAULT 'ar' NOT NULL",
         "notify_ticket_updates": f"BOOLEAN DEFAULT {true_} NOT NULL",
         "token_version": "INTEGER DEFAULT 0 NOT NULL",
+        "is_super_admin": f"BOOLEAN DEFAULT {'0' if sqlite else 'false'} NOT NULL",
         "password_changed_at": ts,
         "last_login_at": ts,
         "pending_email": "VARCHAR(120)",

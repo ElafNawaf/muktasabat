@@ -20,6 +20,8 @@ from api.email import (
 )
 from api.models import AuditLog, User
 from api.schemas.auth import (
+    AdminSetPasswordRequest,
+    ReinviteRequest,
     AccessTokenResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -293,6 +295,10 @@ def change_role(
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if payload.role == "admin" or user.role == "admin":
+        require_super_admin_if_set(db, _admin, "Only the super admin can grant or remove administrator rights")
+    if user.is_super_admin and payload.role != "admin":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Hand super admin over to another administrator first")
     user.role = payload.role
     db.commit()
     db.refresh(user)
@@ -306,6 +312,10 @@ def toggle_active(user_id: int, db: DbSession, _admin: AdminUser):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     if user.id == _admin.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot deactivate your own account")
+    if user.is_super_admin:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The super admin cannot be deactivated")
+    if user.role == "admin":
+        require_super_admin_if_set(db, _admin, "Only the super admin can deactivate an administrator")
     user.is_active_user = not user.is_active_user
     if not user.is_active_user:
         user.token_version = (user.token_version or 0) + 1
@@ -321,6 +331,10 @@ def delete_user(user_id: int, db: DbSession, actor: Perm("users", "delete")):
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if user.is_super_admin:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The super admin cannot be deleted")
+    if user.role == "admin":
+        require_super_admin_if_set(db, actor, "Only the super admin can delete an administrator")
     if user.role == "admin":
         admin_count = db.scalar(
             select(func.count()).select_from(User).where(
@@ -341,6 +355,15 @@ def delete_user(user_id: int, db: DbSession, actor: Perm("users", "delete")):
 
     db.execute(update(AuditLog).where(AuditLog.user_id == user.id).values(user_id=None))
     db.execute(update(Building).where(Building.assignee_id == user.id).values(assignee_id=None))
+    # Support desk: the user's own tickets go with them; their replies on other
+    # tickets stay (author shown as "—"); tickets assigned to them are unassigned.
+    from api.models import SupportTicket, SupportTicketMessage
+
+    for t in db.scalars(select(SupportTicket).where(SupportTicket.user_id == user.id)).all():
+        db.delete(t)
+    db.flush()
+    db.execute(update(SupportTicketMessage).where(SupportTicketMessage.author_id == user.id).values(author_id=None))
+    db.execute(update(SupportTicket).where(SupportTicket.assignee_id == user.id).values(assignee_id=None))
     link = db.scalar(select(OwnerUser).where(OwnerUser.user_id == user.id))
     if link is not None:
         db.delete(link)
@@ -408,12 +431,26 @@ def invite_user(payload: InviteUserRequest, db: DbSession, _admin: AdminUser):
 
 
 @router.post("/admin/users/reinvite")
-def reinvite_all_users(db: DbSession, admin: AdminUser):
-    """Email every active user (except `admin`) their username and a fresh
-    72-hour set-password link. Returns masked per-user results."""
+def reinvite_all_users(db: DbSession, admin: AdminUser, payload: ReinviteRequest | None = None):
+    """Email users a fresh set-password link and return per-user results.
+
+    Body (optional): `user_ids` — only these users (otherwise every active user
+    except `admin`); `kind` — "invite" (invitation + username, 72 h) or "reset"
+    ("your administrator sent you a reset link", 24 h)."""
     from api.services.reinvite import reinvite_users
 
-    return reinvite_users(db, exclude_usernames={"admin"}, actor=admin)
+    payload = payload or ReinviteRequest()
+    if payload.user_ids:
+        targets = db.scalars(select(User).where(User.id.in_(payload.user_ids))).all()
+        if any(u.role == "admin" and u.id != admin.id for u in targets):
+            require_super_admin_if_set(db, admin, "Only the super admin can send links to other administrators")
+    return reinvite_users(
+        db,
+        exclude_usernames={"admin"},
+        actor=admin,
+        user_ids=payload.user_ids or None,
+        kind=payload.kind,
+    )
 
 
 @router.post("/admin/users/{user_id}/send-reset", response_model=ForgotPasswordResponse)
@@ -437,7 +474,7 @@ def admin_send_reset(user_id: int, db: DbSession, admin: AdminUser):
     )
     db.commit()
     reset_url = _absolute(f"/{_loc(None, user)}/reset-password?token={raw}")
-    send_password_reset_email(to=user.email, reset_url=reset_url, username=user.username)
+    send_password_reset_email(to=user.email, reset_url=reset_url, username=user.username, hours=24, by_admin=True)
     return ForgotPasswordResponse(
         message="Reset link sent.",
         debug_reset_url=f"/reset-password?token={raw}" if settings.reset_password_debug else None,
@@ -461,3 +498,88 @@ def admin_revoke_sessions(user_id: int, db: DbSession, admin: AdminUser):
         )
     )
     db.commit()
+
+
+# ---------- Super admin ----------
+
+
+def require_super_admin_if_set(db, actor: User, message: str) -> None:
+    """Admin-level changes are super-admin-only once a super admin exists.
+    Before one is chosen, any admin may act (nothing gets locked out)."""
+    if actor.is_super_admin:
+        return
+    exists = db.scalar(select(func.count()).select_from(User).where(User.is_super_admin.is_(True)))
+    if exists:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, message)
+
+
+@router.post("/admin/super-admin/{user_id}", response_model=UserRead)
+def set_super_admin(user_id: int, request: Request, db: DbSession, admin: AdminUser):
+    """Make `user_id` THE super admin (there is only ever one).
+
+    Allowed for the current super admin (handover), or — while none exists —
+    for the built-in `admin` account (first-time setup)."""
+    current = db.scalar(select(User).where(User.is_super_admin.is_(True)))
+    if current is not None and current.id != admin.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the super admin can hand this role over")
+    if current is None and admin.username != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Sign in as the built-in 'admin' account to choose the first super admin"
+        )
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if target.role != "admin" or not target.is_active_user:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The super admin must be an active administrator")
+    for u in db.scalars(select(User).where(User.is_super_admin.is_(True))).all():
+        u.is_super_admin = False
+    target.is_super_admin = True
+    db.add(
+        AuditLog(
+            user_id=admin.id,
+            username=admin.username,
+            action="super_admin_set",
+            entity_type="user",
+            entity_id=str(target.id),
+            details={"from": current.username if current else None, "to": target.username},
+            ip_address=_client_ip(request),
+        )
+    )
+    db.commit()
+    db.refresh(target)
+    return target
+
+
+@router.post("/admin/users/{user_id}/set-password", status_code=status.HTTP_204_NO_CONTENT)
+def admin_set_password(user_id: int, payload: AdminSetPasswordRequest, request: Request, db: DbSession, admin: AdminUser):
+    """Set a user's password directly (e.g. read it to them over the phone).
+
+    Signs the user out everywhere and e-mails them a "password changed" notice.
+    Other administrators' passwords: super admin only (once one exists)."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if user.id == admin.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Use My account → Password & security for your own password")
+    if user.role == "admin":
+        require_super_admin_if_set(db, admin, "Only the super admin can set another administrator's password")
+    if payload.new_password.lower() in {user.username.lower(), (user.email or "").lower()}:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Password cannot be the username or email")
+    user.set_password(payload.new_password)
+    user.password_changed_at = utcnow()
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    user.token_version = (user.token_version or 0) + 1
+    db.add(
+        AuditLog(
+            user_id=admin.id,
+            username=admin.username,
+            action="admin_set_password",
+            entity_type="user",
+            entity_id=str(user.id),
+            ip_address=_client_ip(request),
+        )
+    )
+    db.commit()
+    if payload.notify:
+        send_password_changed_notice(to=user.email, username=user.username)

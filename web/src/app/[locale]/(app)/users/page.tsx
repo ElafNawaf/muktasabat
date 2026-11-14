@@ -24,7 +24,14 @@ export default async function UsersPage({
   return (
     <>
       <Topbar title={t("title")} user={me} />
-      <UsersClient users={users} roles={roles} meId={me.id} locale={locale} />
+      <UsersClient
+        users={users}
+        roles={roles}
+        meId={me.id}
+        meUsername={me.username}
+        meIsSuper={!!me.is_super_admin}
+        locale={locale}
+      />
     </>
   );
 }

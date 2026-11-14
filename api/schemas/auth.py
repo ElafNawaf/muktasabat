@@ -23,6 +23,7 @@ class UserRead(BaseModel):
     avatar_url: str | None = None
     preferred_locale: str = "ar"
     last_login_at: datetime | None = None
+    is_super_admin: bool = False
 
 
 class RegisterRequest(BaseModel):
@@ -96,3 +97,14 @@ class InviteUserRequest(BaseModel):
 class InviteUserResponse(BaseModel):
     user: UserRead
     debug_invite_url: str | None = None
+
+
+class ReinviteRequest(BaseModel):
+    user_ids: list[int] | None = None
+    kind: Literal["invite", "reset"] = "invite"
+
+
+class AdminSetPasswordRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=128)
+    # E-mail the user a "your password was changed" notice.
+    notify: bool = True
