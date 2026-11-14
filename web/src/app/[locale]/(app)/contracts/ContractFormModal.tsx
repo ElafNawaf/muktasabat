@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useCustomFields } from "@/components/forms/CustomFields";
+import { useLocale as useCfLocale } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
 import { CollapsibleSection } from "@/components/CollapsibleSection";
@@ -189,6 +191,8 @@ export function ContractFormModal({
         },
   );
   const [error, setError] = useState<string | null>(null);
+  const cfLocale = useCfLocale();
+  const cf = useCustomFields("contract", editing?.id, cfLocale);
   const [pending, start] = useTransition();
 
   const unitsForBuilding = useMemo(() => {
@@ -307,6 +311,7 @@ export function ContractFormModal({
       ejar_registration_fee: Number(form.ejar_registration_fee) || 0,
       notes: form.notes?.toString().trim() || null,
     };
+    if (cf.missing.length) return setError((cfLocale === "ar" ? "أكمل الحقول المطلوبة: " : "Fill in: ") + cf.missing.map((f) => (cfLocale === "ar" ? f.label_ar : f.label_en || f.label_ar)).join("، "));
     start(async () => {
       const res = isEdit && editing
         ? await updateContract(editing.id, {
@@ -316,6 +321,11 @@ export function ContractFormModal({
         : await createContract(payload);
       if (!res.ok) {
         setError(res.error);
+        return;
+      }
+      const cfErr = await cf.save(res.data.id);
+      if (cfErr) {
+        setError(cfErr);
         return;
       }
       onClose();
@@ -931,6 +941,7 @@ export function ContractFormModal({
             onChange={(e) => set("notes", e.target.value)}
           />
         </CollapsibleSection>
+        {cf.node}
       </form>
     </Modal>
   );

@@ -19,6 +19,7 @@ from api.cms_models import CmsListing
 from api.deps import CurrentUser, DbSession
 from api.models import Building, Contract, Owner, Tenant, Unit, User
 from api.permissions import Perm, has_permission
+from api.services import workflows as wf
 from api.renewal_models import LeaseRenewal, LeaseRenewalEvent
 from api.routers.maintenance import _base, _mail, _name, _owner_scope
 
@@ -111,6 +112,7 @@ def _out(db: Session, r: LeaseRenewal, locale: str, detail: bool = False) -> dic
         "updated_at": r.updated_at.isoformat(),
     }
     if detail:
+        d["approval_chain"] = wf.chain_json(db, "renewal_offer", r.id, locale)
         d["events"] = [{"at": e.at.isoformat(), "actor": e.actor, "action": e.action, "note": e.note} for e in r.events]
     return d
 
@@ -291,23 +293,62 @@ def offer(rid: int, payload: OfferIn, db: DbSession, user: Perm("contracts", "ed
     r.proposed_rent = payload.proposed_rent
     r.owner_decision_by = r.owner_decision_note = None
     _log(db, r, _actor(user), "offer", f"{payload.proposed_rent:,.0f}" + (f" — {payload.note}" if payload.note else ""))
+    tasks = []
     if r.current_rent and payload.proposed_rent < r.current_rent:
+        # Chain from the "renewal_offer" workflow (default: the owner approves).
+        tasks = wf.start(db, "renewal_offer", r.id, _wf_ctx(db, r, requester_id=user.id))
+    if tasks:
         r.stage = "awaiting_owner"
-        _log(db, r, "system", "owner_approval_requested")
-        b = db.get(Building, r.building_id) if r.building_id else None
-        to = _owner_email(db, b.owner_id if b else None)
-        _mail(
-            to, "موافقة على تجديد عقد بإيجار أقل | Approve a lease renewal at lower rent",
-            f"<p>المستأجر في <strong>{escape(_name(b, 'ar'))}</strong> مستعد للتجديد بإيجار سنوي "
-            f"<strong>{payload.proposed_rent:,.0f} ر.س</strong> بدلًا من {r.current_rent:,.0f} ر.س. نحتاج موافقتك.</p>",
-            f"<p>The tenant at <strong>{escape(_name(b, 'en'))}</strong> is ready to renew at "
-            f"<strong>SAR {payload.proposed_rent:,.0f}</strong> a year instead of SAR {r.current_rent:,.0f}. We need your approval.</p>",
-            f"{_base()}/ar/owner/renewals", "مراجعة العرض", "Review offer",
-        )
+        _log(db, r, "system", "owner_approval_requested", f"{len(tasks)} step(s)")
+        db.commit()
+        _wf_notify_step(db, r, tasks[0])
     else:
         r.stage = "offer_sent"
         r.next_follow_up = date.today() + timedelta(days=5)
     return _done(db, r, locale)
+
+
+def _notify_owner_offer(db: Session, r: LeaseRenewal) -> None:
+    b = db.get(Building, r.building_id) if r.building_id else None
+    to = _owner_email(db, b.owner_id if b else None)
+    _mail(
+        to, "موافقة على تجديد عقد بإيجار أقل | Approve a lease renewal at lower rent",
+        f"<p>المستأجر في <strong>{escape(_name(b, 'ar'))}</strong> مستعد للتجديد بإيجار سنوي "
+        f"<strong>{(r.proposed_rent or 0):,.0f} ر.س</strong> بدلًا من {r.current_rent:,.0f} ر.س. نحتاج موافقتك.</p>",
+        f"<p>The tenant at <strong>{escape(_name(b, 'en'))}</strong> is ready to renew at "
+        f"<strong>SAR {(r.proposed_rent or 0):,.0f}</strong> a year instead of SAR {r.current_rent:,.0f}. We need your approval.</p>",
+        f"{_base()}/ar/owner/renewals", "مراجعة العرض", "Review offer",
+    )
+
+
+def _wf_ctx(db: Session, r: LeaseRenewal, requester_id: Optional[int] = None) -> dict:
+    b = db.get(Building, r.building_id) if r.building_id else None
+    dec = max(0.0, float(r.current_rent or 0) - float(r.proposed_rent or 0))
+    return {"amount": dec, "owner_id": b.owner_id if b else None, "building_id": r.building_id,
+            "requester_id": requester_id if requester_id is not None else r.assignee_id}
+
+
+def _wf_notify_step(db: Session, r: LeaseRenewal, t) -> None:
+    if (t.approver or {}).get("type") == "owner":
+        _notify_owner_offer(db, r)
+        return
+    wf.notify(db, t, "اعتماد عرض تجديد بإيجار أقل", "Approve a renewal offer below current rent",
+              f"<p>عرض تجديد بإيجار سنوي <strong>{(r.proposed_rent or 0):,.0f} ر.س</strong> بدلًا من {(r.current_rent or 0):,.0f} ر.س بانتظار اعتمادك.</p>",
+              f"<p>A renewal offer of <strong>SAR {(r.proposed_rent or 0):,.0f}</strong> a year (current SAR {(r.current_rent or 0):,.0f}) is waiting for your approval.</p>",
+              f"{_base()}/ar/approvals")
+
+
+def workflow_decide(db: Session, r: LeaseRenewal, user, approve: bool, note: Optional[str], by: str) -> str:
+    _need(r, {"awaiting_owner"}, "decide")
+    result, nxt = wf.decide(db, "renewal_offer", r.id, user, approve, note, ctx_fn=lambda: _wf_ctx(db, r), owner_ok=by.startswith("owner:"))
+    if result == "pending":
+        _log(db, r, by, "step_approved", note)
+        db.commit()
+        _wf_notify_step(db, r, nxt)
+        return "pending"
+    _decide(db, r, result == "approved", note, by)
+    db.commit()
+    return result
 
 
 def _decide(db: Session, r: LeaseRenewal, approve: bool, note: Optional[str], by: str) -> None:
@@ -326,9 +367,9 @@ def _decide(db: Session, r: LeaseRenewal, approve: bool, note: Optional[str], by
 
 
 @router.post("/{rid}/decision")
-def staff_decision(rid: int, payload: DecisionIn, db: DbSession, user: Perm("contracts", "approve"), locale: str = "ar"):
+def staff_decision(rid: int, payload: DecisionIn, db: DbSession, user: CurrentUser, locale: str = "ar"):
     r = _get(db, rid)
-    _decide(db, r, payload.approve, payload.note, _actor(user))
+    workflow_decide(db, r, user, payload.approve, payload.note, _actor(user))
     return _done(db, r, locale)
 
 
@@ -404,6 +445,5 @@ def owner_decision(rid: int, payload: DecisionIn, db: DbSession, user: CurrentUs
     b = db.get(Building, r.building_id) if r.building_id else None
     if b is None or b.owner_id != oid:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Renewal not found")
-    _decide(db, r, payload.approve, payload.note, f"owner: {_name(db.get(Owner, oid), 'ar')}")
-    db.commit()
+    workflow_decide(db, r, user, payload.approve, payload.note, f"owner: {_name(db.get(Owner, oid), 'ar')}")
     return {"ok": True, "stage": r.stage}

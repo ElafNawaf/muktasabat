@@ -342,3 +342,80 @@ def fix_rbac_defaults_v1(db: Session) -> None:
     private["_migrations"] = sorted(done | {"rbac-fix-1"})
     row.private = private
     db.commit()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Recommended permissions (business-domain review, 2026-11-14)
+# Shown side by side with the live matrix in Users → Roles; the administrator
+# applies each role with one click. Never applied automatically.
+# Letters: V view · C create · E edit · D delete · A approve
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _p(spec: str) -> dict[str, int]:
+    return {"view": int("V" in spec), "create": int("C" in spec), "edit": int("E" in spec),
+            "delete": int("D" in spec), "approve": int("A" in spec)}
+
+
+def _matrix(**cells: str) -> dict:
+    return {m: _p(cells.get(m, "")) for m in _MODULES}
+
+
+RECOMMENDED_ROLES: dict[str, dict] = {
+    "manager": {
+        "why_en": "Runs day-to-day property operations: units, leases, tenants, owners, renewals and maintenance. Can approve maintenance on the owner's behalf and register leases on Ejar. Sees collections but doesn't record payouts or approve company expenses (finance does).",
+        "why_ar": "يدير التشغيل اليومي: الوحدات والعقود والمستأجرين والملاك والتجديد والصيانة. يعتمد الصيانة نيابة عن المالك ويوثّق العقود في إيجار. يطّلع على التحصيل دون تسجيل تحويلات الملاك أو اعتماد مصروفات الشركة (من اختصاص المالية).",
+        "permissions": _matrix(dashboard="V", properties="VCE", contracts="VCEA", payments="VE", owners="VCE", agents="VCE",
+                               tenants="VCE", expenses="VC", maintenance="VCEA", management_contracts="VCE", company="V",
+                               owner_portal="VE", support="VC"),
+    },
+    "accountant": {
+        "why_en": "Owns the money: records tenant payments, confirms tenant payment reports, sends owner payouts with the bank slip, records and approves expenses (never their own) and exports data for reconciliation. Read-only on leases and properties.",
+        "why_ar": "مسؤول عن المال: يسجّل دفعات المستأجرين ويؤكد بلاغات السداد ويحوّل حصص الملاك مع إيصال الحوالة، ويسجّل المصروفات ويعتمدها (عدا ما سجّله بنفسه) ويصدّر البيانات للمطابقة. اطلاع فقط على العقود والعقارات.",
+        "permissions": _matrix(dashboard="V", properties="V", contracts="V", payments="VCEA", owners="V", agents="V",
+                               tenants="V", expenses="VCEA", maintenance="V", management_contracts="V", company="V", data="V"),
+    },
+    "agent": {
+        "why_en": "Leasing: lists vacant units, adds tenants and drafts leases. Can log maintenance requests seen at a viewing. No access to money beyond viewing a lease's payments, no deletes, no approvals.",
+        "why_ar": "التأجير: يتابع الوحدات الشاغرة ويضيف المستأجرين ويُعدّ مسودات العقود، ويسجّل طلبات الصيانة. لا صلاحيات مالية سوى الاطلاع على دفعات العقد، ولا حذف ولا اعتماد.",
+        "permissions": _matrix(properties="V", contracts="VCE", payments="V", owners="V", agents="V", tenants="VCE", maintenance="VC"),
+    },
+    "maint_coordinator": {
+        "why_en": "Runs maintenance: creates and assigns work orders, records estimates and actual costs, and logs the related expense. Approval of costs stays with the owner / property manager.",
+        "why_ar": "يدير الصيانة: ينشئ أوامر العمل ويسندها ويسجّل التكلفة التقديرية والفعلية والمصروف المرتبط. اعتماد التكاليف يبقى للمالك / مدير الأملاك.",
+        "permissions": _matrix(properties="V", contracts="V", owners="V", tenants="V", maintenance="VCE", expenses="VC"),
+    },
+    "executive": {
+        "why_en": "CEO: sees everything and is the final approver for large or sensitive decisions — expenses, owner payouts, leases on Ejar, maintenance, renewals and HR escalations. Doesn't do data entry.",
+        "why_ar": "الرئيس التنفيذي: يطّلع على كل شيء ويعتمد القرارات الكبيرة والحساسة — المصروفات وتحويلات الملاك وتوثيق العقود والصيانة والتجديد وتصعيدات الموارد البشرية. لا يقوم بإدخال البيانات.",
+        "permissions": _matrix(dashboard="V", properties="V", contracts="VA", payments="VA", owners="V", agents="V", tenants="V",
+                               expenses="VA", maintenance="VA", management_contracts="VA", company="V", owner_portal="V",
+                               users="V", data="V", website="V", support="V", hr="VA"),
+    },
+    "hr_manager": {
+        "why_en": "Runs HR across the group: employee files, attendance, contracts, assets; decides leave, permission, ticket and bank-change requests; sets HR rules.",
+        "why_ar": "يدير الموارد البشرية للمجموعة: ملفات الموظفين والحضور والعقود والعُهد، ويعتمد الإجازات والاستئذانات والتذاكر وتغيير الحساب البنكي، ويضبط إعدادات الموارد البشرية.",
+        "permissions": _matrix(hr="VCEDA", dashboard=""),
+    },
+    "hr_officer": {
+        "why_en": "HR operations without decision rights: keeps employee records and attendance up to date and books approved tickets.",
+        "why_ar": "عمليات الموارد البشرية دون صلاحية الاعتماد: يحدّث سجلات الموظفين والحضور ويحجز التذاكر المعتمدة.",
+        "permissions": _matrix(hr="VCE"),
+    },
+    "content_editor": {
+        "why_en": "Marketing: edits the public website (listings, projects, news, texts) and handles website enquiries. No access to tenants, leases or money.",
+        "why_ar": "التسويق: يحرّر الموقع العام (الإعلانات والمشاريع والأخبار والنصوص) ويتابع استفسارات الموقع. لا وصول للمستأجرين أو العقود أو المال.",
+        "permissions": _matrix(website="VCED", properties="V"),
+    },
+    "viewer": {
+        "why_en": "Read-only overview of the portfolio for auditors or board members: no changes, no personal HR data, no approvals.",
+        "why_ar": "اطلاع فقط على المحفظة للمراجعين أو أعضاء المجلس: لا تعديل ولا بيانات موظفين ولا اعتماد.",
+        "permissions": _matrix(dashboard="V", properties="V", contracts="V", payments="V", owners="V", agents="V", tenants="V",
+                               expenses="V", maintenance="V", management_contracts="V"),
+    },
+    "employee": {
+        "why_en": "Self-service only (My HR, my file, support) — every staff account has that without any module permission.",
+        "why_ar": "خدمة ذاتية فقط (خدماتي الوظيفية وملفي والدعم) — متاحة لكل موظف دون أي صلاحية إضافية.",
+        "permissions": _matrix(),
+    },
+}

@@ -62,6 +62,7 @@ def ensure_user_profile_columns(engine) -> None:
         "pending_email": "VARCHAR(120)",
         "email_change_token": "VARCHAR(128)",
         "email_change_expires": ts,
+        "permission_overrides": "JSON",
     }
     stmts = [
         f"ALTER TABLE users ADD COLUMN {col} {ddl}"
@@ -449,6 +450,15 @@ def ensure_payment_report_receipt_columns(engine) -> None:
     )
 
 
+def ensure_expense_approval_columns(engine) -> None:
+    """Approval workflow on expenses (existing rows count as approved)."""
+    _add_missing_columns(
+        engine,
+        "expenses",
+        [("approval_status", "VARCHAR(20) NOT NULL DEFAULT 'approved'"), ("created_by_id", "INTEGER")],
+    )
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -491,6 +501,8 @@ def ensure_hr_location_columns(engine) -> None:
     t, f = ("1", "0") if sqlite else ("true", "false")
     _add_missing_columns(engine, "hr_profiles", [
         ("work_mode", "VARCHAR(10) DEFAULT 'office' NOT NULL"), ("remote_days", "VARCHAR(20)"),
+        ("site_policy", "VARCHAR(10) DEFAULT 'company' NOT NULL"), ("site_ids", "VARCHAR(200)"),
+        ("checkout_rule", "VARCHAR(10) DEFAULT 'site' NOT NULL"),
         ("company_id", "INTEGER"), ("department_id", "INTEGER"),
     ])
     _add_missing_columns(engine, "hr_requests", [("location_type", "VARCHAR(10)"), ("location_note", "VARCHAR(200)")])
@@ -500,6 +512,7 @@ def ensure_hr_location_columns(engine) -> None:
         ("out_lat", "FLOAT"), ("out_lng", "FLOAT"), ("out_accuracy", "FLOAT"), ("out_distance", "FLOAT"),
         ("last_ping_at", ts), ("last_inside_at", ts), ("outside_since", ts),
         ("away_minutes", "INTEGER DEFAULT 0 NOT NULL"), ("auto_closed", f"BOOLEAN DEFAULT {f} NOT NULL"),
+        ("in_site_id", "INTEGER"), ("out_site_id", "INTEGER"),
     ])
     _add_missing_columns(engine, "hr_settings", [
         ("office_lat", "FLOAT DEFAULT 24.8138003 NOT NULL"), ("office_lng", "FLOAT DEFAULT 46.7242436 NOT NULL"),

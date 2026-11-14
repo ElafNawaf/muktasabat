@@ -24,9 +24,10 @@ from sqlalchemy.orm import Session
 from api.config import get_settings
 from api.deps import CurrentUser, DbSession
 from api.email import EmailMessage, _branded, _button, send_email
-from api.hr_models import Attendance, HrProfile, HrRequest, HrRequestEvent, HrSettings, LocationPing
+from api.hr_models import Attendance, HrProfile, HrRequest, HrRequestEvent, HrSettings, HrWorkSite, LocationPing
 from api.models import User
 from api.permissions import Perm, has_permission
+from api.services import workflows as wf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/hr", tags=["hr"])
@@ -137,6 +138,71 @@ def office_for(db: Session, s: HrSettings, user_id: int):
                                    geofence_radius_m=c.geofence_radius_m or s.geofence_radius_m, max_accuracy_m=s.max_accuracy_m,
                                    enforce_location=s.enforce_location)
     return s
+
+
+# ───────────────────────── attendance zones ─────────────────────────
+
+
+def seed_sites(db: Session, s: Optional[HrSettings] = None) -> None:
+    """First run: the HQ point from HR settings becomes the holding company's zone, plus any
+    company office HR had entered. Never touches zones once any exist."""
+    if db.scalar(select(HrWorkSite.id).limit(1)):
+        return
+    from api.hr_people_models import HrCompany
+
+    s = s or _settings(db)
+    hold = db.scalar(select(HrCompany).where(HrCompany.is_holding.is_(True)))
+    db.add(HrWorkSite(company_id=hold.id if hold else None, name_ar="المقر الرئيسي — مكتسبات", name_en="Muktasabat headquarters",
+                      lat=s.office_lat, lng=s.office_lng, radius_m=s.geofence_radius_m, updated_by="system"))
+    for c in db.scalars(select(HrCompany).where(HrCompany.is_holding.is_(False))).all():
+        if c.office_lat is not None and c.office_lng is not None:
+            db.add(HrWorkSite(company_id=c.id, name_ar=f"مكتب {c.name_ar}", name_en=f"{c.name_en or c.name_ar} office",
+                              lat=c.office_lat, lng=c.office_lng, radius_m=c.geofence_radius_m or s.geofence_radius_m, updated_by="system"))
+    db.commit()
+
+
+def site_ids(txt: Optional[str]) -> list[int]:
+    return [int(x) for x in (txt or "").split(",") if x.strip().isdigit()]
+
+
+def sites_for(db: Session, s: HrSettings, p: Optional[HrProfile]) -> list[HrWorkSite]:
+    """Zones where this employee may record office attendance."""
+    seed_sites(db, s)
+    rows = db.scalars(select(HrWorkSite).where(HrWorkSite.active.is_(True)).order_by(HrWorkSite.id)).all()
+    policy = (p.site_policy if p else None) or "company"
+    if policy == "custom":
+        allowed = [r for r in rows if r.id in site_ids(p.site_ids if p else None)]
+    elif policy == "any":
+        allowed = list(rows)
+    else:
+        allowed = [r for r in rows if r.company_id is None or (p is not None and r.company_id == p.company_id)]
+    return allowed or list(rows)
+
+
+def nearest_site(sites: list[HrWorkSite], lat: float, lng: float, accuracy: Optional[float]) -> tuple[Optional[HrWorkSite], Optional[float], Optional[bool]]:
+    """The zone the reading is inside (closest first), else the nearest zone. Accuracy may overlap a
+    fence by at most max(radius, 20 m), same rule as before."""
+    best: tuple = (None, None, None)
+    for st in sites:
+        d = distance_m(lat, lng, st.lat, st.lng)
+        inside = d - min(accuracy or 0, max(st.radius_m, 20)) <= st.radius_m
+        if best[0] is None or (inside, -d) > (bool(best[2]), -best[1]):
+            best = (st, d, inside)
+    return (best[0], round(best[1], 1), best[2]) if best[0] else best
+
+
+def where_am_i(db: Session, s: HrSettings, user_id: int, lat: float, lng: float, accuracy: Optional[float]) -> tuple[Optional[HrWorkSite], float, bool]:
+    p = db.scalar(select(HrProfile).where(HrProfile.user_id == user_id))
+    st, d, inside = nearest_site(sites_for(db, s, p), lat, lng, accuracy)
+    if st is None:  # no zones at all: legacy single HQ point
+        d, inside = geo_check(office_for(db, s, user_id), lat, lng, accuracy)
+    return st, d, inside
+
+
+def site_name(st: Optional[HrWorkSite], locale: str = "ar") -> Optional[str]:
+    if st is None:
+        return None
+    return st.name_ar if locale == "ar" else (st.name_en or st.name_ar)
 
 
 def local_now() -> datetime:
@@ -259,6 +325,7 @@ def _out(db: Session, r: HrRequest, locale: str, detail: bool = False) -> dict:
                        for e in db.scalars(select(HrRequestEvent).where(HrRequestEvent.request_id == r.id).order_by(HrRequestEvent.id)).all()]
         if r.kind == "leave" and r.leave_type == ANNUAL:
             d["balance"] = balance(db, r.user_id, r.start_date.year if r.start_date else None)
+        d["approval_chain"] = wf.chain_json(db, "hr_request", r.id, locale)
     return d
 
 
@@ -504,7 +571,10 @@ def me(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^(ar
         "work": {"start": (p.work_start or s.work_start).strftime("%H:%M"), "end": (p.work_end or s.work_end).strftime("%H:%M"),
                  "grace": s.grace_minutes, "weekend": sorted(_weekend(s)), "mode": p.work_mode or "office"},
         "location": {"mode_today": mode_for(db, p, user.id, today)[0], "via": (lambda w: w.number if w else None)(mode_for(db, p, user.id, today)[1]),
-                     "radius": s.geofence_radius_m, "enforce": s.enforce_location, "office_lat": s.office_lat, "office_lng": s.office_lng},
+                     "radius": s.geofence_radius_m, "enforce": s.enforce_location, "office_lat": s.office_lat, "office_lng": s.office_lng,
+                     "checkout_rule": p.checkout_rule or "site",
+                     "sites": [{"id": x.id, "name": site_name(x, locale), "lat": x.lat, "lng": x.lng, "radius": x.radius_m, "address": x.address}
+                               for x in sites_for(db, s, p)]},
         "approver": ", ".join(_uname(a, locale) for a in appr) or None,
         "requests": [_out(db, r, locale) for r in reqs],
         "colleagues": [{"id": u.id, "name": _uname(u, locale)} for u in _staff(db) if u.id != user.id],
@@ -523,11 +593,11 @@ def _ping(db: Session, user_id: int, now: datetime, kind: str, loc: LocIn, dista
                         distance=distance, inside=inside, note=note))
 
 
-def _locate(db: Session, s: HrSettings, user: User, now: datetime, loc: LocIn, kind: str) -> tuple[Optional[float], Optional[bool]]:
+def _locate(db: Session, s: HrSettings, user: User, now: datetime, loc: LocIn, kind: str) -> tuple[Optional[float], Optional[bool], Optional[HrWorkSite]]:
     """Validate a location for an office check-in/out. Raises 422/403 with a clear message."""
     if loc.lat is None or loc.lng is None:
         if not s.enforce_location:
-            return None, None
+            return None, None, None
         _ping(db, user.id, now, "refused", loc, None, None, f"no_location:{loc.error or ''}")
         db.commit()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -537,15 +607,16 @@ def _locate(db: Session, s: HrSettings, user: User, now: datetime, loc: LocIn, k
         db.commit()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             f"Your location is too imprecise (±{loc.accuracy:.0f} m). Turn on precise location / GPS and try again.")
-    o = office_for(db, s, user.id)
-    d, inside = geo_check(o, loc.lat, loc.lng, loc.accuracy)
+    st, d, inside = where_am_i(db, s, user.id, loc.lat, loc.lng, loc.accuracy)
     if kind == "check_in" and not inside and s.enforce_location:
         _ping(db, user.id, now, "refused", loc, d, False, "outside")
         db.commit()
+        radius = st.radius_m if st else s.geofence_radius_m
+        where = f" ({site_name(st, 'en')})" if st else ""
         raise HTTPException(status.HTTP_403_FORBIDDEN,
-                            f"You are {d:.0f} m from the office; check-in is allowed within {o.geofence_radius_m} m. "
+                            f"You are {d:.0f} m from your nearest check-in location{where}; check-in is allowed within {radius} m of it. "
                             "Working remotely or on a field visit today? Raise a remote / field work request.")
-    return d, inside
+    return d, inside, st
 
 
 @router.post("/me/check-in")
@@ -560,10 +631,12 @@ def check_in(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
         raise HTTPException(status.HTTP_409_CONFLICT, "You're on approved leave today.")
     p = _profile(db, user.id)
     mode, wl = mode_for(db, p, user.id, n.date())
+    st = None
     if mode == "office":
-        d, inside = _locate(db, s, user, n, loc, "check_in")
+        d, inside, st = _locate(db, s, user, n, loc, "check_in")
     else:
-        d, inside = (geo_check(office_for(db, s, user.id), loc.lat, loc.lng, loc.accuracy) if loc.lat is not None and loc.lng is not None else (None, None))
+        st, d, inside = (where_am_i(db, s, user.id, loc.lat, loc.lng, loc.accuracy) if loc.lat is not None and loc.lng is not None else (None, None, None))
+        st = st if inside else None
         if wl and wl.from_time and n.time() < wl.from_time.replace(second=0) and mode == "field":
             pass  # early start on a field day is allowed; times are informative
     if att is None:
@@ -571,13 +644,15 @@ def check_in(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
         db.add(att)
     att.check_in, att.source, att.mode = time(n.hour, n.minute), "web", mode
     att.in_lat, att.in_lng, att.in_accuracy, att.in_distance = loc.lat, loc.lng, loc.accuracy, d
+    att.in_site_id = st.id if st and inside else None
     att.last_ping_at = n
     att.last_inside_at = n if (mode == "office" and inside is not False) else None
     att.outside_since = None
     att.note = (f"{wl.number}" if wl else att.note)
     _ping(db, user.id, n, "check_in", loc, d, inside, mode)
     db.commit()
-    return {"ok": True, "check_in": att.check_in.strftime("%H:%M"), "mode": mode, "distance": d}
+    return {"ok": True, "check_in": att.check_in.strftime("%H:%M"), "mode": mode, "distance": d,
+            "site": site_name(st, "ar") if st and inside else None, "site_en": site_name(st, "en") if st and inside else None}
 
 
 @router.post("/me/check-out")
@@ -590,10 +665,12 @@ def check_out(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
         raise HTTPException(status.HTTP_409_CONFLICT, "Check in first.")
     if att.check_out:
         raise HTTPException(status.HTTP_409_CONFLICT, "You have already checked out today.")
-    d, inside = (None, None)
+    d, inside, st = (None, None, None)
+    p = db.scalar(select(HrProfile).where(HrProfile.user_id == user.id))
+    anywhere = bool(p and p.checkout_rule == "anywhere")
     if loc.lat is not None and loc.lng is not None:
-        d, inside = geo_check(office_for(db, s, user.id), loc.lat, loc.lng, loc.accuracy)
-    elif att.mode == "office" and s.enforce_location:
+        st, d, inside = where_am_i(db, s, user.id, loc.lat, loc.lng, loc.accuracy)
+    elif att.mode == "office" and s.enforce_location and not anywhere:
         _ping(db, user.id, n, "refused", loc, None, None, f"no_location:{loc.error or ''}")
         db.commit()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -607,13 +684,19 @@ def check_out(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
         elif d is not None and d <= CHECKOUT_TOLERANCE_M:
             att.last_inside_at = n  # car park / building entrance
             att.outside_since = None
+        elif anywhere:
+            # HR allows this employee to check out from anywhere (e.g. finishing at a customer site).
+            att.last_inside_at = n
+            att.outside_since = None
     att.check_out = time(n.hour, n.minute)
     att.out_lat, att.out_lng, att.out_accuracy, att.out_distance = loc.lat, loc.lng, loc.accuracy, d
+    att.out_site_id = st.id if st and inside else None
     att.last_ping_at = n
     _ping(db, user.id, n, "check_out", loc, d, inside)
     db.commit()
     return {"ok": True, "check_out": att.check_out.strftime("%H:%M"), "verified_minutes": verified_minutes(att, n),
-            "away": bool(att.mode == "office" and d is not None and d > CHECKOUT_TOLERANCE_M)}
+            "away": bool(att.mode == "office" and not anywhere and d is not None and d > CHECKOUT_TOLERANCE_M),
+            "site": site_name(st, "ar") if st and inside else None, "site_en": site_name(st, "en") if st and inside else None}
 
 
 @router.get("/me/presence")
@@ -646,7 +729,7 @@ def ping(loc: LocIn, db: DbSession, user: CurrentUser):
         return {"tracking": True, "inside": att.outside_since is None, "throttled": True}
     if loc.accuracy is not None and loc.accuracy > s.max_accuracy_m:
         return {"tracking": True, "inside": att.outside_since is None, "ignored": "low_accuracy"}
-    d, inside = geo_check(office_for(db, s, user.id), loc.lat, loc.lng, loc.accuracy)
+    st, d, inside = where_am_i(db, s, user.id, loc.lat, loc.lng, loc.accuracy)
     att.last_ping_at = n
     if inside:
         if att.outside_since:
@@ -657,7 +740,8 @@ def ping(loc: LocIn, db: DbSession, user: CurrentUser):
         att.outside_since = n
     _ping(db, user.id, n, "ping", loc, d, inside)
     db.commit()
-    return {"tracking": True, "inside": inside, "distance": d, "radius": s.geofence_radius_m,
+    return {"tracking": True, "inside": inside, "distance": d, "radius": st.radius_m if st else s.geofence_radius_m,
+            "site": site_name(st, "ar"), "site_en": site_name(st, "en"),
             "outside_since": att.outside_since.strftime("%H:%M") if att.outside_since else None}
 
 
@@ -752,13 +836,13 @@ def create_request(payload: RequestIn, db: DbSession, user: CurrentUser, locale:
     db.refresh(r)
 
     emp = db.get(User, target_id)
-    cc = _cc(db) if r.kind in ("leave", "ticket") else []
-    url = f"{_base()}/ar/hr?open={r.id}"
-    for a in _approvers(db, exclude_user_id=target_id):
-        _send(a.email, cc, f"{KIND_AR[r.kind]} بانتظار موافقتك — {_uname(emp, 'ar')} | {KIND_EN[r.kind]} awaiting approval — {_uname(emp, 'en')} ({r.number})",
-              f"<p>قدّم <strong>{escape(_uname(emp, 'ar'))}</strong> {KIND_AR[r.kind]}:</p><p>{escape(_summary(r, 'ar'))}</p>" + (f"<p>السبب: {escape(r.reason)}</p>" if r.reason else ""),
-              f"<p><strong>{escape(_uname(emp, 'en'))}</strong> submitted a {KIND_EN[r.kind].lower()}:</p><p>{escape(_summary(r, 'en'))}</p>" + (f"<p>Reason: {escape(r.reason)}</p>" if r.reason else ""),
-              url, "مراجعة الطلب", "Review request")
+    # Approval chain from the "hr_request" workflow (default: the HR approver).
+    tasks = wf.start(db, "hr_request", r.id, _wf_ctx(r))
+    db.commit()
+    if not tasks:
+        _finalize(db, r, None, True, None)
+    else:
+        _wf_notify_step(db, r, emp, tasks[0])
     out = _out(db, r, locale, detail=True)
     out["warning"] = warn
     return out
@@ -806,31 +890,74 @@ def list_requests(db: DbSession, user: Perm("hr", "view"), locale: str = Query("
     return [_out(db, r, locale) for r in rows]
 
 
-@router.post("/requests/{rid}/decision")
-def decide(rid: int, payload: DecisionIn, db: DbSession, user: Perm("hr", "approve"), locale: str = Query("ar", pattern="^(ar|en)$")):
-    r = _get(db, rid)
+def _wf_ctx(r: HrRequest) -> dict:
+    return {"kind": r.kind, "days": float(r.days or 0), "amount": float(r.estimated_cost) if r.kind == "ticket" and r.estimated_cost else None,
+            "requester_id": r.user_id, "ref": r.number}
+
+
+def _wf_notify_step(db: Session, r: HrRequest, emp: Optional[User], t) -> None:
+    cc = _cc(db) if r.kind in ("leave", "ticket") and t.step_index == 0 else []
+    extra_ar = f"<p>السبب: {escape(r.reason)}</p>" if r.reason else ""
+    extra_en = f"<p>Reason: {escape(r.reason)}</p>" if r.reason else ""
+    wf.notify(db, t, f"{KIND_AR[r.kind]} بانتظار موافقتك — {_uname(emp, 'ar')} ({r.number})",
+              f"{KIND_EN[r.kind]} awaiting approval — {_uname(emp, 'en')} ({r.number})",
+              f"<p>قدّم <strong>{escape(_uname(emp, 'ar'))}</strong> {KIND_AR[r.kind]}:</p><p>{escape(_summary(r, 'ar'))}</p>{extra_ar}",
+              f"<p><strong>{escape(_uname(emp, 'en'))}</strong> submitted a {KIND_EN[r.kind].lower()}:</p><p>{escape(_summary(r, 'en'))}</p>{extra_en}",
+              f"{_base()}/ar/approvals")
+    for e in cc:  # keep copying the CEO on leave / tickets, as before
+        _send(e, [], f"{KIND_AR[r.kind]} — {_uname(emp, 'ar')} ({r.number}) | {KIND_EN[r.kind]} — {_uname(emp, 'en')}",
+              f"<p>{escape(_summary(r, 'ar'))}</p>", f"<p>{escape(_summary(r, 'en'))}</p>", f"{_base()}/ar/hr?open={r.id}", "عرض", "Open")
+
+
+def _finalize(db: Session, r: HrRequest, user: Optional[User], approve: bool, note: Optional[str]) -> None:
+    """Apply the final decision (after the last approval step, or automatically)."""
+    if approve and r.kind == "leave" and r.leave_type == ANNUAL:
+        b = balance(db, r.user_id, r.start_date.year if r.start_date else None)
+        if (r.days or 0) > b["remaining"] + (r.days or 0):  # pending already counted in remaining
+            raise HTTPException(status.HTTP_409_CONFLICT, "Not enough annual leave balance.")
+    r.status = "approved" if approve else "rejected"
+    r.decided_by_id, r.decided_at, r.decision_note = (user.id if user else None), datetime.utcnow(), note
+    who_ar = _uname(user, "ar") if user else "اعتماد تلقائي"
+    who_en = _uname(user, "en") if user else "automatic approval"
+    _log(db, r, who_ar, r.status if user else "auto_approved", note)
+    db.commit()
+    emp = db.get(User, r.user_id)
+    cc = _cc(db) if r.kind in ("leave", "ticket") else []
+    ok_ar, ok_en = ("تمت الموافقة على", "approved") if approve else ("تم رفض", "rejected")
+    note_ar = f"<p>ملاحظة: {escape(note)}</p>" if note else ""
+    _send(emp.email if emp else None, cc,
+          f"{ok_ar} {KIND_AR[r.kind]} {r.number} | {KIND_EN[r.kind]} {r.number} {ok_en}",
+          f"<p>{ok_ar} {KIND_AR[r.kind]} لـ <strong>{escape(_uname(emp, 'ar'))}</strong> من قِبل {escape(who_ar)}.</p><p>{escape(_summary(r, 'ar'))}</p>{note_ar}",
+          f"<p>The {KIND_EN[r.kind].lower()} of <strong>{escape(_uname(emp, 'en'))}</strong> was {ok_en} by {escape(who_en)}.</p><p>{escape(_summary(r, 'en'))}</p>"
+          + (f"<p>Note: {escape(note)}</p>" if note else ""),
+          f"{_base()}/ar/my-hr", "عرض طلباتي", "View my requests")
+    wf.notify_final(db, "hr_request", f"{KIND_EN[r.kind]} {r.number} {ok_en}", f"<p>{escape(_summary(r, 'ar'))}</p>", f"<p>{escape(_summary(r, 'en'))}</p>", f"{_base()}/ar/hr?open={r.id}")
+
+
+def workflow_decide(db: Session, r: HrRequest, user: User, approve: bool, note: Optional[str]) -> str:
     if r.status != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, f"This request is already {r.status}.")
     if r.user_id == user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't approve your own request.")
-    if payload.approve and r.kind == "leave" and r.leave_type == ANNUAL:
+    if approve and r.kind == "leave" and r.leave_type == ANNUAL:
         b = balance(db, r.user_id, r.start_date.year if r.start_date else None)
-        if (r.days or 0) > b["remaining"] + (r.days or 0):  # pending already counted in remaining
+        if (r.days or 0) > b["remaining"] + (r.days or 0):
             raise HTTPException(status.HTTP_409_CONFLICT, "Not enough annual leave balance.")
-    r.status = "approved" if payload.approve else "rejected"
-    r.decided_by_id, r.decided_at, r.decision_note = user.id, datetime.utcnow(), payload.note
-    _log(db, r, _uname(user, "ar"), r.status, payload.note)
-    db.commit()
-    emp = db.get(User, r.user_id)
-    cc = _cc(db) if r.kind in ("leave", "ticket") else []
-    ok_ar, ok_en = ("تمت الموافقة على", "approved") if payload.approve else ("تم رفض", "rejected")
-    note_ar = f"<p>ملاحظة: {escape(payload.note)}</p>" if payload.note else ""
-    _send(emp.email if emp else None, cc,
-          f"{ok_ar} {KIND_AR[r.kind]} {r.number} | {KIND_EN[r.kind]} {r.number} {ok_en}",
-          f"<p>{ok_ar} {KIND_AR[r.kind]} لـ <strong>{escape(_uname(emp, 'ar'))}</strong> من قِبل {escape(_uname(user, 'ar'))}.</p><p>{escape(_summary(r, 'ar'))}</p>{note_ar}",
-          f"<p>The {KIND_EN[r.kind].lower()} of <strong>{escape(_uname(emp, 'en'))}</strong> was {ok_en} by {escape(_uname(user, 'en'))}.</p><p>{escape(_summary(r, 'en'))}</p>"
-          + (f"<p>Note: {escape(payload.note)}</p>" if payload.note else ""),
-          f"{_base()}/ar/my-hr", "عرض طلباتي", "View my requests")
+    result, nxt = wf.decide(db, "hr_request", r.id, user, approve, note, ctx_fn=lambda: _wf_ctx(r))
+    if result == "pending":
+        _log(db, r, _uname(user, "ar"), "step_approved", note)
+        db.commit()
+        _wf_notify_step(db, r, db.get(User, r.user_id), nxt)
+        return "pending"
+    _finalize(db, r, user, result == "approved", note)
+    return result
+
+
+@router.post("/requests/{rid}/decision")
+def decide(rid: int, payload: DecisionIn, db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^(ar|en)$")):
+    # Who may decide comes from the workflow (line manager, HR approver, CEO…).
+    r = _get(db, rid)
+    workflow_decide(db, r, user, payload.approve, payload.note)
     return _out(db, r, locale, detail=True)
 
 

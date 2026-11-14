@@ -52,10 +52,12 @@ from api.routers import (
     hr,
     hr_people,
     hr_contracts,
+    hr_sites,
     tenant_portal,
     entity_overview,
     people_overview,
     previews,
+    forms,
     notifications,
     owner_portal_detail,
     management,
@@ -66,6 +68,7 @@ from api.routers import (
     tenants,
     translate,
     units,
+    workflows,
 )
 from api.bootstrap_roles import seed_default_roles
 from api.cms_seed import migrate_cms, migrate_cms_v2, migrate_cms_v3, migrate_cms_v4, migrate_cms_v5, migrate_cms_v6, seed_cms
@@ -82,6 +85,7 @@ async def lifespan(app: FastAPI):
     """Create database tables on startup (same schema as api.models). For production, use managed migrations."""
     import api.models  # noqa: F401 — register ORM mappers with Base.metadata
     import api.cms_models  # noqa: F401 — public-website CMS tables
+    import api.workflow_models  # noqa: F401 — approval workflow policies & steps
     from api.models import User
 
     Base.metadata.create_all(bind=engine)
@@ -104,6 +108,9 @@ async def lifespan(app: FastAPI):
     ensure_contract_ejar_columns(engine)
     ensure_payment_owner_transfer_columns(engine)
     ensure_payment_report_receipt_columns(engine)
+    from api.database import ensure_expense_approval_columns
+
+    ensure_expense_approval_columns(engine)
     from api.database import ensure_hr_location_columns
 
     ensure_hr_location_columns(engine)
@@ -114,6 +121,9 @@ async def lifespan(app: FastAPI):
     with SessionLocal() as db:
         seed_companies(db)
         seed_templates(db)
+        from api.routers.hr import seed_sites
+
+        seed_sites(db)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -193,12 +203,21 @@ async def lifespan(app: FastAPI):
     from api.services.hr_monitor import monitor_loop
 
     hr_task = asyncio.create_task(monitor_loop())
+    # Approval steps past their response time → escalate (every 15 minutes).
+    from api.services.workflows import escalation_loop
+
+    wf_task = asyncio.create_task(escalation_loop())
     try:
         yield
     finally:
         alerts_task.cancel()
         hr_task.cancel()
+        wf_task.cancel()
 
+
+from api.services import expense_scope
+
+expense_scope.install()
 
 settings = get_settings()
 
@@ -234,6 +253,7 @@ API_V1 = "/api/v1"
 app.include_router(entity_overview.router, prefix=API_V1)
 app.include_router(people_overview.router, prefix=API_V1)
 app.include_router(previews.router, prefix=API_V1)
+app.include_router(forms.router, prefix=API_V1)
 app.include_router(notifications.router, prefix=API_V1)
 app.include_router(auth.router, prefix=API_V1)
 # Self-service profile / credentials / sessions + support tickets
@@ -261,11 +281,13 @@ app.include_router(collections.router, prefix=API_V1)
 app.include_router(hr.router, prefix=API_V1)
 app.include_router(hr_people.router, prefix=API_V1)
 app.include_router(hr_contracts.router, prefix=API_V1)
+app.include_router(hr_sites.router, prefix=API_V1)
 app.include_router(tenant_portal.router, prefix=API_V1)
 app.include_router(owner_portal_detail.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
 app.include_router(dashboards.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
+app.include_router(workflows.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)
 # Admin bulk data management — Excel export / validate / import
 app.include_router(data_io.router, prefix=API_V1)

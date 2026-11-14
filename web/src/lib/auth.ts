@@ -13,6 +13,8 @@ export type Me = {
   avatar_url?: string | null;
   preferred_locale?: string;
   is_super_admin?: boolean;
+  /** Effective permissions: the role's matrix plus this user's own overrides. */
+  permissions?: Record<string, Partial<Record<"view" | "create" | "edit" | "delete" | "approve", number | boolean>>>;
 };
 
 /**

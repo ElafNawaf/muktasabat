@@ -75,8 +75,9 @@ export function Sidebar({
     setPins(readJSON<string[]>(PIN_KEY, []));
     setClosed(readJSON<string[]>(CLOSED_KEY, []));
     const saved = readJSON<NavMode | null>(MODE_KEY, null);
-    setMode(saved ?? (readJSON<boolean>(RAIL_KEY, false) ? "rail" : "full"));
-    const mq = window.matchMedia("(max-width: 767px)");
+    // No choice yet: tablets / split screen start as icons so the page keeps its room.
+    setMode(saved ?? (readJSON<boolean>(RAIL_KEY, false) || window.innerWidth < 1100 ? "rail" : "full"));
+    const mq = window.matchMedia("(max-width: 519px)");
     const on = () => setNarrow(mq.matches);
     on();
     mq.addEventListener("change", on);

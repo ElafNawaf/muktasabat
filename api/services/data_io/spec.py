@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from api import models as m
-from api.hr_models import Attendance, HrProfile, HrRequest
+from api.hr_models import Attendance, HrProfile, HrRequest, HrWorkSite
 from api.hr_people_models import HrAsset, HrCompany, HrContract, HrContractTemplate, HrDepartment, HrFamilyMember, HrPersonal
 from api.routers.collections import CollectionAction
 from api.maintenance_models import WorkOrder
@@ -144,6 +144,10 @@ LOOKUPS: dict[str, Lookup] = {
         _lk("employment_kind", "Employment type", "نوع التوظيف",
             ("full_time", "Full time", "دوام كامل"), ("part_time", "Part time", "دوام جزئي"),
             ("contractor", "Contractor", "متعاقد")),
+        _lk("site_policy", "Check-in locations", "مواقع الحضور",
+            ("company", "Company's locations", "مواقع شركته"), ("custom", "Selected locations", "مواقع محددة"), ("any", "Any location", "أي موقع")),
+        _lk("checkout_rule", "Check-out rule", "قاعدة الانصراف",
+            ("site", "Inside a location", "داخل الموقع"), ("anywhere", "From anywhere", "من أي مكان")),
         _lk("work_mode", "Work mode", "نمط العمل",
             ("office", "Office", "مكتبي"), ("hybrid", "Hybrid", "مرن"), ("remote", "Remote", "عن بُعد")),
         _lk("ticket_entitlement", "Ticket entitlement", "استحقاق التذاكر",
@@ -1040,6 +1044,21 @@ SHEETS: list[Sheet] = [
         display="name_ar",
     ),
     Sheet(
+        "hr_work_sites", "Check-in locations", "Check-in locations", "مواقع تسجيل الحضور", HrWorkSite,
+        [
+            _id(),
+            F("name_ar", "Name (Arabic)", "الاسم (عربي)", required=True, max_len=120, width=26),
+            F("name_en", "Name (English)", "الاسم (إنجليزي)", max_len=120, width=22),
+            _ref("company_id", "Company (empty = whole group)", "الشركة (فارغ = كل المجموعة)", "hr_companies"),
+            F("lat", "Latitude", "خط العرض", "float", required=True, min=-90, max=90, width=14),
+            F("lng", "Longitude", "خط الطول", "float", required=True, min=-180, max=180, width=14),
+            F("radius_m", "Radius (metres)", "نصف القطر (متر)", "int", required=True, min=5, max=2000, default=15, width=12),
+            F("address", "Address", "العنوان", max_len=300, width=30),
+            _bool("active", "Active", "فعّال", True),
+        ],
+        display="name_ar",
+    ),
+    Sheet(
         "hr_profiles", "Employee HR records", "Employee HR records", "السجلات الوظيفية للموظفين", HrProfile,
         [
             _id(),
@@ -1064,6 +1083,9 @@ SHEETS: list[Sheet] = [
             F("work_end", "Work end", "نهاية الدوام", "time", width=12),
             _enum("work_mode", "Work mode", "نمط العمل", "work_mode", required=True, default="office"),
             F("remote_days", "Remote weekdays (0=Mon … 6=Sun, comma separated)", "أيام العمل عن بعد (0=الاثنين … 6=الأحد)", max_len=20, width=14),
+            _enum("site_policy", "Check-in locations", "مواقع الحضور", "site_policy", default="company"),
+            F("site_ids", "Location IDs (when selected; comma separated)", "معرّفات المواقع (عند التحديد، مفصولة بفواصل)", max_len=200, width=16),
+            _enum("checkout_rule", "Check-out rule", "قاعدة الانصراف", "checkout_rule", default="site"),
             F("emergency_contact", "Emergency contact", "جهة اتصال للطوارئ", max_len=160),
             F("notes", "Notes", "ملاحظات", "text", width=30),
         ],

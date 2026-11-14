@@ -14,6 +14,10 @@ DbSession = Annotated[Session, Depends(get_db)]
 def has_permission(db: Session, user: User, module: str, action: str) -> bool:
     if user.is_admin:
         return True
+    # Per-person extras win over the role (granted = 1, taken away = 0).
+    ov = ((getattr(user, "permission_overrides", None) or {}).get(module) or {})
+    if action in ov and ov[action] is not None:
+        return bool(ov[action])
     role = db.get(Role, user.role)
     if role is None:
         return False
@@ -38,3 +42,13 @@ def require_permission(module: str, action: str):
 def Perm(module: str, action: str) -> type:
     """Shorthand: `Annotated[User, Depends(require_permission(...))]`."""
     return Annotated[User, Depends(require_permission(module, action))]
+
+
+ACTIONS = ("view", "create", "edit", "delete", "approve")
+
+
+def effective_permissions(db: Session, user: User) -> dict:
+    """The full module × action matrix this person actually has (role + extras)."""
+    from api.bootstrap_roles import _MODULES
+
+    return {m: {a: 1 if has_permission(db, user, m, a) else 0 for a in ACTIONS} for m in _MODULES}

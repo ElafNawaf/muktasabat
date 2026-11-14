@@ -43,6 +43,11 @@ class HrProfile(Base):
     # office: must check in at HQ · remote: anywhere, every day · hybrid: anywhere on remote_days
     work_mode: Mapped[str] = mapped_column(String(10), default="office", nullable=False)
     remote_days: Mapped[Optional[str]] = mapped_column(String(20))  # Python weekday() list, e.g. "0,2"
+    # Where office-mode attendance may be recorded: company (zones of the employee's company + group-wide zones),
+    # custom (only site_ids), any (every active zone). checkout_rule: site (time counts until last seen in a zone) | anywhere.
+    site_policy: Mapped[str] = mapped_column(String(10), default="company", nullable=False)
+    site_ids: Mapped[Optional[str]] = mapped_column(String(200))
+    checkout_rule: Mapped[str] = mapped_column(String(10), default="site", nullable=False)
     emergency_contact: Mapped[Optional[str]] = mapped_column(String(160))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -123,6 +128,8 @@ class Attendance(Base):
     out_lng: Mapped[Optional[float]] = mapped_column(Float)
     out_accuracy: Mapped[Optional[float]] = mapped_column(Float)
     out_distance: Mapped[Optional[float]] = mapped_column(Float)
+    in_site_id: Mapped[Optional[int]] = mapped_column(Integer)
+    out_site_id: Mapped[Optional[int]] = mapped_column(Integer)
     last_ping_at: Mapped[Optional[datetime]] = mapped_column(DateTime)  # Riyadh local, naive
     last_inside_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     outside_since: Mapped[Optional[datetime]] = mapped_column(DateTime)
@@ -186,3 +193,21 @@ class HrAlertLog(Base):
     day: Mapped[date] = mapped_column(Date, nullable=False)
     kind: Mapped[str] = mapped_column(String(20), nullable=False)  # no_checkin|left_area|no_checkout|auto_closed|summary
     at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class HrWorkSite(Base):
+    """An attendance zone: a point and radius where staff may check in (an office, a branch, a project site).
+    company_id empty = open to the whole group."""
+    __tablename__ = "hr_work_sites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    name_ar: Mapped[str] = mapped_column(String(120), nullable=False)
+    name_en: Mapped[Optional[str]] = mapped_column(String(120))
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lng: Mapped[float] = mapped_column(Float, nullable=False)
+    radius_m: Mapped[int] = mapped_column(Integer, default=15, nullable=False)
+    address: Mapped[Optional[str]] = mapped_column(String(300))
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

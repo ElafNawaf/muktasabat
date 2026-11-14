@@ -181,13 +181,7 @@ function CompanyModal({ ar, c, companies, onClose }: { ar: boolean; c: Company |
         {!c?.is_holding && <label className="field"><span>{T("الشركة الأم", "Parent company")}</span><select className="select" value={f.parent_id} onChange={(e) => set("parent_id", e.target.value)}><option value="">—</option>{companies.filter((x) => x.id !== c?.id).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>}
         <label className="field"><span>{T("اللون", "Colour")}</span><input className="input" type="color" value={f.color} onChange={(e) => set("color", e.target.value)} /></label>
       </div>
-      <h4 className="mx-h">{T("مكتب الحضور (اختياري)", "Attendance office (optional)")}</h4>
-      <p className="text-sec mx-hint">{T("إن كان لموظفي هذه الشركة مكتب مختلف عن المقر الرئيسي، أدخل موقعه ليُسجَّل حضورهم منه.", "If this company's staff work from a different office than headquarters, enter it so they check in there.")}</p>
-      <div className="mx-grid2">
-        <label className="field"><span>{T("خط العرض", "Latitude")}</span><input className="input" dir="ltr" value={f.lat} onChange={(e) => set("lat", e.target.value)} /></label>
-        <label className="field"><span>{T("خط الطول", "Longitude")}</span><input className="input" dir="ltr" value={f.lng} onChange={(e) => set("lng", e.target.value)} /></label>
-        <label className="field"><span>{T("نصف القطر (م)", "Radius (m)")}</span><input className="input" type="number" min={5} value={f.radius} onChange={(e) => set("radius", e.target.value)} /></label>
-      </div>
+      <p className="text-sec mx-hint"><span className="ms ms-sm" aria-hidden>pin_drop</span> {T("مواقع تسجيل الحضور لهذه الشركة تُدار من الموارد البشرية ← مواقع الحضور.", "This company's check-in locations are managed in HR › Locations.")}</p>
       {c && <label className="checkbox" style={{ marginTop: 10 }}><input type="checkbox" checked={f.active} onChange={(e) => set("active", e.target.checked)} />{T("الشركة نشطة", "Company is active")}</label>}
       {err && <p className="mx-err">{err}</p>}
       {c ? <Letterhead ar={ar} c={c} /> : <p className="text-sec mx-hint">{T("بعد حفظ الشركة يمكنك إضافة شعارها وتوقيع المفوّض بالتوقيع على العقود.", "After saving, you can add the company logo and the signature used on contracts.")}</p>}

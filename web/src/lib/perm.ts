@@ -10,6 +10,7 @@ const roles = cache(() => api.get<Role[]>("/api/v1/roles"));
 export async function canServer(locale: string, module: ModuleId, action: PermissionAction = "view"): Promise<boolean> {
   const me = await requireAuth(locale);
   if (me.role === "admin") return true;
+  if (me.permissions) return !!me.permissions[module]?.[action];
   const role = (await roles()).find((r) => r.code === me.role);
   return !!role?.permissions?.[module]?.[action];
 }

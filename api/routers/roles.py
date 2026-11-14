@@ -9,7 +9,11 @@ from api.schemas.role import RoleCreate, RolePermissionsUpdate, RoleRead
 router = APIRouter(prefix="/roles", tags=["roles"])
 
 # Modules and actions a permission cell can describe.
-MODULES = {"properties", "contracts", "payments", "owners", "agents", "tenants", "expenses", "users"}
+# Every module in the matrix (the old 8-module list silently dropped the rest —
+# dashboard, maintenance, hr, website… — whenever a role was saved).
+from api.bootstrap_roles import _MODULES as _ALL_MODULES  # noqa: E402
+
+MODULES = set(_ALL_MODULES)
 ACTIONS = {"view", "create", "edit", "delete", "approve"}
 
 
@@ -77,3 +81,11 @@ def delete_role(code: str, db: DbSession, _user: Perm("users", "delete")):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "System roles cannot be deleted")
     db.delete(role)
     db.commit()
+
+
+@router.get("/recommended")
+def recommended_roles(_admin: AdminUser):
+    """Business-domain recommended matrix per role, for side-by-side review."""
+    from api.bootstrap_roles import RECOMMENDED_ROLES
+
+    return RECOMMENDED_ROLES

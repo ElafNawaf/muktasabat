@@ -21,6 +21,7 @@ from api.email import EmailMessage, _branded, _button, send_email
 from api.maintenance_models import WorkOrder, WorkOrderAttachment, WorkOrderEvent, WorkOrderTenant
 from api.models import Building, Contract, Expense, ManagementContract, ManagementContractProperty, Owner, OwnerUser, Tenant, Unit, User
 from api.permissions import Perm, has_permission
+from api.services import workflows as wf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
@@ -110,6 +111,7 @@ def _out(db: Session, wo: WorkOrder, locale: str, detail: bool = False) -> dict:
         "tenant_id": link.tenant_id, "preferred_time": link.preferred_time, "allow_entry": link.allow_entry,
     }
     if detail:
+        d["approval_chain"] = wf.chain_json(db, "maintenance_cost", wo.id, locale)
         d["events"] = [{"at": e.at, "actor": e.actor, "action": e.action, "note": e.note} for e in wo.events]
         d["attachments"] = [
             {"id": a.id, "url": a.url, "name": a.name, "content_type": a.content_type, "source": a.source, "by": a.uploaded_by, "at": a.at}
@@ -374,21 +376,60 @@ def estimate(wo_id: int, payload: EstimateIn, db: DbSession, user: Perm("mainten
     from_tenant = wo.reported_by == "tenant" and _tenant_link(db, wo) is not None
     want_owner = payload.require_owner if payload.require_owner is not None else from_tenant
     above = payload.amount > limit
-    wo.approval_required = payload.charge_to == "owner" and (above or want_owner)
     wo.approved_by = wo.approved_at = wo.decision_note = None
     _log(wo, _actor(user), "estimated", f"{payload.amount:,.0f} SAR → {payload.charge_to}" + (f" — {payload.note}" if payload.note else ""))
-    if wo.approval_required:
+    # The approval chain comes from the "maintenance_cost" workflow policy
+    # (default: the owner approves owner-billed jobs above their limit).
+    ctx = _wf_ctx(db, wo, above_or_requested=above or want_owner, requester_id=user.id)
+    tasks = wf.start(db, "maintenance_cost", wo.id, ctx)
+    wo.approval_required = bool(tasks)
+    if tasks:
         wo.status = "awaiting_approval"
-        _log(wo, "system", "approval_requested", f"above the owner's limit of {limit:,.0f} SAR" if above else "owner approval required")
+        why = f"above the owner's limit of {limit:,.0f} SAR" if above else "approval required"
+        _log(wo, "system", "approval_requested", f"{why} — {len(tasks)} step(s)")
         db.commit()
-        _notify_owner_for_approval(db, wo)
-        _notify_tenant(db, wo, "awaiting_owner")
+        _wf_notify_step(db, wo, tasks[0])
+        if any((t.approver or {}).get("type") == "owner" for t in tasks):
+            _notify_tenant(db, wo, "awaiting_owner")
     else:
         wo.status = "approved"
         wo.approved_by, wo.approved_at = "auto", datetime.utcnow()
         _log(wo, "system", "auto_approved", f"within limit ({limit:,.0f} SAR)" if payload.charge_to == "owner" else f"charged to {payload.charge_to}")
         db.commit()
     return _out(db, wo, "ar", detail=True)
+
+
+def _wf_ctx(db: Session, wo: WorkOrder, above_or_requested: bool | None = None, requester_id: int | None = None) -> dict:
+    b = db.get(Building, wo.building_id)
+    if above_or_requested is None:  # legacy requests already awaiting approval
+        above_or_requested = bool(wo.approval_required)
+    return {"amount": float(wo.estimate_amount or 0), "charge_to": wo.charge_to, "above_owner_limit": bool(above_or_requested),
+            "owner_id": b.owner_id if b else None, "building_id": wo.building_id,
+            "requester_id": requester_id if requester_id is not None else wo.created_by_id, "ref": wo.number}
+
+
+def _wf_notify_step(db: Session, wo: WorkOrder, t) -> None:
+    if (t.approver or {}).get("type") == "owner":
+        _notify_owner_for_approval(db, wo)
+        return
+    amt = f"{float(wo.estimate_amount or 0):,.0f}"
+    wf.notify(db, t, f"اعتماد تكلفة صيانة {wo.number}", f"Maintenance cost approval {wo.number}",
+              f"<p>طلب الصيانة <strong>{escape(wo.title)}</strong> بتكلفة تقديرية <strong>{amt} ر.س</strong> بانتظار اعتمادك.</p>",
+              f"<p>Work order <strong>{escape(wo.title)}</strong> with an estimate of <strong>SAR {amt}</strong> is waiting for your approval.</p>",
+              f"{_base()}/ar/approvals")
+
+
+def workflow_decide(db: Session, wo: WorkOrder, user, approve: bool, note: str | None, actor: str) -> str:
+    """Decide the current step; applies the final decision after the last step."""
+    _require_state(wo, {"awaiting_approval"}, "decide on")
+    result, nxt = wf.decide(db, "maintenance_cost", wo.id, user, approve, note, ctx_fn=lambda: _wf_ctx(db, wo), owner_ok=actor.startswith("owner:"))
+    if result == "pending":
+        _log(wo, actor, "step_approved", note)
+        db.commit()
+        _wf_notify_step(db, wo, nxt)
+        return "pending"
+    _decide(db, wo, result == "approved", note, actor)
+    return result
 
 
 def _decide(db: Session, wo: WorkOrder, approve: bool, note: str | None, actor: str) -> None:
@@ -402,9 +443,11 @@ def _decide(db: Session, wo: WorkOrder, approve: bool, note: str | None, actor: 
 
 
 @router.post("/work-orders/{wo_id}/decision")
-def staff_decision(wo_id: int, payload: DecisionIn, db: DbSession, user: Perm("maintenance", "approve")):
+def staff_decision(wo_id: int, payload: DecisionIn, db: DbSession, user: CurrentUser):
+    # Who may decide is the workflow's business (approver of the current step,
+    # or staff with maintenance → approve acting for the owner).
     wo = _get(db, wo_id)
-    _decide(db, wo, payload.approve, payload.note, _actor(user))
+    workflow_decide(db, wo, user, payload.approve, payload.note, _actor(user))
     return _out(db, wo, "ar", detail=True)
 
 
@@ -571,7 +614,7 @@ def owner_decision(wo_id: int, payload: DecisionIn, db: DbSession, user: Current
     if b is None or b.owner_id != oid:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Work order not found")
     owner = db.get(Owner, oid)
-    _decide(db, wo, payload.approve, payload.note, f"owner: {_name(owner, 'ar')}")
+    workflow_decide(db, wo, user, payload.approve, payload.note, f"owner: {_name(owner, 'ar')}")
     return {"ok": True, "status": wo.status}
 
 

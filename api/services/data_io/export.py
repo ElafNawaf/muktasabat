@@ -156,7 +156,7 @@ def _cell_value(f: F, value: Any) -> Any:
 def _rows(db: Session, sheet: Sheet) -> list[dict]:
     """Only the spec's columns are read, so unrelated model columns never matter."""
     keys = [f.key for f in sheet.fields]
-    stmt = select(*(getattr(sheet.model, k) for k in keys)).order_by(sheet.model.id)
+    stmt = select(*(getattr(sheet.model, k) for k in keys)).order_by(sheet.model.id).execution_options(all_expenses=True)
     return [dict(zip(keys, r)) for r in db.execute(stmt).all()]
 
 

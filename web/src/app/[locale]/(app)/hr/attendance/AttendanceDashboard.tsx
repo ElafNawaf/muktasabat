@@ -13,10 +13,12 @@ type Person = {
   check_in?: string | null; check_out?: string | null; late_minutes: number; verified_minutes?: number | null; away_minutes: number;
   outside_since?: string | null; flags: string[]; last_seen?: string | null; minutes_since_seen?: number | null; stale: boolean;
   distance?: number | null; inside?: boolean | null; x?: number | null; y?: number | null; leave_type?: string | null; work_location?: string | null;
+  site_id?: number | null;
 };
 export type Live = {
   now: string; date: string; headcount: number; counts: Partial<Record<LiveStatus, number>>; people: Person[];
   office: { lat: number; lng: number; radius: number }; work: { start: string; end: string };
+  sites?: { id: number; name: string; radius: number; lat: number; lng: number }[];
 };
 type Totals = {
   attendance_pct: number | null; punctuality_pct: number | null; verified_hours: number; worked_hours: number; late_minutes: number; late_days: number;
@@ -63,6 +65,7 @@ export function AttendanceDashboard({ locale, initialLive, initialStats, month: 
   const [stats, setStats] = useState(initialStats);
   const [month, setMonth] = useState(m0);
   const [filter, setFilter] = useState<"all" | LiveStatus>("all");
+  const [zone, setZone] = useState<number | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const [loading, start] = useTransition();
 
@@ -103,8 +106,25 @@ export function AttendanceDashboard({ locale, initialLive, initialStats, month: 
 
       <div className="att-live">
         <section className="card att-radar-card">
-          <header className="hr-sec__head"><h3>{T("المتواجدون حول المقر", "Around headquarters")}</h3><span className="text-sec">{T(`النطاق ${live.office.radius} م`, `${live.office.radius} m area`)}</span></header>
-          <Radar people={live.people} radius={live.office.radius} ar={ar} />
+          {(() => {
+            const sites = live.sites ?? [];
+            const cur = sites.find((x) => x.id === zone) ?? sites[0];
+            const here = cur ? live.people.filter((p) => p.site_id === cur.id) : live.people;
+            return (
+              <>
+                <header className="hr-sec__head"><h3>{cur ? T(`المتواجدون حول ${cur.name}`, `Around ${cur.name}`) : T("المتواجدون حول المقر", "Around headquarters")}</h3><span className="text-sec">{T(`النطاق ${cur?.radius ?? live.office.radius} م`, `${cur?.radius ?? live.office.radius} m area`)}</span></header>
+                {sites.length > 1 && (
+                  <div className="att-zones" role="tablist" aria-label={T("مواقع الحضور", "Check-in locations")}>
+                    {sites.map((x) => {
+                      const n = live.people.filter((p) => p.site_id === x.id && (p.status === "in_office" || p.status === "away")).length;
+                      return <button key={x.id} role="tab" aria-selected={cur?.id === x.id} className={cur?.id === x.id ? "is-on" : ""} onClick={() => setZone(x.id)}>{x.name}<b>{n}</b></button>;
+                    })}
+                  </div>
+                )}
+                <Radar people={here} radius={cur?.radius ?? live.office.radius} ar={ar} />
+              </>
+            );
+          })()}
           <p className="text-sec att-note">{T("آخر موقع مُبلَّغ لكل موظف اليوم (عند الحضور أو أثناء فتح البوابة). المسافات تقريبية.", "Each employee's last reported position today (at check-in or while the portal was open). Distances are approximate.")}</p>
         </section>
 
@@ -119,7 +139,7 @@ export function AttendanceDashboard({ locale, initialLive, initialStats, month: 
                 <span className="att-dot" aria-hidden />
                 <div className="att-who">
                   <strong>{p.name}</strong>
-                  <span>{[p.job_title, p.department].filter(Boolean).join(" · ") || "—"}</span>
+                  <span>{[p.job_title, p.department, (live.sites?.length ?? 0) > 1 && p.site_id && (p.status === "in_office" || p.status === "away" || p.status === "checked_out") ? live.sites?.find((x) => x.id === p.site_id)?.name : null].filter(Boolean).join(" · ") || "—"}</span>
                 </div>
                 <div className="att-state">
                   <span className="att-chip">{T(STATUS[p.status].ar, STATUS[p.status].en)}</span>

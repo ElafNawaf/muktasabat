@@ -42,3 +42,4 @@ class ExpenseRead(ExpenseBase):
 
     id: int
     created_at: datetime
+    approval_status: str = "approved"

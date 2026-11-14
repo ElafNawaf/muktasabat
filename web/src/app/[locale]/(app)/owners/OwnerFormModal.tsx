@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useCustomFields } from "@/components/forms/CustomFields";
 import { useState, useTransition } from "react";
 
 import { BilingualField } from "@/components/BilingualField";
@@ -54,6 +55,7 @@ export function OwnerFormModal({
     notes_ar: owner?.notes_ar ?? "",
   }));
   const [error, setError] = useState<string | null>(null);
+  const cf = useCustomFields("owner", owner?.id, locale);
   const [pending, start] = useTransition();
 
   const set = <K extends keyof OwnerInput>(k: K, v: OwnerInput[K]) =>
@@ -99,12 +101,18 @@ export function OwnerFormModal({
       setError(t("nameRequired"));
       return;
     }
+    if (cf.missing.length) return setError((locale === "ar" ? "أكمل الحقول المطلوبة: " : "Fill in: ") + cf.missing.map((f) => (locale === "ar" ? f.label_ar : f.label_en || f.label_ar)).join("، "));
     start(async () => {
       const res = isEdit && owner
         ? await updateOwner(owner.id, payload)
         : await createOwner(payload);
       if (!res.ok) {
         setError(res.error);
+        return;
+      }
+      const cfErr = await cf.save(res.data.id);
+      if (cfErr) {
+        setError(cfErr);
         return;
       }
       onClose();
@@ -343,6 +351,7 @@ export function OwnerFormModal({
           onChangeEn={(v) => set("notes_en", v)}
           onChangeAr={(v) => set("notes_ar", v)}
         />
+        {cf.node}
       </form>
     </Modal>
   );

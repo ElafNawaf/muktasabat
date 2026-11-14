@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { CustomFieldsCard } from "@/components/forms/CustomFields";
 import { usePermissions } from "@/components/PermissionsProvider";
 import type { Agent } from "@/lib/types";
 
@@ -159,6 +160,7 @@ export function AgentProfile({ ov, agent, locale }: { ov: AgentOverview; agent: 
         </div>
 
         <aside className="tp2-side">
+          <CustomFieldsCard entity="agent" id={ov.id} locale={locale} />
           <section className="card tp2-card">
             <h3 className="bd-h3">{t("الحساب البنكي", "Bank account")}</h3>
             <dl className="bd-dl">

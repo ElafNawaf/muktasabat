@@ -37,6 +37,8 @@ export type ExpenseRow = {
   receipt_number: string | null;
   notes: string | null;
   created_at: string;
+  /** approved | pending | rejected — only approved expenses count in totals and reports. */
+  approval_status?: "approved" | "pending" | "rejected";
 };
 
 type CategoryFilter = "all" | string;
@@ -129,13 +131,15 @@ export function ExpensesClient({
     return haystack.includes(q);
   });
 
+  const counted = scopedRows.filter((e) => (e.approval_status ?? "approved") === "approved");
+  const awaiting = scopedRows.filter((e) => e.approval_status === "pending");
   const totals = {
     total: scopedRows.length,
-    sum: scopedRows.reduce((s, e) => s + e.amount, 0),
-    monthSum: scopedRows
+    sum: counted.reduce((s, e) => s + e.amount, 0),
+    monthSum: counted
       .filter((e) => e.expense_date.slice(0, 7) === new Date().toISOString().slice(0, 7))
       .reduce((s, e) => s + e.amount, 0),
-    companyPaid: scopedRows
+    companyPaid: counted
       .filter((e) => e.paid_by === "company")
       .reduce((s, e) => s + e.amount, 0),
   };
@@ -190,6 +194,19 @@ export function ExpensesClient({
           )}
         </div>
       </div>
+
+      {awaiting.length > 0 && (
+        <Link className="exp-ap-banner" href={`/${locale}/approvals`} role="status">
+          <span className="ms" aria-hidden>hourglass_top</span>
+          <span>
+            {L(
+              `${awaiting.length} expense(s) totalling ${new Intl.NumberFormat("en-US").format(awaiting.reduce((a, e) => a + e.amount, 0))} SAR are waiting for approval and aren't counted in totals or reports yet.`,
+              `${new Intl.NumberFormat("ar-SA").format(awaiting.length)} مصروف بإجمالي ${new Intl.NumberFormat("ar-SA").format(awaiting.reduce((a, e) => a + e.amount, 0))} ر.س بانتظار الاعتماد ولا تُحتسب في الإجماليات والتقارير بعد.`,
+            )}
+          </span>
+          <span className="ms ms-sm" aria-hidden>{ar ? "chevron_left" : "chevron_right"}</span>
+        </Link>
+      )}
 
       {scope && (
         <div className="xl-scope" role="status">
@@ -300,6 +317,12 @@ export function ExpensesClient({
                     </td>
                     <td>
                       {localized(e, "description", locale) || e.description}
+                      {e.approval_status === "pending" && (
+                        <div><Link className="exp-ap exp-ap--pending" href={`/${locale}/approvals`}><span className="ms ms-sm" aria-hidden>hourglass_top</span>{L("Awaiting approval — not counted yet", "بانتظار الاعتماد — لا يُحتسب بعد")}</Link></div>
+                      )}
+                      {e.approval_status === "rejected" && (
+                        <div><span className="exp-ap exp-ap--rejected"><span className="ms ms-sm" aria-hidden>block</span>{L("Rejected — not counted", "مرفوض — لا يُحتسب")}</span></div>
+                      )}
                       {workOrders[e.id] && (
                         <div><Link className="xl-a xl-a--sub" href={`/${locale}/maintenance?open=${workOrders[e.id].id}`}><span className="ms ms-sm" aria-hidden>handyman</span>{L("Work order", "أمر الصيانة")} {workOrders[e.id].number}</Link></div>
                       )}
