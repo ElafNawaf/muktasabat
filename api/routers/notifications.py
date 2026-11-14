@@ -154,16 +154,16 @@ def _hr_people(db: Session, user: User, n: N, base: str) -> None:
     today = date.today()
     for c in db.scalars(select(HrContract).where(HrContract.user_id == user.id, HrContract.status == "pending_acceptance")).all():
         n.add(f"hrc:{c.id}:{c.sent_at}", "hr", "contract_edit", "warn", ("عقد عمل بانتظار موافقتك", "An employment contract needs your review"),
-              c.number, c.sent_at, f"{base}/my-file?tab=contracts", urgent=True)
+              c.number, c.sent_at, f"{base}/my-hr/file?tab=contracts", urgent=True)
     for a in db.scalars(select(HrAsset).where(HrAsset.assigned_user_id == user.id, HrAsset.acknowledged_at.is_(None))).all():
         n.add(f"hra:{a.id}:{a.assigned_at}", "hr", "inventory_2", "warn", ("أكّد استلام عهدة", "Confirm receipt of an asset"),
-              f"{a.name} · {a.tag}", a.assigned_at, f"{base}/my-file?tab=assets")
+              f"{a.name} · {a.tag}", a.assigned_at, f"{base}/my-hr/file?tab=assets")
     per = db.scalar(select(HrPersonal).where(HrPersonal.user_id == user.id))
     if per:
         for k, dt, t in (("id", per.id_expiry, ("هويتك / إقامتك تنتهي قريبًا", "Your ID / Iqama expires soon")),
                          ("pp", per.passport_expiry, ("جوازك ينتهي قريبًا", "Your passport expires soon"))):
             if dt and dt <= today + timedelta(days=30):
-                n.add(f"hrx:{k}:{dt}", "hr", "badge", "bad" if dt < today else "warn", t, str(dt), dt, f"{base}/my-file?tab=personal", urgent=dt < today)
+                n.add(f"hrx:{k}:{dt}", "hr", "badge", "bad" if dt < today else "warn", t, str(dt), dt, f"{base}/my-hr/file?tab=personal", urgent=dt < today)
     if has_permission(db, user, "hr", "approve"):
         for pr in db.scalars(select(HrPersonal).where(HrPersonal.pending_iban.is_not(None), HrPersonal.user_id != user.id)).all():
             emp = db.get(User, pr.user_id)

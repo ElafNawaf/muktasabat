@@ -1,3 +1,4 @@
+import { SelfTabs } from "@/components/hr/SelfTabs";
 import { Topbar } from "@/components/Topbar";
 import { api } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
@@ -18,6 +19,7 @@ export default async function MyHrPage({ params }: { params: Promise<{ locale: s
   return (
     <>
       <Topbar title={locale === "ar" ? "خدماتي الوظيفية" : "My HR"} user={me} />
+      <div className="self-wrap"><SelfTabs locale={locale} current="hr" /></div>
       <MyHrClient locale={locale} data={data} days={days} month={month} meId={me.id} />
     </>
   );

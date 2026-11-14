@@ -15,6 +15,7 @@ export type DataSummary = {
     reference_only: boolean;
     count: number;
     columns: number;
+    refs?: string[];
   }[];
   lookups: { key: string; label_en: string; label_ar: string; count: number }[];
 };
@@ -89,6 +90,17 @@ export function DataManagementClient({ summary, locale }: { summary: DataSummary
   const [query, setQuery] = useState("");
 
   const totalRecords = summary.sheets.filter((s) => !s.reference_only).reduce((a, s) => a + s.count, 0);
+  const editable = summary.sheets.filter((s) => !s.reference_only);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const togglePick = (k: string) => setPicked((p) => { const n = new Set(p); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  const linked = useMemo(() => {
+    const out = new Set<string>();
+    for (const k of picked) for (const r of summary.sheets.find((s) => s.sheet === k)?.refs ?? []) if (!picked.has(r) && !summary.sheets.find((s) => s.sheet === r)?.reference_only) out.add(r);
+    return [...out];
+  }, [picked, summary.sheets]);
+  const pickedRecords = editable.filter((s) => picked.has(s.sheet)).reduce((a, s) => a + s.count, 0);
+  const sel = [...picked].join(",");
+  const titleOf = (k: string) => { const s = summary.sheets.find((x) => x.sheet === k); return s ? (ar ? s.title_ar : s.title_en) : k; };
   const changes = report?.summary.reduce((a, s) => a + s.create + s.update, 0) ?? 0;
 
   function reset(next: File | null) {
@@ -188,44 +200,50 @@ export function DataManagementClient({ summary, locale }: { summary: DataSummary
               {t("exportHelp", { records: totalRecords.toLocaleString(locale) })}
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <a className="btn btn-primary" href="/api/data-io/export" download>
-              <span className="ms">table_view</span> {t("exportAll")}
-            </a>
-            <a className="btn btn-secondary" href="/api/data-io/export?template=1" download>
-              <span className="ms">draft</span> {t("exportTemplate")}
-            </a>
-          </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
-            gap: 8,
-            marginTop: 16,
-          }}
-        >
-          {summary.sheets.map((s) => (
-            <div
-              key={s.sheet}
-              className="card card-tight"
-              style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, opacity: s.reference_only ? 0.7 : 1 }}
-            >
-              <span className="ms" style={{ color: "var(--color-primary)" }}>
-                {SHEET_ICON[s.sheet] ?? "table"}
-              </span>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {ar ? s.title_ar : s.title_en}
-                </div>
-                <div className="text-sec" style={{ fontSize: 11 }}>
-                  {s.reference_only ? t("referenceOnly") : t("columnsCount", { n: s.columns })}
-                </div>
-              </div>
-              <span className="mono" style={{ fontWeight: 600 }}>{s.count.toLocaleString(locale)}</span>
-            </div>
-          ))}
+        <div className="dm-pickbar">
+          <span>{ar ? `اختر ما تريد تصديره — ${picked.size} من ${editable.length}` : `Choose what to export — ${picked.size} of ${editable.length}`}</span>
+          <button className="btn btn-ghost btn-sm" type="button" onClick={() => setPicked(new Set(editable.map((s) => s.sheet)))}>{ar ? "تحديد الكل" : "Select all"}</button>
+          <button className="btn btn-ghost btn-sm" type="button" disabled={!picked.size} onClick={() => setPicked(new Set())}>{ar ? "إلغاء التحديد" : "Clear"}</button>
+        </div>
+
+        <div className="dm-sheets" role="group" aria-label={ar ? "الأوراق المراد تصديرها" : "Sheets to export"}>
+          {summary.sheets.map((s) => {
+            const on = picked.has(s.sheet);
+            const isLinked = linked.includes(s.sheet);
+            return (
+              <label key={s.sheet} className={`dm-sheet${on ? " is-on" : ""}${isLinked ? " is-linked" : ""}${s.reference_only ? " is-ref" : ""}`}>
+                {!s.reference_only && <input type="checkbox" checked={on} onChange={() => togglePick(s.sheet)} />}
+                <span className="ms" aria-hidden>{SHEET_ICON[s.sheet] ?? "table"}</span>
+                <span className="dm-sheet__txt">
+                  <b>{ar ? s.title_ar : s.title_en}</b>
+                  <small>{s.reference_only ? t("referenceOnly") : isLinked ? (ar ? "تُضاف كمرجع مقفل" : "added as locked reference") : t("columnsCount", { n: s.columns })}</small>
+                </span>
+                <span className="mono dm-sheet__n">{s.count.toLocaleString(locale)}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="dm-exportbar">
+          <div className="text-sec">
+            {picked.size === 0
+              ? (ar ? "لم تختر شيئًا بعد. اختر الأوراق التي تحتاجها، أو صدّر كل البيانات." : "Nothing selected yet. Pick the sheets you need, or export everything.")
+              : (ar ? `${pickedRecords.toLocaleString(locale)} سجل في ${picked.size} ورقة.` : `${pickedRecords.toLocaleString(locale)} records in ${picked.size} sheet(s).`)}
+            {linked.length > 0 && <div>{ar ? `للربط تُضاف للاطلاع فقط (مقفلة ولا تُستورد): ${linked.map(titleOf).join("، ")}` : `For link look-ups, these are added read-only (locked, not imported): ${linked.map(titleOf).join(", ")}`}</div>}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a className={`btn btn-primary${picked.size ? "" : " is-disabled"}`} aria-disabled={!picked.size} href={picked.size ? `/api/data-io/export?sheets=${sel}` : undefined} download onClick={(e) => { if (!picked.size) e.preventDefault(); }}>
+              <span className="ms">table_view</span> {ar ? `تصدير المحدد (${picked.size})` : `Export selected (${picked.size})`}
+            </a>
+            <a className={`btn btn-secondary${picked.size ? "" : " is-disabled"}`} aria-disabled={!picked.size} href={picked.size ? `/api/data-io/export?template=1&sheets=${sel}` : undefined} download onClick={(e) => { if (!picked.size) e.preventDefault(); }}>
+              <span className="ms">draft</span> {ar ? "قالب فارغ للمحدد" : "Empty template for selected"}
+            </a>
+            <a className="btn btn-ghost" href="/api/data-io/export" download>
+              <span className="ms">download</span> {t("exportAll")}
+            </a>
+          </div>
         </div>
         <div className="text-sec" style={{ fontSize: 12, marginTop: 10 }}>
           {t("lookupsIncluded", { n: summary.lookups.length })}

@@ -507,7 +507,7 @@ def decide_bank(user_id: int, db: DbSession, user: Perm("hr", "approve"), approv
     ok_ar, ok_en = ("اعتُمد", "approved") if approve else ("رُفض", "declined")
     _send(emp.email if emp else None, [], f"{ok_ar} تغيير الحساب البنكي | Bank account change {ok_en}",
           f"<p>{ok_ar} طلب تغيير حساب الراتب من قِبل {escape(_uname(user, 'ar'))}.</p>",
-          f"<p>Your salary account change was {ok_en} by {escape(_uname(user, 'en'))}.</p>", f"{_base()}/ar/my-file", "ملفي الوظيفي", "My file")
+          f"<p>Your salary account change was {ok_en} by {escape(_uname(user, 'en'))}.</p>", f"{_base()}/ar/my-hr/file", "ملفي الوظيفي", "My file")
     return {"ok": True}
 
 
@@ -594,7 +594,7 @@ def send_contract(cid: int, db: DbSession, user: Perm("hr", "approve"), locale: 
     _send(emp.email if emp else None, [], f"عقد عمل بانتظار موافقتك {c.number} | Employment contract to review {c.number}",
           f"<p>أُرسل إليك عقد العمل {c.number} ({c.start_date}{f' → {c.end_date}' if c.end_date else ''}). راجع البنود والراتب ثم وافق أو اطلب تعديلًا.</p>",
           f"<p>Your employment contract {c.number} ({c.start_date}{f' → {c.end_date}' if c.end_date else ''}) is ready. Review the terms and salary, then accept or ask for changes.</p>",
-          f"{_base()}/ar/my-file?tab=contracts", "مراجعة العقد", "Review contract")
+          f"{_base()}/ar/my-hr/file?tab=contracts", "مراجعة العقد", "Review contract")
     return _contract_out(c, db, locale, True)
 
 
@@ -705,7 +705,7 @@ def assign_asset(aid: int, payload: AssignIn, db: DbSession, user: Perm("hr", "e
     _send(emp.email, [], f"عهدة جديدة باسمك {a.tag} | New asset in your custody {a.tag}",
           f"<p>سُلّمت إليك العهدة: <strong>{escape(a.name)}</strong> ({escape(a.tag)}). أكّد الاستلام من ملفك الوظيفي.</p>",
           f"<p>You've been given: <strong>{escape(a.name)}</strong> ({escape(a.tag)}). Please confirm receipt in your employee file.</p>",
-          f"{_base()}/ar/my-file?tab=assets", "تأكيد الاستلام", "Confirm receipt")
+          f"{_base()}/ar/my-hr/file?tab=assets", "تأكيد الاستلام", "Confirm receipt")
     return _asset_out(a, db, locale)
 
 

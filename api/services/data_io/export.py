@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import io
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any, Optional, Iterable
 
 from openpyxl import Workbook
 from openpyxl.comments import Comment
@@ -197,25 +197,48 @@ def _dv_for(f: F, lookup_ranges: dict[str, str], last_row: int) -> Optional[Data
 # ── Workbook ─────────────────────────────────────────────────────────────────
 
 
-def build_workbook(db: Session, *, template: bool = False, exported_by: str = "") -> bytes:
+def plan_sheets(keys: Optional[Iterable[str]]) -> tuple[list[Sheet], set[str]]:
+    """Sheets to write for a selection, and which of them are only reference copies.
+
+    A selected sheet links to other sheets (a unit → its property); those are added
+    as locked reference copies so the ID drop-downs and the ↳ name columns keep
+    working. Reference copies are ignored on import, so uploading the file only
+    changes what the user chose to export."""
+    if not keys:
+        return list(SHEETS), set()
+    chosen = {k for k in keys if k in SHEETS_BY_KEY}
+    if not chosen:
+        raise ValueError("Choose at least one sheet to export.")
+    deps: set[str] = set()
+    for k in chosen:
+        for f in SHEETS_BY_KEY[k].fields:
+            if f.kind == "ref" and f.ref and f.ref not in chosen:
+                deps.add(f.ref)
+    out = [sh for sh in SHEETS if sh.key in chosen or sh.key in deps]
+    return out, {d for d in deps if not SHEETS_BY_KEY[d].reference_only}
+
+
+def build_workbook(db: Session, *, template: bool = False, exported_by: str = "", keys: Optional[Iterable[str]] = None) -> bytes:
+    sheets, ref_copies = plan_sheets(keys)
     wb = Workbook()
     readme = wb.active
     readme.title = "README"
 
-    data_rows = {s.key: ([] if template and not s.reference_only else _rows(db, s)) for s in SHEETS}
-    last_row = FIRST_DATA_ROW + max(len(r) for r in data_rows.values()) + EMPTY_ROWS_FOR_NEW_DATA
+    # Reference copies always carry data (the drop-downs need real IDs), even in a template.
+    data_rows = {sh.key: ([] if template and not sh.reference_only and sh.key not in ref_copies else _rows(db, sh)) for sh in sheets}
+    last_row = FIRST_DATA_ROW + max([len(r) for r in data_rows.values()] + [0]) + EMPTY_ROWS_FOR_NEW_DATA
 
     # Lookups sheet first (validations reference it).
     lookup_ws = wb.create_sheet("Lookups")
     lookup_ranges = _write_lookups(lookup_ws)
 
-    for sheet in SHEETS:
+    for sheet in sheets:
         ws = wb.create_sheet(sheet.title)
-        _write_entity_sheet(ws, sheet, data_rows[sheet.key], lookup_ranges, last_row)
+        _write_entity_sheet(ws, sheet, data_rows[sheet.key], lookup_ranges, last_row, ref_copy=sheet.key in ref_copies)
 
     dictionary = wb.create_sheet("Dictionary")
-    _write_dictionary(dictionary)
-    _write_readme(readme, data_rows, template)
+    _write_dictionary(dictionary, [sh for sh in sheets if sh.key not in ref_copies])
+    _write_readme(readme, data_rows, template, sheets, ref_copies, partial=bool(keys))
 
     # Tab order: README, entity sheets, Lookups, Dictionary.
     wb.move_sheet("Lookups", offset=wb.sheetnames.index("Dictionary") - 1 - wb.sheetnames.index("Lookups"))
@@ -225,6 +248,8 @@ def build_workbook(db: Session, *, template: bool = False, exported_by: str = ""
     meta["A2"], meta["B2"] = "exported_at", datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
     meta["A3"], meta["B3"] = "exported_by", exported_by
     meta["A4"], meta["B4"] = "template", "yes" if template else "no"
+    meta["A5"], meta["B5"] = "reference_sheets", ",".join(sorted(ref_copies))
+    meta["A6"], meta["B6"] = "sheets", ",".join(sh.key for sh in sheets if sh.key not in ref_copies)
     meta.sheet_state = "veryHidden"
 
     wb.calculation.fullCalcOnLoad = True  # helper ↳ columns are formulas
@@ -259,9 +284,10 @@ def _write_lookups(ws) -> dict[str, str]:
     return ranges
 
 
-def _write_entity_sheet(ws, sheet: Sheet, rows: list[dict], lookup_ranges: dict[str, str], last_row: int) -> None:
+def _write_entity_sheet(ws, sheet: Sheet, rows: list[dict], lookup_ranges: dict[str, str], last_row: int, ref_copy: bool = False) -> None:
     cols = sheet_columns(sheet)
-    ws.sheet_properties.tabColor = "7F8C8D" if sheet.reference_only else BRAND
+    locked = sheet.reference_only or ref_copy
+    ws.sheet_properties.tabColor = "7F8C8D" if locked else BRAND
 
     for idx, (key, f) in enumerate(cols, start=1):
         letter = get_column_letter(idx)
@@ -279,7 +305,7 @@ def _write_entity_sheet(ws, sheet: Sheet, rows: list[dict], lookup_ranges: dict[
             continue
         h.value = _label(f)
         h.font = FONT_HDR
-        h.fill = FILL_READONLY_HDR if (f.readonly or sheet.reference_only) else (FILL_REQUIRED if f.required else FILL_HEADER)
+        h.fill = FILL_READONLY_HDR if (f.readonly or locked) else (FILL_REQUIRED if f.required else FILL_HEADER)
         hint = _hint(f)
         if hint:
             h.comment = Comment(hint, "Muktasabat", width=320, height=160)
@@ -295,10 +321,10 @@ def _write_entity_sheet(ws, sheet: Sheet, rows: list[dict], lookup_ranges: dict[
             if f is None:
                 continue
             cell = ws.cell(row=r, column=c, value=_cell_value(f, obj[key]))
-            if f.readonly or sheet.reference_only:
+            if f.readonly or locked:
                 cell.fill = FILL_READONLY
 
-    if sheet.reference_only:
+    if locked:
         ws.protection.sheet = True  # nothing to edit here
         return
 
@@ -337,14 +363,14 @@ def _write_entity_sheet(ws, sheet: Sheet, rows: list[dict], lookup_ranges: dict[
             dv.add(rng)
 
 
-def _write_dictionary(ws) -> None:
+def _write_dictionary(ws, sheets: Optional[list[Sheet]] = None) -> None:
     headers = ["Sheet / الورقة", "Column key", "العمود", "Column", "Required / إلزامي",
                "Type", "Lookup / Reference", "Rules / القواعد"]
     for c, h in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=c, value=h)
         cell.font, cell.fill = FONT_HDR, FILL_HEADER
     r = 2
-    for sheet in SHEETS:
+    for sheet in sheets or SHEETS:
         for f in sheet.fields:
             link = ""
             if f.lookup and f.kind != "bool":
@@ -371,7 +397,10 @@ def _write_dictionary(ws) -> None:
     ws.auto_filter.ref = f"A1:H{r - 1}"
 
 
-def _write_readme(ws, data_rows: dict[str, list[Any]], template: bool) -> None:
+def _write_readme(ws, data_rows: dict[str, list[Any]], template: bool, sheets: Optional[list[Sheet]] = None,
+                  ref_copies: Optional[set[str]] = None, partial: bool = False) -> None:
+    sheets = sheets or list(SHEETS)
+    ref_copies = ref_copies or set()
     ws.sheet_view.showGridLines = False
     ws.column_dimensions["A"].width = 4
     ws.column_dimensions["B"].width = 34
@@ -382,7 +411,7 @@ def _write_readme(ws, data_rows: dict[str, list[Any]], template: bool) -> None:
     ws["B2"].font = Font(bold=True, size=16, color=BRAND)
     ws["B3"] = "شركة مكتسبات العقارية — ملف إدارة البيانات"
     ws["B3"].font = Font(bold=True, size=14, color=BRAND)
-    ws["B4"] = f"Generated {datetime.utcnow():%Y-%m-%d %H:%M} UTC · {'empty template' if template else 'full export'} · {FORMAT_VERSION}"
+    ws["B4"] = f"Generated {datetime.utcnow():%Y-%m-%d %H:%M} UTC · {('empty template' if template else 'export') + (' · selected sheets' if partial else ' · all sheets')} · {FORMAT_VERSION}"
     ws["B4"].font = Font(color="6B7280", size=9)
 
     steps = [
@@ -430,12 +459,15 @@ def _write_readme(ws, data_rows: dict[str, list[Any]], template: bool) -> None:
         cell = ws.cell(row=r, column=c, value=h)
         cell.font, cell.fill = FONT_HDR, FILL_HEADER
     r += 1
-    for sheet in SHEETS:
+    for sheet in sheets:
         ws.cell(row=r, column=2, value=sheet.title).hyperlink = f"#{quote_sheetname(sheet.title)}!A1"
         ws.cell(row=r, column=2).font = Font(color="1D4ED8", underline="single")
         ws.cell(row=r, column=3, value=sheet.ar)
         ws.cell(row=r, column=4, value=len(data_rows[sheet.key]))
-        ws.cell(row=r, column=5, value="Reference only — not imported / للاطلاع فقط" if sheet.reference_only else sheet.en)
+        ws.cell(row=r, column=5, value=(
+            "Reference only — not imported / للاطلاع فقط" if sheet.reference_only
+            else "Included for ID look-ups only — locked, not imported / مرجعية للربط فقط — مقفلة ولا تُستورد" if sheet.key in ref_copies
+            else sheet.en))
         r += 1
     for extra, ar, note in (("Lookups", "القوائم المرجعية", "Allowed values for every drop-down"),
                             ("Dictionary", "قاموس البيانات", "Every column: type, required, rules")):

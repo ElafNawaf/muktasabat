@@ -9,7 +9,7 @@ export type R<T = unknown> = { ok: true; data: T } | { ok: false; error: string 
 async function call<T>(fn: () => Promise<T>): Promise<R<T>> {
   try {
     const data = await fn();
-    revalidatePath("/[locale]/(app)/my-file", "page");
+    revalidatePath("/[locale]/(app)/my-hr/file", "page");
     revalidatePath("/[locale]/(app)/hr/people/[id]", "page");
     revalidatePath("/[locale]/(app)/hr", "page");
     revalidatePath("/[locale]/(app)/org", "page");

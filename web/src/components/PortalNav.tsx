@@ -47,6 +47,7 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
         { id: "owners", href: L("owners"), icon: "group", label: t("owners"), show: v("owners") },
         { id: "tenants", href: L("tenants"), icon: "person", label: t("tenants"), show: v("tenants") },
         { id: "agents", href: L("agents"), icon: "support_agent", label: t("agents"), show: v("agents") },
+        { id: "maintenance", href: L("maintenance"), icon: "handyman", label: t("maintenance"), show: v("maintenance") },
       ],
     },
     {
@@ -66,18 +67,10 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       ],
     },
     {
-      label: t("operations"),
-      items: [
-        { id: "maintenance", href: L("maintenance"), icon: "handyman", label: t("maintenance"), show: v("maintenance") },
-      ],
-    },
-    {
       label: t("hrGroup"),
       items: [
         { id: "my-hr", href: L("my-hr"), icon: "badge", label: t("myHr"), show: true },
-        { id: "my-file", href: L("my-file"), icon: "folder_shared", label: t("myFile"), show: true },
         { id: "org", href: L("org"), icon: "account_tree", label: t("orgChart"), show: true },
-        { id: "hr-attendance", href: L("hr/attendance"), icon: "monitoring", label: t("attendanceDashboard"), show: v("hr") },
         { id: "hr", href: L("hr"), icon: "groups", label: t("hrManagement"), show: v("hr") },
       ],
     },
@@ -88,13 +81,6 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
         { id: "website", href: L("website"), icon: "language", label: t("website"), show: v("website") },
         { id: "data-management", href: L("data-management"), icon: "database", label: t("dataManagement"), show: v("data") },
         { id: "email-log", href: L("email-log"), icon: "outgoing_mail", label: t("emailLog"), show: !!user?.is_super_admin },
-      ],
-    },
-    {
-      label: t("myAccount"),
-      items: [
-        { id: "account", href: L("account"), icon: "account_circle", label: t("profile") },
-        { id: "support", href: L("support"), icon: "support_agent", label: t("support") },
       ],
     },
   ];
@@ -174,6 +160,7 @@ export function usePortalNav(): Ctx {
 const SUB_LABELS: Record<string, [string, string]> = {
   settings: ["الإعدادات", "Settings"],
   people: ["الموظفون", "Employees"],
+  file: ["ملفي الوظيفي", "My employee file"],
   attendance: ["لوحة الحضور", "Attendance dashboard"],
   leads: ["الاستفسارات", "Leads"],
   applications: ["طلبات التوظيف", "Applications"],
