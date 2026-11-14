@@ -59,9 +59,9 @@ export async function SiteFooter({ locale, site }: { locale: string; site: SiteD
         <nav aria-label={t("footerSeo.cities")}>
           <p className="mk-footer__h">{t("footerSeo.cities")}</p>
           <ul>
-            {(["riyadh", "makkah"] as const).map((c) => (
-              <li key={c}><Link href={L(`/real-estate/${c}`)}>{t(`city.${c}.title`)}</Link></li>
-            ))}
+            <li><Link href={L("/listings?type=apartment")}>{t("listings.t_apartment")}</Link></li>
+            <li><Link href={L("/listings?type=villa")}>{t("listings.t_villa")}</Link></li>
+            <li><Link href={L("/listings?type=land")}>{t("listings.t_land")}</Link></li>
             <li><Link href={L("/listings?purpose=rent")}>{t("listings.rent")}</Link></li>
             <li><Link href={L("/listings?purpose=sale")}>{t("listings.sale")}</Link></li>
             <li><Link href={L("/contact?kind=valuation")}>{t("valuation.cta")}</Link></li>

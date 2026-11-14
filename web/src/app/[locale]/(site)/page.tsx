@@ -41,10 +41,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const wa = waLink(site.whatsapp, t("contact.whatsappMsg"));
   const slides = [...(site.hero_slides ?? []), site.hero_image_url].filter((s): s is string => !!s);
 
-  // City options for the hero search use the listing's own city names so the
-  // catalogue filter matches exactly.
-  const listingCities = Array.from(new Set(home.listings.map((l) => pick(locale, l, "city")).filter(Boolean)));
-  const cities = listingCities.length ? listingCities : ar ? ["الرياض", "مكة المكرمة"] : ["Riyadh", "Makkah"];
+  // City options come only from published listings (no hard-coded cities);
+  // the hero hides the city picker when there are fewer than two.
+  const cities = Array.from(new Set(home.listings.map((l) => pick(locale, l, "city")).filter(Boolean)));
 
   return (
     <>

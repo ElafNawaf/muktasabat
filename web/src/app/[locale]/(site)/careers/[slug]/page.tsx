@@ -33,7 +33,7 @@ export default async function JobPage({ params }: P) {
     validThrough: j.closes_on ?? undefined,
     employmentType: j.employment_type.toUpperCase(),
     hiringOrganization: { "@type": "Organization", name: site.brand_name?.en ?? "Muktasabat", sameAs: SITE_URL },
-    jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: j.location_en ?? "Riyadh", addressCountry: "SA" } },
+    jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: j.location_en || undefined, addressCountry: "SA" } },
   };
   return (
     <section className="mk-section">

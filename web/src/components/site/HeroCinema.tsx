@@ -227,7 +227,7 @@ export function HeroCinema(p: HeroCinemaProps) {
               </button>
             </div>
           ) : (
-            <div className="mk-cine__fields">
+            <div className={`mk-cine__fields${p.cities.length > 1 ? "" : " mk-cine__fields--2"}`}>
               <label className="mk-cine__field">
                 <span className="ms" aria-hidden="true">home_work</span>
                 <span className="mk-sr">{p.labels.anyType}</span>
@@ -238,6 +238,7 @@ export function HeroCinema(p: HeroCinemaProps) {
                   ))}
                 </select>
               </label>
+              {p.cities.length > 1 && (
               <label className="mk-cine__field">
                 <span className="ms" aria-hidden="true">location_on</span>
                 <span className="mk-sr">{p.labels.anyCity}</span>
@@ -248,6 +249,7 @@ export function HeroCinema(p: HeroCinemaProps) {
                   ))}
                 </select>
               </label>
+              )}
               <button className="mk-btn mk-btn--primary mk-btn--glow mk-cine__go" type="submit">
                 <span className="ms" aria-hidden="true">search</span>
                 {p.labels.search}

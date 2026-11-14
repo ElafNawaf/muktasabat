@@ -30,7 +30,7 @@ export async function Ticker({ locale, dark = false }: { locale: string; dark?: 
   );
 }
 
-/** "Why Muktasabat" — a bento grid with cursor spotlight + coverage map card. */
+/** "Why Muktasabat" — a bento grid with cursor spotlight + a rent-estimate CTA card. */
 export async function WhySection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "site.why" });
   const cards = t.raw("cards") as [string, string, string][];
@@ -53,42 +53,19 @@ export async function WhySection({ locale }: { locale: string }) {
           ))}
           <article className="mk-bento__card mk-bento__map" data-reveal data-spot style={{ ["--i" as string]: 4 }}>
             <div>
-              <h3>{t("coverageTitle")}</h3>
-              <p>{t("coverageBody")}</p>
-              <p className="mk-bento__cities">
-                <Link href={L("/real-estate/riyadh")}>{locale === "ar" ? "عقارات الرياض" : "Riyadh property"}</Link>
-                <Link href={L("/real-estate/makkah")}>{locale === "ar" ? "عقارات مكة المكرمة" : "Makkah property"}</Link>
-              </p>
+              <span className="mk-bento__icon mk-bento__icon--light" aria-hidden="true"><span className="ms">real_estate_agent</span></span>
+              <h3>{t("ctaTitle")}</h3>
+              <p>{t("ctaBody")}</p>
             </div>
-            <KsaMap locale={locale} />
+            <Link className="mk-btn mk-btn--light" href={L("/contact?kind=valuation")}>
+              {t("ctaLink")}
+              <span className="ms mk-flip" aria-hidden="true">arrow_forward</span>
+            </Link>
+            <Shurfat className="mk-bento__motif" teeth={10} />
           </article>
         </div>
       </div>
     </section>
-  );
-}
-
-/** Stylised map of the Kingdom with pulsing pins on Riyadh and Makkah. */
-function KsaMap({ locale }: { locale: string }) {
-  const ar = locale === "ar";
-  return (
-    <svg className="mk-ksa" viewBox="0 0 290 225" role="img" aria-label={ar ? "الرياض ومكة المكرمة على خريطة المملكة" : "Riyadh and Makkah on a map of Saudi Arabia"}>
-      <path
-        className="mk-ksa__land"
-        d="M40 53 L57 40 L58 28 L72 20 L106 33 L138 56 L160 57 L174 64 L183 70 L197 82 L203 92 L212 106 L221 114 L233 131 L264 134 L270 142 L262 166 L226 178 L191 183 L172 201 L159 200 L132 197 L122 202 L113 209 L106 194 L96 178 L82 160 L72 148 L68 136 L52 114 L41 96 L24 70 L17 69 Z"
-      />
-      <path className="mk-ksa__route" d="M80 149 Q 118 112 162 110" />
-      <g className="mk-ksa__pin" transform="translate(162 110)">
-        <circle className="mk-ksa__pulse" r="14" />
-        <circle r="5" />
-        <text x="10" y="-10">{ar ? "الرياض" : "Riyadh"}</text>
-      </g>
-      <g className="mk-ksa__pin mk-ksa__pin--2" transform="translate(80 149)">
-        <circle className="mk-ksa__pulse" r="14" />
-        <circle r="5" />
-        <text x="-12" y="24" textAnchor="middle">{ar ? "مكة المكرمة" : "Makkah"}</text>
-      </g>
-    </svg>
   );
 }
 

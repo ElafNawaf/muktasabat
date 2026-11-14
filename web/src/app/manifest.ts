@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "شركة مكتسبات العقارية | Muktasabat Real Estate",
     short_name: "مكتسبات",
-    description: "عقارات للإيجار والبيع وإدارة أملاك في الرياض ومكة المكرمة — Property for rent & sale and property management in Riyadh and Makkah.",
+    description: "عقارات للإيجار والبيع وتسويق عقاري وإدارة أملاك — Property for rent & sale, marketing and property management.",
     start_url: "/ar",
     display: "standalone",
     background_color: "#ffffff",

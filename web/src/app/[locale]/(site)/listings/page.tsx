@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return pageMeta({
     locale,
     path: "/listings",
-    title: locale === "ar" ? "عقارات للإيجار والبيع في الرياض ومكة المكرمة" : "Property for rent and sale in Riyadh and Makkah",
+    title: locale === "ar" ? "عقارات للإيجار والبيع — شقق وفلل وأراضٍ" : "Property for rent and sale — apartments, villas and land",
     description: t("lead"),
     keywords: locale === "ar" ? ["عقارات للإيجار", "عقارات للبيع", "شقق للإيجار", "فلل للبيع", "أراضي للبيع", "أدوار للإيجار"] : ["property for rent", "property for sale", "apartments for rent"],
   });
