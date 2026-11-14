@@ -12,7 +12,8 @@ export type MyHr = {
   user: { id: number; name: string; job_title?: string | null; department?: string | null; employee_no?: string | null; hire_date?: string | null;
     ticket_entitlement: string; ticket_destination?: string | null; ticket_class: string; ticket_family_members: number };
   balance: Balance; today: DayStatus; work: { start: string; end: string; grace: number; weekend: number[]; mode: string };
-  location: { mode_today: "office" | "remote" | "field"; via?: string | null; radius: number; enforce: boolean; office_lat: number; office_lng: number };
+  location: { mode_today: "office" | "remote" | "field"; via?: string | null; radius: number; enforce: boolean; office_lat: number; office_lng: number;
+    checkout_rule?: "site" | "anywhere"; sites?: { id: number; name: string; lat: number; lng: number; radius: number; address?: string | null }[] };
   approver?: string | null; requests: HrReq[]; colleagues: { id: number; name: string }[];
 };
 
@@ -43,9 +44,10 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
     if (!g.ok && needLoc) return setErr(geoErrorText(g.error, ar));
     const r = await fn(g.ok ? g.pos : { error: g.error });
     if (!r.ok) return setErr(r.error);
-    const res = r.data as { distance?: number | null; verified_minutes?: number; away?: boolean };
+    const res = r.data as { distance?: number | null; verified_minutes?: number; away?: boolean; site?: string | null; site_en?: string | null };
     if (res.away) setInfo(T("سُجّل الانصراف بعيدًا عن المكتب؛ تُحتسب ساعاتك حتى آخر وقت كنت فيه في المكتب.", "You checked out away from the office; your hours count until the last time you were seen there."));
-    else if (res.distance != null) setInfo(T(`تم. المسافة عن المكتب ${Math.round(res.distance)} م.`, `Done. ${Math.round(res.distance)} m from the office.`));
+    else if (res.site) setInfo(T(`تم التسجيل في ${res.site}.`, `Recorded at ${res.site_en || res.site}.`));
+    else if (res.distance != null) setInfo(T(`تم. المسافة عن أقرب موقع ${Math.round(res.distance)} م.`, `Done. ${Math.round(res.distance)} m from the nearest location.`));
     router.refresh();
     const d = await hrMyAttendance(month);
     if (d.ok) setDays(d.data as typeof days);
@@ -78,10 +80,26 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
           <p className={`hr-where hr-where--${loc.mode_today}`}>
             <span className="ms ms-sm" aria-hidden>{loc.mode_today === "office" ? "location_on" : loc.mode_today === "field" ? "directions_car" : "home"}</span>
             {loc.mode_today === "office"
-              ? (loc.enforce ? T(`اليوم من المكتب: يُسجَّل الحضور ضمن ${loc.radius} م من المقر.`, `Office day: check in within ${loc.radius} m of headquarters.`) : T("اليوم من المكتب.", "Office day."))
+              ? (loc.enforce
+                ? (loc.sites && loc.sites.length
+                  ? T(`اليوم من المكتب: سجّل حضورك داخل ${loc.sites.length > 1 ? "أحد مواقعك" : "موقعك"} أدناه.`, `Office day: check in inside ${loc.sites.length > 1 ? "one of your locations" : "your location"} below.`)
+                  : T(`اليوم من المكتب: يُسجَّل الحضور ضمن ${loc.radius} م من المقر.`, `Office day: check in within ${loc.radius} m of headquarters.`))
+                : T("اليوم من المكتب.", "Office day."))
               : loc.mode_today === "field" ? T(`عمل ميداني معتمد${loc.via ? ` (${loc.via})` : ""}: يمكنك التسجيل من أي مكان.`, `Approved field work${loc.via ? ` (${loc.via})` : ""}: check in from anywhere.`)
               : T(`عمل عن بُعد${loc.via ? ` معتمد (${loc.via})` : ""}: يمكنك التسجيل من أي مكان.`, `Remote day${loc.via ? `, approved (${loc.via})` : ""}: check in from anywhere.`)}
           </p>
+          {loc.mode_today === "office" && loc.enforce && loc.sites && loc.sites.length > 0 && (
+            <ul className="hr-sites" aria-label={T("مواقع الحضور المسموحة", "Allowed check-in locations")}>
+              {loc.sites.map((x) => (
+                <li key={x.id}>
+                  <a href={`https://www.google.com/maps?q=${x.lat},${x.lng}`} target="_blank" rel="noopener noreferrer">
+                    <span className="ms ms-sm" aria-hidden>location_on</span><b>{x.name}</b><span>{T(`ضمن ${x.radius} م`, `within ${x.radius} m`)}</span>
+                  </a>
+                </li>
+              ))}
+              {loc.checkout_rule === "anywhere" && <li className="hr-sites__note">{T("يمكنك تسجيل الانصراف من أي مكان.", "You can check out from anywhere.")}</li>}
+            </ul>
+          )}
           <div className="hr-clock__times">
             <div><span>{T("الحضور", "Check in")}</span><strong dir="ltr">{t.check_in ?? "--:--"}</strong></div>
             <div><span>{T("الانصراف", "Check out")}</span><strong dir="ltr">{t.check_out ?? "--:--"}</strong></div>

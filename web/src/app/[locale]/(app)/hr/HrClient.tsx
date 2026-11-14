@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { FilterBar, FilterSearch, FilterSelect } from "@/components/EntityFilterBar";
 import { AssetsRegister } from "@/components/hr/AssetsRegister";
+import { AttendanceZones, type SitesData } from "@/components/hr/AttendanceZones";
 import { ContractsDesk as ContractsTab } from "@/components/hr/ContractsDesk";
 import { RequestDrawer, RequestModal } from "@/components/hr/HrForms";
 import { HP, lb, type Asset, type Company, type ContractsDesk, type ContractTemplate, type Placeholder } from "@/lib/hr-people";
@@ -38,12 +39,12 @@ export type HrSettings = {
   office_lat: number; office_lng: number; geofence_radius_m: number; max_accuracy_m: number; enforce_location: boolean; ping_minutes: number;
   left_alert_minutes: number; missing_checkout_minutes: number; checkin_reminder_minutes: number; daily_summary: boolean;
 };
-type Tab = "overview" | "requests" | "attendance" | "employees" | "contracts" | "assets" | "settings";
+type Tab = "overview" | "requests" | "attendance" | "locations" | "employees" | "contracts" | "assets" | "settings";
 export type Expiring = { user_id: number; name: string; kind: string; date?: string | null; days: number; ref?: string };
 
-export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate, assets, companies, expiring, desk, templates, placeholders }: {
+export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate, assets, companies, expiring, desk, templates, placeholders, sites }: {
   locale: string; dash: Dash; requests: HrReq[]; employees: Emp[]; settings: HrSettings; report: Report; month: string; canCreate: boolean;
-  assets: Asset[]; companies: Company[]; expiring: Expiring[]; desk: ContractsDesk; templates: ContractTemplate[]; placeholders: Placeholder[];
+  assets: Asset[]; companies: Company[]; expiring: Expiring[]; desk: ContractsDesk; templates: ContractTemplate[]; placeholders: Placeholder[]; sites: SitesData;
 }) {
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
@@ -62,6 +63,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
     ["overview", T("نظرة عامة", "Overview"), "space_dashboard"],
     ["requests", T("الطلبات", "Requests"), "inbox", dash.pending.length],
     ["attendance", T("الحضور والانصراف", "Attendance"), "badge"],
+    ["locations", T("مواقع الحضور", "Locations"), "pin_drop"],
     ["employees", T("الموظفون", "Employees"), "groups"],
     ["contracts", T("العقود", "Contracts"), "contract", desk.counts.signed_to_verify + desk.counts.missing_signed || undefined],
     ["assets", T("العُهد", "Assets"), "inventory_2"],
@@ -97,6 +99,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
       {tab === "requests" && <Requests locale={locale} rows={requests} people={people} onOpen={setOpenId} />}
       {tab === "attendance" && <AttendanceTab locale={locale} board={dash.board} report={report} month={month} canEdit={can.edit} />}
       {tab === "employees" && <Employees locale={locale} rows={employees} canEdit={can.edit} companies={companies} />}
+      {tab === "locations" && <AttendanceZones locale={locale} data={sites} companies={companies} canEdit={can.approve} />}
       {tab === "contracts" && <ContractsTab locale={locale} desk={desk} templates={templates} placeholders={placeholders} companies={companies} people={employees.map((e) => ({ id: e.user_id, name: e.name, company_id: e.company_id }))} canApprove={can.approve} />}
       {tab === "assets" && <AssetsRegister locale={locale} assets={assets} companies={companies} people={people} canEdit={can.edit} />}
       {tab === "settings" && <SettingsTab locale={locale} s={settings} canSave={can.approve} />}
@@ -565,22 +568,13 @@ function SettingsTab({ locale, s, canSave }: { locale: string; s: HrSettings; ca
         <label className="field"><span>{T("بدء احتساب الحضور من", "Count attendance from")}</span><input className="input" type="date" disabled={!canSave} value={f.from} onChange={(e) => setF({ ...f, from: e.target.value })} /></label>
       </div>
       <h3>{T("التحقق من الموقع", "Location check")}</h3>
-      <label className="checkbox"><input type="checkbox" disabled={!canSave} checked={enforce} onChange={(e) => setEnforce(e.target.checked)} />{T("إلزام موظفي المكتب بتسجيل الحضور من داخل نطاق المقر", "Office employees must check in inside the headquarters area")}</label>
+      <label className="checkbox"><input type="checkbox" disabled={!canSave} checked={enforce} onChange={(e) => setEnforce(e.target.checked)} />{T("إلزام موظفي المكتب بتسجيل الحضور من داخل مواقع الحضور المسموحة لهم", "Office employees must check in inside their allowed check-in locations")}</label>
       <div className="mx-grid2">
-        <label className="field"><span>{T("خط العرض للمقر", "HQ latitude")}</span><input className="input" dir="ltr" disabled={!canSave} value={f.lat} onChange={(e) => setF({ ...f, lat: e.target.value })} /></label>
-        <label className="field"><span>{T("خط الطول للمقر", "HQ longitude")}</span><input className="input" dir="ltr" disabled={!canSave} value={f.lng} onChange={(e) => setF({ ...f, lng: e.target.value })} /></label>
-        <label className="field"><span>{T("نصف قطر النطاق (متر)", "Allowed radius (metres)")}</span><input className="input" type="number" min={5} disabled={!canSave} value={f.radius} onChange={(e) => setF({ ...f, radius: e.target.value })} /></label>
+        <label className="field"><span>{T("نصف القطر الافتراضي للمواقع الجديدة (متر)", "Default radius for new locations (metres)")}</span><input className="input" type="number" min={5} disabled={!canSave} value={f.radius} onChange={(e) => setF({ ...f, radius: e.target.value })} /></label>
         <label className="field"><span>{T("أقصى خطأ مقبول في دقة الموقع (متر)", "Max location error accepted (metres)")}</span><input className="input" type="number" min={10} disabled={!canSave} value={f.acc} onChange={(e) => setF({ ...f, acc: e.target.value })} /></label>
       </div>
       <div className="hr-row">
-        <button className="btn btn-secondary btn-sm" type="button" disabled={!canSave} onClick={async () => {
-          setHere(T("جارٍ تحديد موقعك…", "Finding your location…"));
-          const g = await getPosition();
-          if (!g.ok) return setHere(geoErrorText(g.error, ar));
-          setF((x) => ({ ...x, lat: g.pos.lat.toFixed(7), lng: g.pos.lng.toFixed(7) }));
-          setHere(T(`حُدّد موقعك الحالي كمقر (دقة ±${g.pos.accuracy} م). احفظ لتطبيقه.`, `Set to your current location (±${g.pos.accuracy} m). Save to apply.`));
-        }}><span className="ms ms-sm">my_location</span>{T("استخدام موقعي الحالي كمقر", "Use my current location as HQ")}</button>
-        <a className="btn btn-ghost btn-sm" href={`https://www.google.com/maps?q=${f.lat},${f.lng}`} target="_blank" rel="noreferrer"><span className="ms ms-sm">map</span>{T("عرض على الخريطة", "View on map")}</a>
+        <a className="btn btn-secondary btn-sm" href="?tab=locations"><span className="ms ms-sm" aria-hidden>pin_drop</span>{T("إدارة مواقع الحضور لكل شركة", "Manage check-in locations per company")}</a>
       </div>
       {here && <p className="text-sec mx-hint">{here}</p>}
       <p className="text-sec mx-hint">{T("دقة GPS داخل المباني عادة 10–30 م؛ لذلك يُقبل التسجيل إذا تداخل نطاق دقة الجهاز مع النطاق المسموح (بحد أقصى 20 م إضافية). كل تسجيل يُحفظ مع المسافة والدقة للمراجعة.", "Indoor GPS is usually accurate to 10–30 m, so a check-in counts if the phone's accuracy circle overlaps the allowed area (by at most 20 m more). Every check-in is stored with its distance and accuracy for review.")}</p>
