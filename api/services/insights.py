@@ -213,7 +213,7 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
     pending_payout = [p for p in payments if p.paid_date and p.owner_transfer_due_date and not p.owner_transferred_date and p.owner_transfer_due_date <= today]
     if pending_payout:
         alerts.append({"level": "medium", "kind": "owner_payout", "count": len(pending_payout),
-                       "amount": round(sum(p.amount or 0 for p in pending_payout), 2), "href": "payments"})
+                       "amount": round(sum(p.amount or 0 for p in pending_payout), 2), "href": "approvals"})
     for m in mgmt:
         if (m.status or "") == "active" and m.end_date and today <= m.end_date <= today + timedelta(days=60):
             alerts.append({"level": "medium", "kind": "mgmt_expiring", "ref": m.contract_number,
@@ -231,7 +231,7 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
         waiting = [w for w in wos if w.status == "awaiting_approval"]
         if waiting:
             alerts.append({"level": "medium", "kind": "wo_approval", "count": len(waiting),
-                           "amount": round(sum(w.estimate_amount or 0 for w in waiting), 2), "href": "maintenance"})
+                           "amount": round(sum(w.estimate_amount or 0 for w in waiting), 2), "href": "approvals"})
         now = datetime.utcnow()
         late = [w for w in wos if w.due_at and w.due_at < now and w.status != "awaiting_approval"]
         if late:
@@ -248,7 +248,7 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
                            "kind": "rn_no_contact", "count": len(cold), "href": "renewals"})
         waiting = [r for r in rn if r.stage == "awaiting_owner"]
         if waiting:
-            alerts.append({"level": "medium", "kind": "rn_owner", "count": len(waiting), "href": "renewals"})
+            alerts.append({"level": "medium", "kind": "rn_owner", "count": len(waiting), "href": "approvals"})
     except Exception:  # never break the dashboard
         pass
     alerts.sort(key=lambda a: (order[a["level"]], -(a.get("amount") or 0)))
