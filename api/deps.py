@@ -19,6 +19,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 # owner call them would expose other owners' data.
 OWNER_ALLOWED_PREFIXES = (
     "/api/v1/owner-portal/",
+    "/api/v1/notifications",
     "/api/v1/auth/me",
     # Self-service: own profile/password/sessions, and own support tickets
     # (both routers only ever act on the calling user's data for non-staff).
@@ -29,6 +30,7 @@ OWNER_ALLOWED_PREFIXES = (
 # Tenant accounts (role "tenant"): same idea, scoped to the tenant portal.
 TENANT_ALLOWED_PREFIXES = (
     "/api/v1/tenant-portal/",
+    "/api/v1/notifications",
     "/api/v1/auth/me",
     "/api/v1/account/",
     "/api/v1/support/",

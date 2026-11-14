@@ -531,3 +531,4 @@ a.ow-feed__row:hover .ow-feed__body > span { color: var(--ow-maroon); }
 @media print { .ow-side, .ow-topbar, .ow-tabbar, .ow-scrim { display: none !important; } .ow-frame { display: block; } }
 @media (prefers-reduced-motion: reduce) { .ow-side { transition: none; } }
 @media (max-width: 1000px) { .ow-side { box-shadow: none; } .ow-app.is-menu .ow-side { box-shadow: 20px 0 50px rgba(0,0,0,.3); } }
+.ow-root .nb { --color-surface: #fff; --color-border: var(--ow-line); --color-text-secondary: var(--ow-mute); --color-text-tertiary: #9a9a95; --color-surface-2: var(--ow-bg); --brand-maroon: var(--ow-maroon); }

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { NotificationBell } from "@/components/NotificationBell";
 
 type NavItem = { href: string; icon: string; ar: string; en: string; self?: boolean };
 
@@ -203,6 +204,7 @@ export function OwnerShell({
               )}
             </div>
             <Link href={base + qs} className="ow-topbar__brand" aria-label={L("الرئيسية", "Home")}><BrandLogo size={24} /></Link>
+            {!isPreview && <NotificationBell locale={locale} variant="portal" />}
             {!isPreview && (
               <Link href={`${base}/support?new=1`} className="ow-topbar__ticket" title={L("رفع تذكرة دعم", "Raise a ticket")}>
                 <span className="ms">confirmation_number</span>

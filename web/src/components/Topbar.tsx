@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import Link from "next/link";
+
+import { NotificationBell } from "./NotificationBell";
 import { useLocale } from "next-intl";
 
 import { BrandLogo } from "./BrandLogo";
@@ -91,6 +93,8 @@ export function Topbar({
       <button className="icon-btn" onClick={toggle} title="Theme" aria-label="Toggle theme">
         <span className="ms">{theme === "light" ? "dark_mode" : "light_mode"}</span>
       </button>
+
+      <NotificationBell locale={locale} />
 
       <Link className="icon-btn" href={`/${locale}/support`} title={tAcc("support")} aria-label={tAcc("support")}>
         <span className="ms">help</span>

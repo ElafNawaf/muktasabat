@@ -280,15 +280,6 @@ export function SupportClient({
               </div>
             </div>
           </div>
-          <div className="card">
-            <div className="card-hd"><h3>{t("selfHelpTitle")}</h3></div>
-            <div className="card-body support-links">
-              <Link href={`${root}/account?tab=security`}><span className="ms ms-sm">key</span> {t("helpPassword")}</Link>
-              <Link href={`${root}/account`}><span className="ms ms-sm">badge</span> {t("helpProfile")}</Link>
-              <Link href={`${root}/account?tab=security`}><span className="ms ms-sm">devices</span> {t("helpSessions")}</Link>
-              <Link href={`${root}/account?tab=preferences`}><span className="ms ms-sm">translate</span> {t("helpLanguage")}</Link>
-            </div>
-          </div>
         </aside>
       </div>
 
