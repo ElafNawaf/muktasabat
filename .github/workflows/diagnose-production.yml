@@ -16,4 +16,4 @@ jobs:
         run: |
           mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/k && chmod 600 ~/.ssh/k
           ssh-keyscan -T 15 -H 13.232.25.224 >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/k ubuntu@13.232.25.224 'bash -s' < scripts/ops/diagnose_prod.sh || echo "(diagnostic finished with non-zero status; report above is still valid)"
+          set -o pipefail; (ssh -i ~/.ssh/k ubuntu@13.232.25.224 'bash -s' < scripts/ops/diagnose_prod.sh 2>&1 || echo "(diagnostic finished with non-zero status; report above is still valid)") | sed -E 's/([A-Za-z0-9])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+)/\1***@\2/g' || true
