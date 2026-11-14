@@ -86,6 +86,12 @@ export default async function TenantHome({ params, searchParams }: { params: Pro
         </div>
       </section>
 
+      <Link className="mw-cta" href={`/${locale}/tenant/maintenance${as ? qs : "?new=1"}`}>
+        <span className="mw-cta__i"><span className="ms">home_repair_service</span></span>
+        <span><strong>{t("هل تحتاج صيانة؟", "Need something fixed?")}</strong><small>{t("ارفع طلب صيانة مع صور وتابع حالته خطوة بخطوة", "Raise a request with photos and follow it step by step")}</small></span>
+        <span className="ms flip-rtl">chevron_right</span>
+      </Link>
+
       <section className="ow-grid2">
         <article className="ow-card">
           <header className="ow-card__h">

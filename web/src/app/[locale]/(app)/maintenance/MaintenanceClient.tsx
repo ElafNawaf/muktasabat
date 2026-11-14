@@ -19,6 +19,8 @@ export type WorkOrder = {
   due_at?: string | null; started_at?: string | null; completed_at?: string | null; created_at: string; resolution?: string | null;
   rating?: number | null; expense_id?: number | null; sla: "on_track" | "at_risk" | "breached" | "done" | "none";
   events?: { at: string; actor?: string | null; action: string; note?: string | null }[];
+  tenant_request?: null | { tenant_id: number; preferred_time?: string | null; allow_entry: boolean };
+  attachments?: { id: number; url: string; name?: string | null; content_type?: string | null; source: string }[];
 };
 export type WOStats = { open: number; emergency_open: number; awaiting_approval: number; breached: number; completed_month: number; cost_month: number; avg_resolution_hours: number | null; sla_met_pct: number | null };
 
@@ -35,7 +37,7 @@ const L = {
   category: { plumbing: ["سباكة", "Plumbing"], electrical: ["كهرباء", "Electrical"], ac: ["تكييف", "A/C"], carpentry: ["نجارة", "Carpentry"], painting: ["دهانات", "Painting"], cleaning: ["نظافة", "Cleaning"], pest: ["مكافحة حشرات", "Pest control"], appliances: ["أجهزة", "Appliances"], structural: ["إنشائي", "Structural"], elevator: ["مصاعد", "Elevator"], fire_safety: ["سلامة وحريق", "Fire safety"], other: ["أخرى", "Other"] },
   sla: { on_track: ["ضمن الوقت", "On track"], at_risk: ["يقترب من المهلة", "At risk"], breached: ["تجاوز المهلة", "Overdue"], done: ["", ""], none: ["", ""] },
   charge: { owner: ["على المالك", "Owner"], tenant: ["على المستأجر", "Tenant"], company: ["على الشركة", "Company"] },
-  action: { created: ["أُنشئ", "Created"], assigned: ["أُسند", "Assigned"], updated: ["عُدّل", "Updated"], estimated: ["تقدير التكلفة", "Estimated"], approval_requested: ["طُلبت الموافقة", "Approval requested"], auto_approved: ["اعتماد تلقائي", "Auto-approved"], approved: ["تمت الموافقة", "Approved"], rejected: ["رُفض", "Rejected"], started: ["بدأ التنفيذ", "Started"], completed: ["أُنجز", "Completed"], expense_posted: ["سُجّل كمصروف", "Expense posted"], closed: ["أُغلق", "Closed"], cancelled: ["أُلغي", "Cancelled"], note: ["ملاحظة", "Note"] },
+  action: { created: ["أُنشئ", "Created"], assigned: ["أُسند", "Assigned"], updated: ["عُدّل", "Updated"], estimated: ["تقدير التكلفة", "Estimated"], approval_requested: ["طُلبت الموافقة", "Approval requested"], auto_approved: ["اعتماد تلقائي", "Auto-approved"], approved: ["تمت الموافقة", "Approved"], rejected: ["رُفض", "Rejected"], started: ["بدأ التنفيذ", "Started"], completed: ["أُنجز", "Completed"], expense_posted: ["سُجّل كمصروف", "Expense posted"], closed: ["أُغلق", "Closed"], cancelled: ["أُلغي", "Cancelled"], note: ["ملاحظة داخلية", "Internal note"], reply: ["ردّ للمستأجر والمالك", "Reply to tenant & owner"], tenant_note: ["تعليق المستأجر", "Tenant comment"], owner_note: ["تعليق المالك", "Owner comment"], tenant_confirmed: ["أكّد المستأجر الإصلاح", "Tenant confirmed the fix"], reopened: ["أعاد المستأجر فتحه", "Reopened by tenant"] },
 } as const;
 
 export function MaintenanceClient({ locale, orders, stats, buildings, units, users, can }: Props) {
@@ -143,7 +145,7 @@ export function MaintenanceClient({ locale, orders, stats, buildings, units, use
                 {shown.map((w) => (
                   <tr key={w.id} className="mx-row" onClick={() => setOpenId(w.id)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && setOpenId(w.id)}>
                     <td>
-                      <strong>{w.title}</strong>
+                      <strong>{w.title}</strong>{w.reported_by === "tenant" && <span className="mx-src">{T("من المستأجر", "Tenant")}</span>}
                       <div className="text-sec" style={{ fontSize: 12 }}>{w.number} · {lbl("category", w.category)}</div>
                     </td>
                     <td>{w.building}{w.unit ? <div className="text-sec" style={{ fontSize: 12 }}>{T("وحدة", "Unit")} {w.unit}</div> : null}</td>
@@ -326,7 +328,21 @@ function DetailDrawer({ id, locale, users, can, onClose, lbl, dtf, nf }: {
           <div><dt>{T("المبلّغ", "Reported by")}</dt><dd>{[w.reporter_name, w.reporter_phone].filter(Boolean).join(" · ") || "—"}</dd></div>
           {w.approved_by && <div><dt>{T("القرار", "Decision")}</dt><dd>{w.approved_by === "auto" ? T("اعتماد تلقائي ضمن الحد", "Auto-approved within limit") : `${w.approved_by}${w.decision_note ? ` — ${w.decision_note}` : ""}`}</dd></div>}
         </dl>
+        {w.tenant_request && (
+          <p className="mx-tenant"><span className="ms ms-sm">person_pin_circle</span>
+            {T("طلب من بوابة المستأجر", "Raised in the tenant portal")}
+            {w.tenant_request.preferred_time ? ` · ${T("الوقت المناسب", "best time")}: ${w.tenant_request.preferred_time}` : ""}
+            {` · ${w.tenant_request.allow_entry ? T("يسمح بالدخول في غيابه", "entry allowed if out") : T("لا يسمح بالدخول في غيابه", "no entry if out")}`}
+          </p>
+        )}
         {w.description && <p className="mx-desc">{w.description}</p>}
+        {(w.attachments ?? []).length > 0 && (
+          <div className="mx-photos">
+            {(w.attachments ?? []).map((a) => (a.content_type || "").startsWith("image/")
+              ? <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"><img src={a.url} alt={a.name || ""} loading="lazy" /></a>
+              : <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className="mx-chip">{a.name || "file"}</a>)}
+          </div>
+        )}
         {w.resolution && <p className="mx-desc"><strong>{T("ما تم إنجازه:", "Resolution:")}</strong> {w.resolution}</p>}
 
         {/* Actions */}
@@ -355,8 +371,11 @@ function DetailDrawer({ id, locale, users, can, onClose, lbl, dtf, nf }: {
             <label className="field"><span>{T("التكلفة التقديرية (ر.س)", "Estimated cost (SAR)")}</span><input className="input" type="number" min={0} dir="ltr" value={v("amount")} onChange={(e) => setV("amount", e.target.value)} /></label>
             <label className="field"><span>{T("على حساب", "Charged to")}</span><select className="select" value={v("charge_to") || "owner"} onChange={(e) => setV("charge_to", e.target.value)}><option value="owner">{T("المالك", "Owner")}</option><option value="tenant">{T("المستأجر", "Tenant")}</option><option value="company">{T("الشركة", "Company")}</option></select></label>
             <label className="field"><span>{T("ملاحظة", "Note")}</span><input className="input" value={v("note")} onChange={(e) => setV("note", e.target.value)} /></label>
-            <p className="text-sec mx-hint">{T("إذا تجاوزت التكلفة الحد المفوَّض في عقد إدارة المالك، يُرسل الطلب للمالك للموافقة قبل البدء.", "If the cost is above the owner's pre-authorised limit, the job goes to the owner for approval before work starts.")}</p>
-            <button className="btn btn-primary btn-sm" disabled={pending || !v("amount")} onClick={() => run(woEstimate(w.id, Number(v("amount")), v("charge_to") || "owner", v("note") || undefined))}>{T("حفظ التقدير", "Save estimate")}</button>
+            {(v("charge_to") || "owner") === "owner" && (
+              <label className="checkbox"><input type="checkbox" checked={v("owner") ? v("owner") === "1" : !!w.tenant_request} onChange={(e) => setV("owner", e.target.checked ? "1" : "0")} /> {T("إرسال للمالك للموافقة حتى لو كانت ضمن الحد المفوَّض", "Send to the owner for approval even within the pre-authorised limit")}</label>
+            )}
+            <p className="text-sec mx-hint">{T("طلبات المستأجرين على حساب المالك تُرسل للمالك للموافقة دائماً، وأي تكلفة تتجاوز الحد المفوَّض كذلك. يصل المالك إشعار وبريد، ويتابع المستأجر الحالة.", "Tenant requests charged to the owner always go to the owner, as does any cost above the pre-authorised limit. The owner gets a notification and email; the tenant sees the status.")}</p>
+            <button className="btn btn-primary btn-sm" disabled={pending || !v("amount")} onClick={() => run(woEstimate(w.id, Number(v("amount")), v("charge_to") || "owner", v("note") || undefined, (v("charge_to") || "owner") === "owner" ? (v("owner") ? v("owner") === "1" : !!w.tenant_request) : false))}>{T("حفظ التقدير", "Save estimate")}</button>
           </div>
         )}
         {panel === "decide" && (
@@ -385,7 +404,7 @@ function DetailDrawer({ id, locale, users, can, onClose, lbl, dtf, nf }: {
         <h4 className="mx-h">{T("سجل الطلب", "Activity")}</h4>
         <ol className="mx-timeline">
           {(w.events ?? []).slice().reverse().map((e, i) => (
-            <li key={i}>
+            <li key={i} className={e.action === "reply" ? "is-reply" : e.actor?.startsWith("tenant:") ? "is-tenant" : e.actor?.startsWith("owner:") ? "is-owner" : undefined}>
               <span className="mx-dot" aria-hidden />
               <div>
                 <strong>{lbl("action", e.action)}</strong>
@@ -396,8 +415,9 @@ function DetailDrawer({ id, locale, users, can, onClose, lbl, dtf, nf }: {
           ))}
         </ol>
         <div className="mx-row">
-          <input className="input" placeholder={T("أضف ملاحظة للسجل…", "Add a note…")} value={note} onChange={(e) => setNote(e.target.value)} />
-          <button className="btn btn-secondary btn-sm" disabled={pending || !note.trim()} onClick={() => { run(woNote(w.id, note.trim())); setNote(""); }}>{T("إضافة", "Add")}</button>
+          <input className="input" placeholder={T("اكتب ملاحظة أو ردًّا…", "Write a note or reply…")} value={note} onChange={(e) => setNote(e.target.value)} />
+          <button className="btn btn-secondary btn-sm" disabled={pending || !note.trim()} onClick={() => { run(woNote(w.id, note.trim(), false)); setNote(""); }} title={T("تظهر للموظفين فقط", "Staff only")}><span className="ms ms-sm">lock</span>{T("ملاحظة داخلية", "Internal note")}</button>
+          <button className="btn btn-primary btn-sm" disabled={pending || !note.trim()} onClick={() => { run(woNote(w.id, note.trim(), true)); setNote(""); }} title={T("يراها المستأجر والمالك ويصلهم بريد", "Tenant and owner see it and get an email")}><span className="ms ms-sm">forum</span>{T("ردّ للمستأجر والمالك", "Reply to tenant & owner")}</button>
         </div>
       </div>
     </Modal>

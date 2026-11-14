@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { L, day, money, num, ownerApi } from "@/lib/owner";
 
 import { load, one, type SP } from "../guard";
@@ -33,7 +35,7 @@ export default async function OwnerMaintenance({ params, searchParams }: { param
       <section className="ow-hero">
         <div>
           <h1>{t("الصيانة", "Maintenance")}</h1>
-          <p className="ow-muted">{t("كل أعمال الصيانة في عقاراتك. الأعمال التي تتجاوز الحد المفوَّض في عقد الإدارة تنتظر موافقتك قبل البدء.", "Every maintenance job on your properties. Jobs above the limit in your management agreement wait for your approval before work starts.")}</p>
+          <p className="ow-muted">{t("كل أعمال الصيانة في عقاراتك، ومنها طلبات المستأجرين. الطلبات التي تحتاج موافقتك لا تبدأ قبل قرارك، ولكل طلب سجل كامل.", "Every maintenance job on your properties, including tenant requests. Jobs that need your approval don't start until you decide, and each has a full history.")}</p>
         </div>
       </section>
       <section className="ow-kpis ow-kpis--3">
@@ -48,8 +50,8 @@ export default async function OwnerMaintenance({ params, searchParams }: { param
           {pending.map((w) => (
             <article key={w.id} className="ow-approval">
               <div>
-                <strong>{w.title}</strong>
-                <p className="ow-muted">{w.building}{w.unit ? ` · ${t("وحدة", "Unit")} ${w.unit}` : ""} · {lb(CAT, w.category)} · {w.number}</p>
+                <strong><Link href={`/${locale}/owner/maintenance/${w.id}${as ? `?as=${as}` : ""}`}>{w.title}</Link></strong>
+                <p className="ow-muted">{w.reported_by === "tenant" ? `${t("طلب من المستأجر", "Raised by the tenant")} · ` : ""}{w.building}{w.unit ? ` · ${t("وحدة", "Unit")} ${w.unit}` : ""} · {lb(CAT, w.category)} · {w.number}</p>
                 {w.description && <p>{w.description}</p>}
                 <p>
                   {t("التكلفة التقديرية", "Estimated cost")}: <strong>{money(locale, w.estimate_amount ?? 0)}</strong>
@@ -73,7 +75,7 @@ export default async function OwnerMaintenance({ params, searchParams }: { param
               <tbody>
                 {all.map((w) => (
                   <tr key={w.id}>
-                    <td>{w.title}<small>{lb(CAT, w.category)} · {w.number}</small></td>
+                    <td><Link href={`/${locale}/owner/maintenance/${w.id}${as ? `?as=${as}` : ""}`}>{w.title}</Link><small>{lb(CAT, w.category)} · {w.number}{w.reported_by === "tenant" ? ` · ${t("من المستأجر", "from tenant")}` : ""}</small></td>
                     <td>{w.building}{w.unit && <small>{t("وحدة", "Unit")} {w.unit}</small>}</td>
                     <td><span className={`ow-chip ${["completed", "closed"].includes(w.status) ? "is-ok" : w.status === "awaiting_approval" ? "is-warn" : ""}`}>{lb(STATUS, w.status)}</span></td>
                     <td className="num">{w.actual_cost != null ? money(locale, w.actual_cost) : w.estimate_amount != null ? `≈ ${money(locale, w.estimate_amount)}` : "—"}</td>

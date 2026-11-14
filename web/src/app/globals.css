@@ -4205,3 +4205,11 @@ input[type="date"].input, input[type="time"].input { min-height: 44px; }
 .org-depts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .org-depts li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--color-bg); font-size: 13px; }
 .org-depts small { color: var(--color-text-secondary); }
+
+/* ═══ 2026-11n: maintenance — tenant requests in the staff drawer ═══ */
+.mx-src { display: inline-block; margin-inline-start: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--tn-info-bg, #e6f0f8); color: var(--tn-info, #2d6fa3); vertical-align: middle; }
+.mx-tenant { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--tn-info-bg, #e6f0f8); color: var(--tn-info, #2d6fa3); font-size: 13px; font-weight: 600; }
+.mx-photos { display: flex; flex-wrap: wrap; gap: 8px; }
+.mx-photos img { width: 92px; height: 92px; object-fit: cover; border-radius: 10px; border: 1px solid var(--color-border); }
+.mx-timeline li.is-tenant strong, .mx-timeline li.is-owner strong { color: var(--tn-info, #2d6fa3); }
+.mx-timeline li.is-reply strong { color: var(--tn-ok, #1f7a55); }

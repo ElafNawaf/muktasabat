@@ -13,6 +13,7 @@ const TENANT_NAV: NavItem[] = [
   { href: "", icon: "home", ar: "الرئيسية", en: "Home" },
   { href: "/payments", icon: "event_upcoming", ar: "دفعاتي", en: "My payments" },
   { href: "/contracts", icon: "description", ar: "عقدي", en: "My lease" },
+  { href: "/maintenance", icon: "home_repair_service", ar: "الصيانة", en: "Maintenance" },
   { href: "/support", icon: "support_agent", ar: "الدعم", en: "Support", self: true },
   { href: "/account", icon: "account_circle", ar: "حسابي", en: "Account", self: true },
 ];

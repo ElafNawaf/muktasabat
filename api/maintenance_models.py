@@ -77,3 +77,34 @@ class WorkOrderEvent(Base):
     note: Mapped[Optional[str]] = mapped_column(String(2000))
 
     work_order: Mapped[WorkOrder] = relationship(back_populates="events")
+
+
+class WorkOrderTenant(Base):
+    """A work order raised by a tenant from the tenant portal (one per work order)."""
+
+    __tablename__ = "work_order_tenants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.id", ondelete="CASCADE"), nullable=False, unique=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    contract_id: Mapped[Optional[int]] = mapped_column(ForeignKey("contracts.id", ondelete="SET NULL"))
+    preferred_time: Mapped[Optional[str]] = mapped_column(String(120))
+    allow_entry: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class WorkOrderAttachment(Base):
+    """Photos / documents on a work order (tenant photos, quotes, invoices)."""
+
+    __tablename__ = "work_order_attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.id", ondelete="CASCADE"), nullable=False, index=True)
+    object_key: Mapped[Optional[str]] = mapped_column(String(300))
+    url: Mapped[str] = mapped_column(String(600), nullable=False)
+    name: Mapped[Optional[str]] = mapped_column(String(255))
+    content_type: Mapped[Optional[str]] = mapped_column(String(100))
+    uploaded_by: Mapped[Optional[str]] = mapped_column(String(160))
+    source: Mapped[str] = mapped_column(String(12), default="staff", nullable=False)  # staff|tenant|owner
+    at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

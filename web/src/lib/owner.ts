@@ -139,6 +139,7 @@ export type OwnerWorkOrder = {
   building: string; unit?: string | null; assignee?: string | null; vendor_name?: string | null;
   estimate_amount?: number | null; actual_cost?: number | null; charge_to: string; approval_limit?: number | null;
   approved_by?: string | null; decision_note?: string | null; created_at: string; completed_at?: string | null; resolution?: string | null;
+  reported_by?: string;
 };
 
 export type OwnerRenewal = {

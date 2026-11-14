@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 from html import escape
 from typing import Annotated, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -18,13 +18,22 @@ from sqlalchemy.orm import Session
 from api.config import get_settings
 from api.deps import CurrentUser, DbSession
 from api.email import EmailMessage, _branded, _button, send_email
-from api.maintenance_models import WorkOrder, WorkOrderEvent
-from api.models import Building, Expense, ManagementContract, ManagementContractProperty, Owner, OwnerUser, Unit, User
+from api.maintenance_models import WorkOrder, WorkOrderAttachment, WorkOrderEvent, WorkOrderTenant
+from api.models import Building, Contract, Expense, ManagementContract, ManagementContractProperty, Owner, OwnerUser, Tenant, Unit, User
 from api.permissions import Perm, has_permission
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 owner_router = APIRouter(prefix="/owner-portal/work-orders", tags=["owner-portal"])
+tenant_router = APIRouter(prefix="/tenant-portal/maintenance", tags=["tenant-portal"])
+
+# What the tenant / owner may see in a job's history (staff-only notes and
+# internal edits stay internal). "reply" = a staff note shared with them.
+TENANT_EVENTS = {"created", "assigned", "approval_requested", "approved", "auto_approved", "rejected", "started",
+                 "completed", "closed", "cancelled", "reply", "tenant_note", "owner_note", "reopened", "tenant_confirmed"}
+OWNER_EVENTS = TENANT_EVENTS | {"estimated", "expense_posted"}
+MAX_PHOTOS = 5
+PHOTO_MAX_BYTES = 10 * 1024 * 1024
 
 DEFAULT_LIMIT = 1000.0  # SAR pre-authorised when the management contract sets no limit
 SLA_HOURS = {"emergency": 4, "high": 24, "normal": 72, "low": 168}
@@ -96,8 +105,50 @@ def _out(db: Session, wo: WorkOrder, locale: str, detail: bool = False) -> dict:
         "rating": wo.rating, "expense_id": wo.expense_id, "created_at": wo.created_at, "updated_at": wo.updated_at,
         "sla": _sla_state(wo),
     }
+    link = db.scalar(select(WorkOrderTenant).where(WorkOrderTenant.work_order_id == wo.id))
+    d["tenant_request"] = None if link is None else {
+        "tenant_id": link.tenant_id, "preferred_time": link.preferred_time, "allow_entry": link.allow_entry,
+    }
     if detail:
         d["events"] = [{"at": e.at, "actor": e.actor, "action": e.action, "note": e.note} for e in wo.events]
+        d["attachments"] = [
+            {"id": a.id, "url": a.url, "name": a.name, "content_type": a.content_type, "source": a.source, "by": a.uploaded_by, "at": a.at}
+            for a in db.scalars(select(WorkOrderAttachment).where(WorkOrderAttachment.work_order_id == wo.id).order_by(WorkOrderAttachment.id)).all()
+        ]
+    return d
+
+
+def _public(db: Session, wo: WorkOrder, locale: str, audience: str) -> dict:
+    """The job as a tenant or owner sees it: no staff contacts, a filtered history."""
+    d = _out(db, wo, locale, detail=True)
+    keep = TENANT_EVENTS if audience == "tenant" else OWNER_EVENTS
+    staff_label = "فريق الصيانة" if locale == "ar" else "Maintenance team"
+    ev = []
+    for e in d["events"]:
+        if e["action"] not in keep:
+            continue
+        actor = e["actor"] or ""
+        if not (actor.startswith("owner:") or actor.startswith("tenant:") or actor == "system"):
+            actor = staff_label
+        note = e["note"]
+        if e["action"] in {"assigned", "approval_requested", "auto_approved", "expense_posted"}:
+            note = None  # internal detail (who / limits / ids)
+        elif e["action"] == "estimated" and note:
+            note = note.split(" — ", 1)[1] if " — " in note else None  # amount is shown in the details card
+        elif audience == "tenant" and e["action"] == "completed" and note and wo.charge_to != "tenant":
+            note = note.split(" — ", 1)[1] if " — " in note else None  # cost is between us and the owner
+        ev.append({**e, "actor": actor, "note": note})
+    d["events"] = ev
+    for k in ("reporter_phone", "vendor_phone", "assignee_id", "assignee", "created_by_id", "expense_id"):
+        d.pop(k, None)
+    if audience == "tenant":
+        for k in ("estimate_amount", "approval_limit", "approval_required", "owner", "owner_id", "approved_by", "charge_to"):
+            d.pop(k, None)
+        if wo.charge_to == "tenant":
+            d["charge_to"] = "tenant"
+            d["estimate_amount"] = wo.estimate_amount
+        else:
+            d["actual_cost"] = None
     return d
 
 
@@ -171,6 +222,8 @@ class EstimateIn(BaseModel):
     amount: float = Field(ge=0, le=10_000_000)
     charge_to: ChargeTo = "owner"
     note: Optional[str] = Field(default=None, max_length=1000)
+    # Send to the owner even when the estimate is within the pre-authorised limit.
+    require_owner: Optional[bool] = None
 
 
 class DecisionIn(BaseModel):
@@ -186,6 +239,8 @@ class CompleteIn(BaseModel):
 
 class NoteIn(BaseModel):
     note: str = Field(min_length=1, max_length=2000)
+    # Shared with the tenant and owner (shows in their history) instead of internal.
+    public: bool = False
 
 
 # ───────────────────────── staff endpoints ─────────────────────────
@@ -237,6 +292,29 @@ def get_work_order(wo_id: int, db: DbSession, _u: Perm("maintenance", "view"), l
     return _out(db, _get(db, wo_id), locale, detail=True)
 
 
+def _create(db: Session, b: Building, fields: dict, actor: str, created_by_id: Optional[int], assignee_id: Optional[int]) -> WorkOrder:
+    seq = (db.scalar(select(func.max(WorkOrder.id))) or 0) + 1
+    now = datetime.utcnow()
+    wo = WorkOrder(
+        **fields,
+        number=f"WO-{seq:05d}",
+        status="new",
+        due_at=now + timedelta(hours=SLA_HOURS[fields.get("priority") or "normal"]),
+        created_by_id=created_by_id,
+        created_at=now,
+    )
+    db.add(wo)
+    _log(wo, actor, "created", fields.get("title"))
+    # The employee responsible for the building gets the job unless someone else is named.
+    aid = assignee_id or b.assignee_id
+    if aid and db.get(User, aid):
+        wo.assignee_id = aid
+        wo.status = "assigned"
+        _log(wo, actor, "assigned", None if assignee_id else "auto: building's responsible employee")
+    db.flush()
+    return wo
+
+
 @router.post("/work-orders", status_code=status.HTTP_201_CREATED)
 def create_work_order(payload: WorkOrderIn, db: DbSession, user: Perm("maintenance", "create")):
     b = db.get(Building, payload.building_id)
@@ -244,24 +322,7 @@ def create_work_order(payload: WorkOrderIn, db: DbSession, user: Perm("maintenan
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Building not found")
     if payload.unit_id and (u := db.get(Unit, payload.unit_id)) is not None and u.building_id != b.id:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unit does not belong to this building")
-    seq = (db.scalar(select(func.max(WorkOrder.id))) or 0) + 1
-    now = datetime.utcnow()
-    wo = WorkOrder(
-        **payload.model_dump(exclude={"assignee_id"}),
-        number=f"WO-{seq:05d}",
-        status="new",
-        due_at=now + timedelta(hours=SLA_HOURS[payload.priority]),
-        created_by_id=user.id,
-        created_at=now,
-    )
-    db.add(wo)
-    _log(wo, _actor(user), "created", payload.title)
-    # The employee responsible for the building gets the job unless someone else is named.
-    assignee_id = payload.assignee_id or b.assignee_id
-    if assignee_id and db.get(User, assignee_id):
-        wo.assignee_id = assignee_id
-        wo.status = "assigned"
-        _log(wo, _actor(user), "assigned", None if payload.assignee_id else "auto: building's responsible employee")
+    wo = _create(db, b, payload.model_dump(exclude={"assignee_id"}), _actor(user), user.id, payload.assignee_id)
     db.commit()
     db.refresh(wo)
     if wo.assignee_id:
@@ -308,14 +369,20 @@ def estimate(wo_id: int, payload: EstimateIn, db: DbSession, user: Perm("mainten
     b = db.get(Building, wo.building_id)
     limit = _limit_for(db, b)
     wo.estimate_amount, wo.charge_to, wo.approval_limit = payload.amount, payload.charge_to, limit
-    wo.approval_required = payload.charge_to == "owner" and payload.amount > limit
+    # Tenant-raised jobs billed to the owner always go to the owner; staff can
+    # also send any job to the owner, or skip it explicitly (require_owner=False).
+    from_tenant = wo.reported_by == "tenant" and _tenant_link(db, wo) is not None
+    want_owner = payload.require_owner if payload.require_owner is not None else from_tenant
+    above = payload.amount > limit
+    wo.approval_required = payload.charge_to == "owner" and (above or want_owner)
     wo.approved_by = wo.approved_at = wo.decision_note = None
     _log(wo, _actor(user), "estimated", f"{payload.amount:,.0f} SAR → {payload.charge_to}" + (f" — {payload.note}" if payload.note else ""))
     if wo.approval_required:
         wo.status = "awaiting_approval"
-        _log(wo, "system", "approval_requested", f"above the owner's limit of {limit:,.0f} SAR")
+        _log(wo, "system", "approval_requested", f"above the owner's limit of {limit:,.0f} SAR" if above else "owner approval required")
         db.commit()
         _notify_owner_for_approval(db, wo)
+        _notify_tenant(db, wo, "awaiting_owner")
     else:
         wo.status = "approved"
         wo.approved_by, wo.approved_at = "auto", datetime.utcnow()
@@ -331,6 +398,7 @@ def _decide(db: Session, wo: WorkOrder, approve: bool, note: str | None, actor: 
     _log(wo, actor, "approved" if approve else "rejected", note)
     db.commit()
     _notify_decision(db, wo)
+    _notify_tenant(db, wo, "approved" if approve else "rejected")
 
 
 @router.post("/work-orders/{wo_id}/decision")
@@ -349,6 +417,7 @@ def start(wo_id: int, db: DbSession, user: Perm("maintenance", "edit")):
     wo.status, wo.started_at = "in_progress", datetime.utcnow()
     _log(wo, _actor(user), "started")
     db.commit()
+    _notify_tenant(db, wo, "started")
     return _out(db, wo, "ar", detail=True)
 
 
@@ -373,6 +442,7 @@ def complete(wo_id: int, payload: CompleteIn, db: DbSession, user: Perm("mainten
         wo.expense_id = e.id
         _log(wo, "system", "expense_posted", f"#{e.id}")
     db.commit()
+    _notify_tenant(db, wo, "completed")
     return _out(db, wo, "ar", detail=True)
 
 
@@ -399,8 +469,10 @@ def cancel(wo_id: int, payload: NoteIn, db: DbSession, user: Perm("maintenance",
 @router.post("/work-orders/{wo_id}/notes")
 def add_note(wo_id: int, payload: NoteIn, db: DbSession, user: Perm("maintenance", "view")):
     wo = _get(db, wo_id)
-    _log(wo, _actor(user), "note", payload.note)
+    _log(wo, _actor(user), "reply" if payload.public else "note", payload.note)
     db.commit()
+    if payload.public:
+        _notify_tenant(db, wo, "reply", payload.note)
     return _out(db, wo, "ar", detail=True)
 
 
@@ -501,3 +573,245 @@ def owner_decision(wo_id: int, payload: DecisionIn, db: DbSession, user: Current
     owner = db.get(Owner, oid)
     _decide(db, wo, payload.approve, payload.note, f"owner: {_name(owner, 'ar')}")
     return {"ok": True, "status": wo.status}
+
+
+@owner_router.get("/{wo_id}")
+def owner_work_order(wo_id: int, db: DbSession, user: CurrentUser, as_owner: Annotated[Optional[int], Query(ge=1)] = None,
+                     locale: str = Query("ar", pattern="^(ar|en)$")):
+    oid = _owner_scope(db, user, as_owner)
+    wo = _get(db, wo_id)
+    b = db.get(Building, wo.building_id)
+    if b is None or b.owner_id != oid:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Work order not found")
+    return _public(db, wo, locale, "owner")
+
+
+@owner_router.post("/{wo_id}/notes")
+def owner_note(wo_id: int, payload: NoteIn, db: DbSession, user: CurrentUser):
+    if user.role != "owner":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the owner can comment from the owner portal.")
+    oid = _owner_scope(db, user, None)
+    wo = _get(db, wo_id)
+    b = db.get(Building, wo.building_id)
+    if b is None or b.owner_id != oid:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Work order not found")
+    _log(wo, f"owner: {_name(db.get(Owner, oid), 'ar')}", "owner_note", payload.note)
+    db.commit()
+    _notify_staff_comment(db, wo, "owner", payload.note)
+    return {"ok": True}
+
+
+# ───────────────────────── tenant portal ─────────────────────────
+
+
+def _tenant_link(db: Session, wo: WorkOrder) -> Optional[WorkOrderTenant]:
+    return db.scalar(select(WorkOrderTenant).where(WorkOrderTenant.work_order_id == wo.id))
+
+
+TENANT_MAIL = {
+    "received": ("استلمنا طلب الصيانة", "We received your maintenance request"),
+    "awaiting_owner": ("طلبك بانتظار موافقة المالك", "Your request is waiting for the owner's approval"),
+    "approved": ("تمت الموافقة على طلب الصيانة", "Your maintenance request was approved"),
+    "rejected": ("لم تتم الموافقة على طلب الصيانة", "Your maintenance request was not approved"),
+    "started": ("بدأ فريق الصيانة العمل", "Our team has started the work"),
+    "completed": ("اكتملت أعمال الصيانة — نرجو التأكيد والتقييم", "The work is done — please confirm and rate it"),
+    "reply": ("ردّ جديد على طلب الصيانة", "New reply on your maintenance request"),
+}
+
+
+def _notify_tenant(db: Session, wo: WorkOrder, kind: str, note: Optional[str] = None) -> None:
+    """Email the tenant who raised the job (if any) about a step in the workflow."""
+    link = _tenant_link(db, wo)
+    if link is None or kind not in TENANT_MAIL:
+        return
+    from api.routers.tenant_portal import _tenant_email
+
+    to = _tenant_email(db, link.tenant_id)
+    ar, en = TENANT_MAIL[kind]
+    extra_ar = f"<p>{escape(note)}</p>" if note else (f"<p>ملاحظة: {escape(wo.decision_note)}</p>" if kind == "rejected" and wo.decision_note else "")
+    extra_en = f"<p>{escape(note)}</p>" if note else (f"<p>Note: {escape(wo.decision_note)}</p>" if kind == "rejected" and wo.decision_note else "")
+    _mail(
+        to,
+        f"{ar} {wo.number} | {en}",
+        f"<p>{ar}: <strong>{escape(wo.title)}</strong> ({wo.number}).</p>{extra_ar}",
+        f"<p>{en}: <strong>{escape(wo.title)}</strong> ({wo.number}).</p>{extra_en}",
+        f"{_base()}/ar/tenant/maintenance/{wo.id}", "متابعة الطلب", "Track request",
+    )
+
+
+def _notify_staff_comment(db: Session, wo: WorkOrder, who: str, note: str) -> None:
+    targets = {x for x in [wo.assignee_id, wo.created_by_id] if x}
+    for uid in targets:
+        u = db.get(User, uid)
+        if not u or not u.email or u.role in ("tenant", "owner"):
+            continue
+        src_ar, src_en = ("المستأجر", "The tenant") if who == "tenant" else ("المالك", "The owner")
+        _mail(
+            u.email,
+            f"تعليق جديد على {wo.number} | New comment on {wo.number}",
+            f"<p>{src_ar} علّق على أمر الصيانة <strong>{wo.number}</strong>:</p><p>{escape(note)}</p>",
+            f"<p>{src_en} commented on work order <strong>{wo.number}</strong>:</p><p>{escape(note)}</p>",
+            f"{_base()}/ar/maintenance?open={wo.id}", "فتح أمر الصيانة", "Open work order",
+        )
+
+
+async def _store_photos(db: Session, wo: WorkOrder, files: list[UploadFile], who: str, source: str) -> int:
+    from api.storage import StorageNotConfigured, upload_document
+
+    n = 0
+    for f in (files or [])[:MAX_PHOTOS]:
+        if f is None or not f.filename:
+            continue
+        content = await f.read(PHOTO_MAX_BYTES + 1)
+        if len(content) > PHOTO_MAX_BYTES:
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Each photo must be 10 MB or smaller")
+        try:
+            import io
+
+            st = upload_document(io.BytesIO(content), content_type=f.content_type or "application/octet-stream",
+                                 prefix=f"maintenance/{wo.id}", original_filename=f.filename)
+        except StorageNotConfigured as e:
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
+        except ValueError as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+        db.add(WorkOrderAttachment(work_order_id=wo.id, object_key=st.object_key, url=st.public_url, name=f.filename[:255],
+                                   content_type=f.content_type, uploaded_by=who, source=source))
+        n += 1
+    return n
+
+
+def _tenant_units(db: Session, tenant_id: int, locale: str) -> list[dict]:
+    today = date.today()
+    out = []
+    for c in db.scalars(select(Contract).where(Contract.tenant_id == tenant_id)).all():
+        st = (c.status or "active").lower()
+        if st in {"terminated", "cancelled", "canceled", "expired", "draft"} or c.end_date < today - timedelta(days=30):
+            continue
+        u = db.get(Unit, c.unit_id)
+        b = db.get(Building, u.building_id) if u else None
+        if u and b:
+            out.append({"contract_id": c.id, "unit_id": u.id, "unit": u.number, "building_id": b.id, "building": _name(b, locale)})
+    return out
+
+
+def _own_wo(db: Session, tenant_id: int, wo_id: int) -> WorkOrder:
+    link = db.scalar(select(WorkOrderTenant).where(WorkOrderTenant.work_order_id == wo_id, WorkOrderTenant.tenant_id == tenant_id))
+    if link is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Request not found")
+    return _get(db, wo_id)
+
+
+def _tenant_actor(t: Tenant) -> str:
+    return f"tenant: {t.name}"
+
+
+from api.routers.tenant_portal import ScopeDep as _TScope  # noqa: E402
+
+
+@tenant_router.get("")
+def tenant_requests(scope: _TScope, db: DbSession, locale: str = Query("ar", pattern="^(ar|en)$")):
+    ids = [l.work_order_id for l in db.scalars(select(WorkOrderTenant).where(WorkOrderTenant.tenant_id == scope.tenant.id)).all()]
+    rows = db.scalars(select(WorkOrder).where(WorkOrder.id.in_(ids or [0])).order_by(WorkOrder.id.desc())).all()
+    return {"units": _tenant_units(db, scope.tenant.id, locale), "requests": [_public(db, w, locale, "tenant") for w in rows]}
+
+
+@tenant_router.get("/{wo_id}")
+def tenant_request(wo_id: int, scope: _TScope, db: DbSession, locale: str = Query("ar", pattern="^(ar|en)$")):
+    return _public(db, _own_wo(db, scope.tenant.id, wo_id), locale, "tenant")
+
+
+def _no_preview(scope) -> None:
+    if scope.preview:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Preview is read-only")
+
+
+@tenant_router.post("", status_code=status.HTTP_201_CREATED)
+async def tenant_create(
+    scope: _TScope,
+    db: DbSession,
+    user: CurrentUser,
+    unit_id: Annotated[int, Form()],
+    title: Annotated[str, Form(min_length=2, max_length=200)],
+    category: Annotated[Category, Form()] = "other",
+    urgent: Annotated[bool, Form()] = False,
+    description: Annotated[Optional[str], Form(max_length=5000)] = None,
+    preferred_time: Annotated[Optional[str], Form(max_length=120)] = None,
+    allow_entry: Annotated[bool, Form()] = False,
+    phone: Annotated[Optional[str], Form(max_length=30)] = None,
+    photos: Annotated[list[UploadFile], File()] = [],  # noqa: B006
+):
+    _no_preview(scope)
+    t = scope.tenant
+    units = {u["unit_id"]: u for u in _tenant_units(db, t.id, "ar")}
+    if unit_id not in units:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick one of your leased units")
+    b = db.get(Building, units[unit_id]["building_id"])
+    fields = {
+        "building_id": b.id, "unit_id": unit_id, "title": title.strip(), "description": (description or "").strip() or None,
+        "category": category, "priority": "high" if urgent else "normal", "reported_by": "tenant",
+        "reporter_name": t.name, "reporter_phone": (phone or t.phone or None),
+    }
+    wo = _create(db, b, fields, _tenant_actor(t), user.id, None)
+    db.add(WorkOrderTenant(work_order_id=wo.id, tenant_id=t.id, user_id=user.id, contract_id=units[unit_id]["contract_id"],
+                           preferred_time=(preferred_time or "").strip() or None, allow_entry=allow_entry))
+    await _store_photos(db, wo, photos, _tenant_actor(t), "tenant")
+    db.commit()
+    db.refresh(wo)
+    if wo.assignee_id:
+        _notify_assignee(db, wo)
+    _notify_tenant(db, wo, "received")
+    return _public(db, wo, "ar", "tenant")
+
+
+@tenant_router.post("/{wo_id}/comment")
+async def tenant_comment(
+    wo_id: int, scope: _TScope, db: DbSession,
+    note: Annotated[str, Form(min_length=1, max_length=2000)],
+    photos: Annotated[list[UploadFile], File()] = [],  # noqa: B006
+):
+    _no_preview(scope)
+    wo = _own_wo(db, scope.tenant.id, wo_id)
+    if wo.status in {"closed", "cancelled"}:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This request is closed.")
+    n = await _store_photos(db, wo, photos, _tenant_actor(scope.tenant), "tenant")
+    _log(wo, _tenant_actor(scope.tenant), "tenant_note", note + (f" (📷 {n})" if n else ""))
+    db.commit()
+    _notify_staff_comment(db, wo, "tenant", note)
+    return {"ok": True}
+
+
+class TenantCloseIn(BaseModel):
+    resolved: bool
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
+    note: Optional[str] = Field(default=None, max_length=2000)
+
+
+@tenant_router.post("/{wo_id}/confirm")
+def tenant_confirm(wo_id: int, payload: TenantCloseIn, scope: _TScope, db: DbSession):
+    """After the job is completed the tenant confirms it (closes with a rating) or reopens it."""
+    _no_preview(scope)
+    wo = _own_wo(db, scope.tenant.id, wo_id)
+    _require_state(wo, {"completed"}, "confirm")
+    who = _tenant_actor(scope.tenant)
+    if payload.resolved:
+        wo.status, wo.closed_at, wo.rating = "closed", datetime.utcnow(), payload.rating
+        _log(wo, who, "tenant_confirmed", (f"★ {payload.rating}/5" if payload.rating else "") + (f" — {payload.note}" if payload.note else ""))
+    else:
+        wo.status, wo.completed_at = "in_progress", None
+        _log(wo, who, "reopened", payload.note or None)
+        wo.due_at = datetime.utcnow() + timedelta(hours=SLA_HOURS["high"])
+    db.commit()
+    if not payload.resolved:
+        _notify_staff_comment(db, wo, "tenant", payload.note or "Reopened — not fixed")
+    return {"ok": True, "status": wo.status}
+
+
+@tenant_router.post("/{wo_id}/cancel")
+def tenant_cancel(wo_id: int, payload: NoteIn, scope: _TScope, db: DbSession):
+    _no_preview(scope)
+    wo = _own_wo(db, scope.tenant.id, wo_id)
+    _require_state(wo, {"new", "assigned", "awaiting_approval"}, "cancel")
+    wo.status = "cancelled"
+    _log(wo, _tenant_actor(scope.tenant), "cancelled", payload.note)
+    db.commit()
+    return {"ok": True}

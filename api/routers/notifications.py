@@ -243,6 +243,13 @@ def _maintenance(db: Session, user: User, n: N, base: str) -> None:
         n.add(f"wo:{w.id}:{w.status}", "maintenance", "handyman", "bad" if late else "info",
               ("أمر صيانة مُسند إليك", "Work order assigned to you"), f"{w.number} · {w.title}", w.updated_at or w.created_at,
               f"{base}/maintenance?open={w.id}", urgent=late or w.priority in ("emergency", "high"))
+    if has_permission(db, user, "maintenance", "edit"):
+        for w in db.scalars(select(WorkOrder).where(WorkOrder.reported_by == "tenant", WorkOrder.status.in_(("new", "assigned")),
+                                                    WorkOrder.created_at >= datetime.utcnow() - timedelta(days=7)).order_by(WorkOrder.created_at.desc()).limit(10)).all():
+            if w.assignee_id == user.id:
+                continue
+            n.add(f"wot:{w.id}", "maintenance", "home_repair_service", "soon", ("طلب صيانة جديد من مستأجر", "New maintenance request from a tenant"),
+                  f"{w.number} · {w.title}", w.created_at, f"{base}/maintenance?open={w.id}", urgent=w.priority in ("emergency", "high"))
 
 
 def _leases(db: Session, user: User, n: N, base: str) -> None:
@@ -287,6 +294,24 @@ def _tenant(db: Session, user: User, n: N, base: str) -> None:
     for c in db.scalars(select(Contract).where(Contract.tenant_id == link.tenant_id, Contract.end_date.between(today, today + timedelta(days=60)))).all():
         n.add(f"tlease:{c.id}", "lease", "hourglass_bottom", "soon", ("عقدك ينتهي قريباً", "Your lease ends soon"),
               f"{c.contract_number} · {c.end_date}", None, f"{base}/contracts/{c.id}")
+    try:
+        from api.maintenance_models import WorkOrder, WorkOrderTenant
+    except Exception:
+        return
+    ST = {
+        "awaiting_approval": ("hourglass_top", "info", ("طلب الصيانة بانتظار موافقة المالك", "Maintenance request waiting for the owner's approval")),
+        "approved": ("task_alt", "ok", ("تمت الموافقة على طلب الصيانة", "Maintenance request approved")),
+        "rejected": ("block", "bad", ("لم تتم الموافقة على طلب الصيانة", "Maintenance request not approved")),
+        "in_progress": ("construction", "info", ("بدأ تنفيذ الصيانة", "Maintenance work has started")),
+        "completed": ("verified", "ok", ("اكتملت الصيانة — أكّد وقيّم", "Maintenance done — please confirm and rate")),
+    }
+    for w in db.scalars(select(WorkOrder).join(WorkOrderTenant, WorkOrderTenant.work_order_id == WorkOrder.id)
+                        .where(WorkOrderTenant.tenant_id == link.tenant_id, WorkOrder.updated_at >= datetime.utcnow() - timedelta(days=21))).all():
+        if w.status not in ST:
+            continue
+        icon, tone, title = ST[w.status]
+        n.add(f"two:{w.id}:{w.status}", "maintenance", icon, tone, title, f"{w.number} · {w.title}", w.updated_at,
+              f"{base}/maintenance/{w.id}", urgent=w.status == "completed")
 
 
 def _owner(db: Session, user: User, n: N, base: str) -> None:
