@@ -448,178 +448,155 @@ export function UsersClient({
                 </div>
               );
             })()}
-            <div className="owner-grid">
-              {filtered.map((u) => {
-                const isMe = u.id === meId;
-                const isBusy = busyId === u.id;
-                const role = rolesState.find((r) => r.code === u.role);
-                const color = role?.color ?? "#6B7280";
-                const initials = u.username.slice(0, 2).toUpperCase();
-                return (
-                  <div className={"user-card" + (selected.has(u.id) ? " is-selected" : "")} key={u.id}>
-                    <div className="user-card-hd">
-                      {!isMe && u.is_active_user && (
-                        <input
-                          type="checkbox"
-                          className="user-card-check"
-                          checked={selected.has(u.id)}
-                          onChange={() => toggleSelected(u.id)}
-                          aria-label={t("selectUser", { username: u.username })}
-                        />
-                      )}
-                      <div
-                        className="user-card-avatar"
-                        style={{
-                          background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-                        }}
+            <div className="card card-tight ulist">
+              <table className="tbl ulist-tbl">
+                <thead>
+                  <tr>
+                    <th className="ulist-check" aria-label={t("bulkActions")} />
+                    <th>{t("usersTab")}</th>
+                    <th>{t("roles")}</th>
+                    <th>{locale === "ar" ? "الحالة" : "Status"}</th>
+                    <th>{t("createdAt")}</th>
+                    <th aria-label="actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((u) => {
+                    const isMe = u.id === meId;
+                    const isBusy = busyId === u.id;
+                    const role = rolesState.find((r) => r.code === u.role);
+                    const color = role?.color ?? "#6B7280";
+                    const initials = u.username.slice(0, 2).toUpperCase();
+                    return (
+                      <tr
+                        key={u.id}
+                        className={[u.is_active_user ? "" : "is-off", selected.has(u.id) ? "is-selected" : ""].join(" ").trim() || undefined}
                       >
-                        {initials}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="user-card-name">
-                          {u.username}
-                          {isMe && (
-                            <span
-                              className="badge"
-                              style={{
-                                marginInlineStart: 8,
-                                fontSize: 10,
-                                padding: "2px 6px",
-                              }}
+                        <td className="ulist-check">
+                          {!isMe && u.is_active_user && (
+                            <input
+                              type="checkbox"
+                              checked={selected.has(u.id)}
+                              onChange={() => toggleSelected(u.id)}
+                              aria-label={t("selectUser", { username: u.username })}
+                            />
+                          )}
+                        </td>
+                        <td>
+                          <div className="ulist-who">
+                            <span className="ulist-av" style={{ ["--c" as string]: color }}>{initials}</span>
+                            <span className="ulist-id">
+                              <strong>
+                                {u.username}
+                                {isMe && <span className="badge badge-neutral ulist-me">{t("you")}</span>}
+                                {u.is_super_admin && (
+                                  <span className="badge badge-primary super-badge" title={t("superAdminHint")}>
+                                    <span className="ms ms-sm">verified_user</span> {t("superAdmin")}
+                                  </span>
+                                )}
+                              </strong>
+                              <small dir="ltr">{u.email}</small>
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="ulist-role" style={{ ["--c" as string]: color }}>
+                            <select
+                              value={u.role}
+                              onChange={(e) => onChangeRole(u, e.target.value)}
+                              disabled={isBusy || isMe}
+                              aria-label={t("roles")}
                             >
-                              {t("you")}
-                            </span>
-                          )}
-                          {u.is_super_admin && (
-                            <span className="badge badge-primary super-badge" title={t("superAdminHint")}>
-                              <span className="ms ms-sm">verified_user</span> {t("superAdmin")}
-                            </span>
-                          )}
-                        </div>
-                        <div className="user-card-email mono">{u.email}</div>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 8,
-                      }}
-                    >
-                      <select
-                        className="select"
-                        value={u.role}
-                        onChange={(e) => onChangeRole(u, e.target.value)}
-                        disabled={isBusy || isMe}
-                        style={{
-                          height: 30,
-                          fontSize: 12,
-                          width: "auto",
-                          padding: "4px 28px 4px 10px",
-                          background: color + "1A",
-                          color,
-                          borderColor: color + "55",
-                          fontWeight: 600,
-                          borderRadius: 999,
-                        }}
-                      >
-                        {userRoles.map((r) => (
-                          <option key={r.code} value={r.code}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className={
-                          "btn btn-sm " +
-                          (u.is_active_user ? "btn-secondary" : "btn-primary")
-                        }
-                        onClick={() => onToggle(u)}
-                        disabled={isBusy || isMe}
-                      >
-                        <span className="ms ms-sm">
-                          {u.is_active_user ? "block" : "check"}
-                        </span>
-                        {u.is_active_user ? t("deactivate") : t("activate")}
-                      </button>
-                      {u.is_active_user && !isMe && (
-                        <>
-                          <button
-                            className="icon-btn"
-                            title={t("sendResetLink")}
-                            aria-label={t("sendResetLink")}
-                            onClick={() => onSendReset(u)}
-                            disabled={isBusy}
-                          >
-                            <span className="ms ms-sm">lock_reset</span>
-                          </button>
-                          <button
-                            className="icon-btn"
-                            title={t("signOutEverywhere")}
-                            aria-label={t("signOutEverywhere")}
-                            onClick={() => onRevokeSessions(u)}
-                            disabled={isBusy}
-                          >
-                            <span className="ms ms-sm">devices_off</span>
-                          </button>
-                          <button
-                            className="icon-btn"
-                            title={t("setPassword")}
-                            aria-label={t("setPassword")}
-                            onClick={() => setSetPwUser(u)}
-                            disabled={isBusy}
-                          >
-                            <span className="ms ms-sm">password</span>
-                          </button>
-                          {canAssignSuper && u.role === "admin" && !u.is_super_admin && (
+                              {userRoles.map((r) => (
+                                <option key={r.code} value={r.code}>
+                                  {r.label}
+                                </option>
+                              ))}
+                            </select>
+                          </span>
+                        </td>
+                        <td>
+                          <span className={"badge " + (u.is_active_user ? "badge-success" : "badge-neutral")}>
+                            <span className="dot" />
+                            {u.is_active_user ? t("active") : t("inactive")}
+                          </span>
+                        </td>
+                        <td className="text-sec">{fmtDate(u.created_at)}</td>
+                        <td>
+                          <div className="ulist-actions">
                             <button
-                              className="icon-btn"
-                              title={t("makeSuperAdmin")}
-                              aria-label={t("makeSuperAdmin")}
-                              onClick={() => setConfirmSuper(u)}
-                              disabled={isBusy}
+                              className={"btn btn-sm " + (u.is_active_user ? "btn-ghost" : "btn-secondary")}
+                              onClick={() => onToggle(u)}
+                              disabled={isBusy || isMe}
                             >
-                              <span className="ms ms-sm">verified_user</span>
+                              <span className="ms ms-sm">{u.is_active_user ? "block" : "check"}</span>
+                              {u.is_active_user ? t("deactivate") : t("activate")}
                             </button>
-                          )}
-                        </>
-                      )}
-                      {isMe && canAssignSuper && u.role === "admin" && !u.is_super_admin && (
-                        <button className="btn btn-sm btn-secondary" onClick={() => setConfirmSuper(u)} disabled={isBusy}>
-                          <span className="ms ms-sm">verified_user</span> {t("makeMeSuperAdmin")}
-                        </button>
-                      )}
-                      {canDeleteUser && !isMe && (
-                        <button
-                          className="icon-btn icon-btn--danger"
-                          title={tCommon("delete")}
-                          onClick={() => setConfirmDel(u)}
-                          disabled={isBusy}
-                        >
-                          <span className="ms ms-sm">delete</span>
-                        </button>
-                      )}
-                    </div>
-                    <div className="user-card-meta">
-                      <span className="user-card-status">
-                        <span
-                          className="dot"
-                          style={{
-                            background: u.is_active_user
-                              ? "var(--color-success)"
-                              : "var(--color-text-secondary)",
-                          }}
-                        />
-                        {u.is_active_user ? t("active") : t("inactive")}
-                      </span>
-                      <span>
-                        {t("createdAt")}: {fmtDate(u.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                            {u.is_active_user && !isMe && (
+                              <>
+                                <button
+                                  className="icon-btn"
+                                  title={t("sendResetLink")}
+                                  aria-label={t("sendResetLink")}
+                                  onClick={() => onSendReset(u)}
+                                  disabled={isBusy}
+                                >
+                                  <span className="ms ms-sm">lock_reset</span>
+                                </button>
+                                <button
+                                  className="icon-btn"
+                                  title={t("signOutEverywhere")}
+                                  aria-label={t("signOutEverywhere")}
+                                  onClick={() => onRevokeSessions(u)}
+                                  disabled={isBusy}
+                                >
+                                  <span className="ms ms-sm">devices_off</span>
+                                </button>
+                                <button
+                                  className="icon-btn"
+                                  title={t("setPassword")}
+                                  aria-label={t("setPassword")}
+                                  onClick={() => setSetPwUser(u)}
+                                  disabled={isBusy}
+                                >
+                                  <span className="ms ms-sm">password</span>
+                                </button>
+                                {canAssignSuper && u.role === "admin" && !u.is_super_admin && (
+                                  <button
+                                    className="icon-btn"
+                                    title={t("makeSuperAdmin")}
+                                    aria-label={t("makeSuperAdmin")}
+                                    onClick={() => setConfirmSuper(u)}
+                                    disabled={isBusy}
+                                  >
+                                    <span className="ms ms-sm">verified_user</span>
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {isMe && canAssignSuper && u.role === "admin" && !u.is_super_admin && (
+                              <button className="btn btn-sm btn-secondary" onClick={() => setConfirmSuper(u)} disabled={isBusy}>
+                                <span className="ms ms-sm">verified_user</span> {t("makeMeSuperAdmin")}
+                              </button>
+                            )}
+                            {canDeleteUser && !isMe && (
+                              <button
+                                className="icon-btn icon-btn--danger"
+                                title={tCommon("delete")}
+                                aria-label={tCommon("delete")}
+                                onClick={() => setConfirmDel(u)}
+                                disabled={isBusy}
+                              >
+                                <span className="ms ms-sm">delete</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
             </>
           )}

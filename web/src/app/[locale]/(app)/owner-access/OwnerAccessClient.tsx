@@ -87,7 +87,7 @@ export function OwnerAccessClient({ rows, locale }: { rows: AccessRow[]; locale:
 
   return (
     <div className="oa page screen-enter">
-      <style>{CSS}</style>
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="page-header">
         <div>
           <h2 className="page-title">{T(locale, "وصول الملاك إلى البوابة", "Owner portal access")}</h2>
