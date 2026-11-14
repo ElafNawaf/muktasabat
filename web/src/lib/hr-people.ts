@@ -8,6 +8,24 @@ export type Contract = {
   accepted_name?: string | null; declined_note?: string | null; terminated_at?: string | null; termination_reason?: string | null; days_left?: number | null;
   basic_salary?: number; housing_allowance?: number; transport_allowance?: number; other_allowance?: number; other_allowance_label?: string | null;
   total_salary?: number; employee?: string;
+  template_id?: number | null; has_body?: boolean; body_custom?: boolean; needs_signed?: boolean;
+  signed_status?: "uploaded" | "verified" | "rejected" | null; signed_filename?: string | null; signed_uploaded_at?: string | null;
+  signed_uploaded_by?: string | null; signed_reviewed_at?: string | null; signed_reviewed_by?: string | null; signed_note?: string | null;
+};
+export type ContractDoc = Contract & {
+  body?: string | null; company_name_ar?: string | null; company_name_en?: string | null; company_cr?: string | null; company_color?: string | null;
+  is_self: boolean; can_review: boolean; can_upload_hr: boolean;
+};
+export type ContractTemplate = {
+  id: number; company_id?: number | null; company?: string | null; name: string; contract_type: string; body_ar: string; body_en?: string | null;
+  probation_days: number; duration_months?: number | null; working_hours_week: number; annual_leave_days: number; notice_days: number;
+  requires_signed_copy: boolean; is_default: boolean; active: boolean; updated_by?: string | null; updated_at?: string | null; used: number; unknown: string[];
+};
+export type Placeholder = { key: string; label: string; sample: string };
+export type ContractsDesk = {
+  contracts: Contract[];
+  counts: { waiting_employee: number; signed_to_verify: number; missing_signed: number; drafts: number; no_contract: number };
+  no_contract: { user_id: number; name: string }[];
 };
 export type Asset = {
   id: number; tag: string; company_id?: number | null; company?: string | null; kind: string; name: string; brand_model?: string | null; serial?: string | null;
@@ -39,6 +57,7 @@ export const HP = {
   gender: { male: ["ذكر", "Male"], female: ["أنثى", "Female"] } as Record<string, Pair>,
   idType: { national_id: ["هوية وطنية", "National ID"], iqama: ["إقامة", "Iqama"] } as Record<string, Pair>,
   ctype: { fixed: ["محدد المدة", "Fixed term"], unlimited: ["غير محدد المدة", "Open-ended"], part_time: ["دوام جزئي", "Part time"], temporary: ["مؤقت", "Temporary"] } as Record<string, Pair>,
+  signed: { uploaded: ["النسخة الموقعة بانتظار التحقق", "Signed copy to verify"], verified: ["النسخة الموقعة معتمدة", "Signed copy verified"], rejected: ["أُعيدت النسخة الموقعة", "Signed copy sent back"], missing: ["بانتظار النسخة الموقعة", "Signed copy missing"] } as Record<string, Pair>,
   cstate: { draft: ["مسودة", "Draft"], pending_acceptance: ["بانتظار موافقة الموظف", "Waiting for employee"], upcoming: ["يبدأ لاحقًا", "Starts later"], active: ["ساري", "Active"], expired: ["منتهي", "Expired"], terminated: ["منهي", "Ended"] } as Record<string, Pair>,
   akind: {
     laptop: ["حاسب محمول", "Laptop"], desktop: ["حاسب مكتبي", "Desktop"], phone: ["جوال", "Phone"], tablet: ["جهاز لوحي", "Tablet"], car: ["سيارة", "Car"], sim: ["شريحة اتصال", "SIM card"],

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ImageGalleryEditor } from "@/components/ImageGalleryEditor";
@@ -57,6 +58,7 @@ const WO: Record<string, [string, string, string]> = {
 type Tab = "units" | "leases" | "money" | "maintenance" | "details";
 
 export function BuildingDetail({ ov, building, owners, users, units, locale }: { ov: BuildingOverview; building: Building; owners: Owner[]; users: UserPick[]; units: Unit[]; locale: string }) {
+  const router = useRouter();
   const { can } = usePermissions();
   const canEdit = can("properties", "edit");
   const canCreate = can("properties", "create");
@@ -233,6 +235,12 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
 
       {tab === "money" && (
         <section className="bd-panel" key="money">
+          <nav className="xl-related">
+            <Link href={`/${locale}/payments?building=${ov.id}`}><span className="ms ms-sm" aria-hidden>payments</span>{t("كل دفعات العقار", "All payments for this property")}</Link>
+            <Link href={`/${locale}/payments?building=${ov.id}&status=overdue`}><span className="ms ms-sm" aria-hidden>warning</span>{t("المتأخرات", "Overdue")}</Link>
+            <Link href={`/${locale}/collections`}><span className="ms ms-sm" aria-hidden>savings</span>{t("متابعة التحصيل", "Collections follow-up")}</Link>
+            <Link href={`/${locale}/expenses?building=${ov.id}`}><span className="ms ms-sm" aria-hidden>receipt_long</span>{t("مصروفات العقار", "Property expenses")}</Link>
+          </nav>
           <div className="card bd-chart">
             <header><h3>{t("التحصيل الشهري", "Monthly collections")}</h3><span className="bd-legend"><i className="c1" />{t("المحصّل", "Collected")}<i className="c2" />{t("المستحق", "Due")}</span></header>
             <div className="bd-bars">
@@ -252,7 +260,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
               <thead><tr><th>{t("الاستحقاق", "Due")}</th><th>{t("الوحدة", "Unit")}</th><th>{t("المستأجر", "Tenant")}</th><th>{t("المبلغ", "Amount")}</th><th>{t("الحالة", "Status")}</th><th>{t("السداد", "Paid")}</th></tr></thead>
               <tbody>
                 {ov.payments.map((p) => (
-                  <tr key={p.id}>
+                  <tr key={p.id} className="mx-row" tabIndex={0} onClick={() => router.push(`/${locale}/payments?building=${ov.id}&open=${p.id}`)} onKeyDown={(e) => e.key === "Enter" && router.push(`/${locale}/payments?building=${ov.id}&open=${p.id}`)}>
                     <td>{fmtD(p.due_date)}</td><td>{p.unit}</td><td>{p.tenant ?? "—"}</td><td className="num">{money(locale, p.amount)}</td>
                     <td><span className={`bd-pill bd-pill--${PAY[p.state][2]}`}>{t(PAY[p.state][0], PAY[p.state][1])}</span></td>
                     <td className="text-sec">{p.paid_date ? `${fmtD(p.paid_date)}${p.receipt ? ` · ${p.receipt}` : ""}` : "—"}</td>
@@ -284,7 +292,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
             )}
           </div>
           <div className="card">
-            <header className="bd-card-h"><h3>{t("المصروفات (12 شهراً)", "Expenses (12 months)")}</h3><Link className="bd-link" href={`/${locale}/expenses`}>{t("كل المصروفات", "All expenses")}</Link></header>
+            <header className="bd-card-h"><h3>{t("المصروفات (12 شهراً)", "Expenses (12 months)")}</h3><Link className="bd-link" href={`/${locale}/expenses?building=${ov.id}`}>{t("كل المصروفات", "All expenses")}</Link></header>
             {ov.expenses.length === 0 ? <p className="text-sec">{t("لا توجد مصروفات.", "No expenses.")}</p> : (
               <ul className="bd-list">
                 {ov.expenses.map((e) => (
@@ -384,7 +392,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
             </div>
             <footer>
               {canEdit && unitObj[open.id] && <button className="btn btn-secondary" onClick={() => { setUnitForm({ open: true, unit: unitObj[open.id] }); setOpen(null); }}><span className="ms ms-sm">edit</span>{t("تعديل الوحدة", "Edit unit")}</button>}
-              <Link className="btn btn-secondary" href={`/${locale}/payments`}><span className="ms ms-sm">payments</span>{t("الدفعات", "Payments")}</Link>
+              <Link className="btn btn-secondary" href={`/${locale}/payments?unit=${open.id}`}><span className="ms ms-sm">payments</span>{t("الدفعات", "Payments")}</Link>
             </footer>
           </aside>
         </div>

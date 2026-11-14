@@ -238,9 +238,16 @@ def _contract_json(c: Contract, reports: dict[int, PaymentReport], today: date, 
 
 
 @router.get("/me")
-def me(scope: ScopeDep, locale: LocaleDep):
+def me(scope: ScopeDep, locale: LocaleDep, db: DbSession, user: CurrentUser):
     t = scope.tenant
+    link = scope.link or db.scalar(select(TenantUser).where(TenantUser.tenant_id == t.id))
     return {
+        # Staff preview: the tenant's portal account (support tickets are filed under it) and what staff may do for them.
+        "user_id": link.user_id if link else None,
+        "staff_can": {
+            "maintenance": scope.preview and has_permission(db, user, "maintenance", "create"),
+            "support": scope.preview and link is not None,
+        },
         "tenant_id": t.id,
         "name": localized_value(t, "name", locale),
         "phone": t.phone,

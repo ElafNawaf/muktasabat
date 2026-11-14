@@ -83,10 +83,10 @@ def _row(db: Session, p: Payment, today: date, locale: str, acts: list[Collectio
     return {
         "payment_id": p.id, "contract_id": c.id if c else None, "contract_number": c.contract_number if c else None,
         "amount": p.amount, "due_date": p.due_date.isoformat(), "days_overdue": days, "bucket": _bucket(days),
-        "tenant": _name(t, locale) if t else None, "tenant_phone": t.phone if t else None,
+        "tenant_id": t.id if t else None, "tenant": _name(t, locale) if t else None, "tenant_phone": t.phone if t else None,
         "building_id": b.id if b else None, "building": _name(b, locale) if b else None,
         "unit": (u.number or _name(u, locale)) if u else None,
-        "owner": _name(db.get(Owner, b.owner_id), locale) if b and b.owner_id else None,
+        "owner_id": b.owner_id if b else None, "owner": _name(db.get(Owner, b.owner_id), locale) if b and b.owner_id else None,
         "assignee_id": a.id if a else None, "assignee": _actor(a) if a else None,
         "actions": len(acts), "last_action": last.kind if last else None, "last_action_at": last.at.isoformat() if last else None,
         "promise_date": last_promise.promise_date.isoformat() if last_promise else None,

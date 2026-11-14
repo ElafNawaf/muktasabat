@@ -158,7 +158,7 @@ export function OwnerProfile({ ov, owner, agents, locale }: { ov: OwnerOverview;
                   ))}
                 </div>
               )}
-              {can("payments", "view") && <Link className="bd-link" href={`/${locale}/payments`}>{t("فتح الدفعات", "Open payments")}</Link>}
+              {can("payments", "view") && <Link className="bd-link" href={`/${locale}/payments?owner=${ov.id}`}>{t("فتح الدفعات", "Open payments")}</Link>}
             </section>
           )}
 

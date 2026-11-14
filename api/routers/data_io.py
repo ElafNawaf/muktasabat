@@ -36,7 +36,7 @@ def _group(key: str) -> str:
         return "hr"
     if key in ("work_orders", "lease_renewals"):
         return "operations"
-    if key in ("payments", "payment_splits", "expenses"):
+    if key in ("payments", "payment_splits", "expenses", "collection_actions"):
         return "finance"
     if key in ("users", "agents", "employees", "management_companies"):
         return "organisation"

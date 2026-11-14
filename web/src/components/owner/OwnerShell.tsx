@@ -87,7 +87,8 @@ export function OwnerShell({
 
   const isOn = (href: string) => (href === "" ? path === base : path.startsWith(base + href));
   const main = nav.filter((n) => !n.self);
-  const self = nav.filter((n) => n.self && !isPreview);
+  // In a staff preview the support desk stays reachable (staff can open a ticket for the tenant); account settings don't.
+  const self = nav.filter((n) => n.self && (!isPreview || (kind === "tenant" && n.href === "/support")));
   const exportHref = (k: string) => `/api/${kind}/export?kind=${k}&locale=${locale}${as ? `&as_${kind}=${as}` : ""}`;
   const initials = ownerName.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("");
   const section = nav.filter((n) => n.href).find((n) => path.startsWith(base + n.href + "/"));
@@ -99,7 +100,7 @@ export function OwnerShell({
         <div className="ow-preview">
           <span className="ms">visibility</span>
           {kind === "tenant"
-            ? L("معاينة كما يراها المستأجر (للقراءة فقط)", "Previewing as the tenant sees it (read-only)")
+            ? L("معاينة كما يراها المستأجر — يمكنك تسجيل طلب صيانة أو تذكرة دعم باسمه", "Previewing as the tenant sees it — you can log a maintenance request or support ticket for them")
             : L("معاينة كما يراها المالك", "Previewing as the owner sees it")}
           <Link href={`/${locale}/${kind}-access`}>{L("رجوع", "Back")}</Link>
         </div>

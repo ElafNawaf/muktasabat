@@ -140,6 +140,43 @@ class HrContract(Base):
     termination_reason: Mapped[Optional[str]] = mapped_column(String(300))
     created_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    # Contract document: rendered from a template (or written by HR for this employee) and frozen on acceptance.
+    template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("hr_contract_templates.id", ondelete="SET NULL"))
+    body: Mapped[Optional[str]] = mapped_column(Text)
+    body_custom: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Signed copy (evidence): employee or HR uploads the wet-signed / scanned contract, HR verifies it.
+    signed_key: Mapped[Optional[str]] = mapped_column(String(300))
+    signed_filename: Mapped[Optional[str]] = mapped_column(String(200))
+    signed_status: Mapped[Optional[str]] = mapped_column(String(10))  # uploaded|verified|rejected
+    signed_uploaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    signed_uploaded_by: Mapped[Optional[str]] = mapped_column(String(120))
+    signed_reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    signed_reviewed_by: Mapped[Optional[str]] = mapped_column(String(120))
+    signed_note: Mapped[Optional[str]] = mapped_column(String(300))
+
+
+class HrContractTemplate(Base):
+    """Employment-contract template HR maintains per company (or group-wide when company_id is empty).
+    Text uses {{placeholders}} filled from the employee file and the contract figures."""
+    __tablename__ = "hr_contract_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[Optional[int]] = mapped_column(ForeignKey("hr_companies.id", ondelete="SET NULL"), index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    contract_type: Mapped[str] = mapped_column(String(12), default="fixed", nullable=False)
+    body_ar: Mapped[str] = mapped_column(Text, nullable=False)
+    body_en: Mapped[Optional[str]] = mapped_column(Text)
+    probation_days: Mapped[int] = mapped_column(Integer, default=90, nullable=False)
+    duration_months: Mapped[Optional[int]] = mapped_column(Integer)  # fixed-term length; empty = open-ended
+    working_hours_week: Mapped[int] = mapped_column(Integer, default=48, nullable=False)
+    annual_leave_days: Mapped[int] = mapped_column(Integer, default=21, nullable=False)
+    notice_days: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
+    requires_signed_copy: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(120))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class HrAsset(Base):

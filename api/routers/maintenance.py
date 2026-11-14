@@ -706,6 +706,7 @@ def _tenant_actor(t: Tenant) -> str:
 
 
 from api.routers.tenant_portal import ScopeDep as _TScope  # noqa: E402
+from api.tenant_portal_models import TenantUser  # noqa: E402
 
 
 @tenant_router.get("")
@@ -740,8 +741,13 @@ async def tenant_create(
     phone: Annotated[Optional[str], Form(max_length=30)] = None,
     photos: Annotated[list[UploadFile], File()] = [],  # noqa: B006
 ):
-    _no_preview(scope)
     t = scope.tenant
+    staff_actor = None
+    if scope.preview:
+        # Staff previewing the tenant's portal can log a request for them (e.g. the tenant phoned in).
+        if not has_permission(db, user, "maintenance", "create"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied: maintenance.create")
+        staff_actor = user
     units = {u["unit_id"]: u for u in _tenant_units(db, t.id, "ar")}
     if unit_id not in units:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Pick one of your leased units")
@@ -751,8 +757,12 @@ async def tenant_create(
         "category": category, "priority": "high" if urgent else "normal", "reported_by": "tenant",
         "reporter_name": t.name, "reporter_phone": (phone or t.phone or None),
     }
-    wo = _create(db, b, fields, _tenant_actor(t), user.id, None)
-    db.add(WorkOrderTenant(work_order_id=wo.id, tenant_id=t.id, user_id=user.id, contract_id=units[unit_id]["contract_id"],
+    actor = _tenant_actor(t) if staff_actor is None else f"{_tenant_actor(t)} — {staff_actor.full_name_ar or staff_actor.full_name or staff_actor.username}"
+    wo = _create(db, b, fields, actor, user.id, None)
+    if staff_actor is not None:
+        _log(wo, staff_actor.full_name_ar or staff_actor.full_name or staff_actor.username, "note", "سُجّل نيابةً عن المستأجر من معاينة بوابته | Logged for the tenant from their portal preview")
+    tenant_user_id = scope.link.user_id if scope.link else db.scalar(select(TenantUser.user_id).where(TenantUser.tenant_id == t.id))
+    db.add(WorkOrderTenant(work_order_id=wo.id, tenant_id=t.id, user_id=tenant_user_id if staff_actor else user.id, contract_id=units[unit_id]["contract_id"],
                            preferred_time=(preferred_time or "").strip() or None, allow_entry=allow_entry))
     await _store_photos(db, wo, photos, _tenant_actor(t), "tenant")
     db.commit()

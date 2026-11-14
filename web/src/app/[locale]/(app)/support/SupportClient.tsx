@@ -33,6 +33,7 @@ export function SupportClient({
   openNew,
   base,
   contact,
+  onBehalf,
 }: {
   contact?: SupportContactInfo;
   tickets: TicketSummary[];
@@ -43,6 +44,8 @@ export function SupportClient({
   locale: string;
   openNew: boolean;
   base?: string;
+  /** Staff previewing a tenant's portal: tickets belong to the tenant's account. */
+  onBehalf?: { userId: number; name: string; qs: string };
 }) {
   const root = base ?? `/${locale}`;
   // Handlers (support staff or technicians with assigned tickets) get the desk view.
@@ -95,6 +98,13 @@ export function SupportClient({
           <span className="ms">add</span> {t("newTicket")}
         </button>
       </div>
+
+      {onBehalf && (
+        <div className="xl-scope" role="status">
+          <span className="ms ms-sm" aria-hidden>person</span>
+          <span>{locale === "ar" ? <>التذاكر هنا تخص <b>{onBehalf.name}</b>. التذكرة التي تفتحها تُسجَّل باسمه ويصله إشعار، مع ملاحظة أنك فتحتها نيابةً عنه.</> : <>These are <b>{onBehalf.name}</b>&apos;s tickets. A ticket you open is filed under their account and they&apos;re notified, noting you opened it for them.</>}</span>
+        </div>
+      )}
 
       {isStaff ? (
         <div className="kpi-grid">
@@ -270,7 +280,7 @@ export function SupportClient({
         </aside>
       </div>
 
-      <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} locale={locale} base={root} />
+      <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} locale={locale} base={root} onBehalfOf={onBehalf?.userId} qs={onBehalf?.qs} />
     </div>
   );
 }

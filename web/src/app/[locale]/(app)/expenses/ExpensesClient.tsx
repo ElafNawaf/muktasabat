@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
 import {
@@ -15,6 +16,7 @@ import { usePermissions } from "@/components/PermissionsProvider";
 import { deleteExpense } from "@/lib/actions";
 import { EXPENSE_CATEGORIES } from "@/lib/expense-categories";
 import { formatDate, formatSAR } from "@/lib/format";
+import { clearQuery, useQuery } from "@/lib/use-query";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
 import { ExpenseFormModal } from "./ExpenseFormModal";
@@ -45,12 +47,15 @@ export function ExpensesClient({
   buildings,
   units,
   locale,
+  workOrders = {},
 }: {
   expenses: ExpenseRow[];
   owners: Owner[];
   buildings: Building[];
   units: Unit[];
   locale: string;
+  /** expense id → work order that posted it */
+  workOrders?: Record<number, { id: number; number: string }>;
 }) {
   const t = useTranslations("expensesPage");
   const tCommon = useTranslations("common");
@@ -58,6 +63,9 @@ export function ExpensesClient({
   const { can } = usePermissions();
   const canCreate = can("expenses", "create");
   const canDelete = can("expenses", "delete");
+  const canEdit = can("expenses", "edit");
+  const ar = locale === "ar";
+  const L = (en: string, a: string) => (ar ? a : en);
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
@@ -66,6 +74,17 @@ export function ExpensesClient({
   const [confirmDel, setConfirmDel] = useState<ExpenseRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Deep links: ?building= ?owner= ?unit= ?category= ?q=
+  const qp = useQuery();
+  const [scope, setScope] = useState<{ key: "building" | "owner" | "unit"; id: number } | null>(null);
+  useEffect(() => {
+    for (const key of ["building", "owner", "unit"] as const) {
+      const id = Number(qp[key]);
+      if (id) { setScope({ key, id }); break; }
+    }
+    if (qp.category) setCategoryFilter(qp.category);
+    if (qp.q) setSearch(qp.q);
+  }, [qp]);
 
   const ownerOf = (id: number | null) =>
     id == null ? null : owners.find((o) => o.id === id) ?? null;
@@ -74,7 +93,21 @@ export function ExpensesClient({
   const unitOf = (id: number | null) =>
     id == null ? null : units.find((u) => u.id === id) ?? null;
 
-  const filtered = expenses.filter((e) => {
+  const inScope = (e: ExpenseRow) => {
+    if (!scope) return true;
+    if (scope.key === "unit") return e.unit_id === scope.id;
+    if (scope.key === "building") return e.building_id === scope.id || (e.unit_id != null && unitOf(e.unit_id)?.building_id === scope.id);
+    const b = e.building_id != null ? buildingOf(e.building_id) : null;
+    return e.owner_id === scope.id || b?.owner_id === scope.id;
+  };
+  const scopeLabel = !scope ? "" : scope.key === "owner"
+    ? `${L("Owner", "المالك")}: ${(() => { const o = ownerOf(scope.id); return o ? localized(o, "name", locale) : scope.id; })()}`
+    : scope.key === "building"
+      ? `${L("Property", "العقار")}: ${(() => { const b = buildingOf(scope.id); return b ? localized(b, "name", locale) : scope.id; })()}`
+      : `${L("Unit", "الوحدة")} ${unitOf(scope.id)?.number ?? scope.id}`;
+  const scopedRows = expenses.filter(inScope);
+
+  const filtered = scopedRows.filter((e) => {
     if (categoryFilter !== "all" && e.category !== categoryFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
@@ -97,12 +130,12 @@ export function ExpensesClient({
   });
 
   const totals = {
-    total: expenses.length,
-    sum: expenses.reduce((s, e) => s + e.amount, 0),
-    monthSum: expenses
+    total: scopedRows.length,
+    sum: scopedRows.reduce((s, e) => s + e.amount, 0),
+    monthSum: scopedRows
       .filter((e) => e.expense_date.slice(0, 7) === new Date().toISOString().slice(0, 7))
       .reduce((s, e) => s + e.amount, 0),
-    companyPaid: expenses
+    companyPaid: scopedRows
       .filter((e) => e.paid_by === "company")
       .reduce((s, e) => s + e.amount, 0),
   };
@@ -124,10 +157,12 @@ export function ExpensesClient({
   };
 
   const categories = Array.from(new Set(expenses.map((e) => e.category)));
-  const filtersActive = categoryFilter !== "all" || search.trim() !== "";
+  const filtersActive = categoryFilter !== "all" || search.trim() !== "" || scope != null;
   const clearFilters = () => {
     setSearch("");
     setCategoryFilter("all");
+    setScope(null);
+    clearQuery(["building", "owner", "unit", "category", "q"]);
   };
 
   return (
@@ -137,7 +172,17 @@ export function ExpensesClient({
           <h2 className="page-title">{t("title")}</h2>
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="xl-links">
+          {can("payments", "view") && (
+            <Link className="btn btn-secondary" href={`/${locale}/payments${scope ? `?${scope.key}=${scope.id}` : ""}`}>
+              <span className="ms ms-sm">payments</span>{L("Payments", "الدفعات")}
+            </Link>
+          )}
+          {can("maintenance", "view") && (
+            <Link className="btn btn-secondary" href={`/${locale}/maintenance`}>
+              <span className="ms ms-sm">handyman</span>{L("Work orders", "أوامر الصيانة")}
+            </Link>
+          )}
           {canCreate && (
           <button className="btn btn-primary" onClick={() => setFormOpen(true)}>
             <span className="ms">add</span> {t("newExpense")}
@@ -145,6 +190,14 @@ export function ExpensesClient({
           )}
         </div>
       </div>
+
+      {scope && (
+        <div className="xl-scope" role="status">
+          <span className="ms ms-sm" aria-hidden>filter_alt</span>
+          <span>{L("Showing expenses for", "تعرض مصروفات")} <b>{scopeLabel}</b></span>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setScope(null); clearQuery(["building", "owner", "unit"]); }}>{L("Show all expenses", "عرض كل المصروفات")}</button>
+        </div>
+      )}
 
       <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
         <Kpi icon="receipt_long" label={t("total")} value={String(totals.total)} />
@@ -230,7 +283,7 @@ export function ExpensesClient({
                 const o = ownerOf(e.owner_id);
                 const b = buildingOf(e.building_id);
                 const u = unitOf(e.unit_id);
-                const scope = u
+                const rowScope = u
                   ? `${b ? localized(b, "name", locale) : ""} · #${u.number}`
                   : b
                     ? localized(b, "name", locale)
@@ -245,9 +298,14 @@ export function ExpensesClient({
                     <td>
                       <span className="badge">{t(`categories.${e.category}`)}</span>
                     </td>
-                    <td>{localized(e, "description", locale) || e.description}</td>
+                    <td>
+                      {localized(e, "description", locale) || e.description}
+                      {workOrders[e.id] && (
+                        <div><Link className="xl-a xl-a--sub" href={`/${locale}/maintenance?open=${workOrders[e.id].id}`}><span className="ms ms-sm" aria-hidden>handyman</span>{L("Work order", "أمر الصيانة")} {workOrders[e.id].number}</Link></div>
+                      )}
+                    </td>
                     <td className="text-sec" style={{ fontSize: 12 }}>
-                      {scope}
+                      {b ? <Link className="xl-a xl-a--sub" href={`/${locale}/properties/${b.id}`}>{rowScope}</Link> : o ? <Link className="xl-a xl-a--sub" href={`/${locale}/owners/${o.id}`}>{rowScope}</Link> : rowScope}
                     </td>
                     <td className="text-sec" style={{ fontSize: 12 }}>
                       {e.vendor_name ?? "—"}
@@ -260,6 +318,7 @@ export function ExpensesClient({
                     </td>
                     <td>
                       <div className="actions" style={{ display: "flex", gap: 4 }}>
+                        {canEdit && (
                         <button
                           className="icon-btn"
                           title={tCommon("edit")}
@@ -270,6 +329,7 @@ export function ExpensesClient({
                         >
                           <span className="ms ms-sm">edit</span>
                         </button>
+                        )}
                         {canDelete && (
                           <button
                             className="icon-btn"

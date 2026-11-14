@@ -51,6 +51,7 @@ from api.routers import (
     collections,
     hr,
     hr_people,
+    hr_contracts,
     tenant_portal,
     entity_overview,
     people_overview,
@@ -108,8 +109,11 @@ async def lifespan(app: FastAPI):
     ensure_hr_location_columns(engine)
     from api.routers.hr_people import seed_companies
 
+    from api.services.hr_contract_docs import seed_templates
+
     with SessionLocal() as db:
         seed_companies(db)
+        seed_templates(db)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -255,6 +259,7 @@ app.include_router(approvals.router, prefix=API_V1)
 app.include_router(collections.router, prefix=API_V1)
 app.include_router(hr.router, prefix=API_V1)
 app.include_router(hr_people.router, prefix=API_V1)
+app.include_router(hr_contracts.router, prefix=API_V1)
 app.include_router(tenant_portal.router, prefix=API_V1)
 app.include_router(owner_portal_detail.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)

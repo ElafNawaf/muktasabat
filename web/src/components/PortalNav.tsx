@@ -161,6 +161,7 @@ const SUB_LABELS: Record<string, [string, string]> = {
   settings: ["الإعدادات", "Settings"],
   people: ["الموظفون", "Employees"],
   file: ["ملفي الوظيفي", "My employee file"],
+  contracts: ["عقود العمل", "Employment contracts"],
   attendance: ["لوحة الحضور", "Attendance dashboard"],
   leads: ["الاستفسارات", "Leads"],
   applications: ["طلبات التوظيف", "Applications"],
@@ -193,7 +194,9 @@ export function useTrail(title?: string): { crumbs: Crumb[]; parent: string } {
     const nav = i === 0 ? items.find((it) => it.id === p) : undefined;
     const sub = SUB_LABELS[p];
     const label = nav?.label ?? (sub ? sub[ar ? 0 : 1] : last && title ? title : decodeURIComponent(p));
-    crumbs.push({ label: last && title && i > 0 && !sub ? title : label, href: last ? undefined : acc });
+    // Folders without a page of their own point at the page that lists them.
+    const href = last ? undefined : acc.endsWith("/my-hr/contracts") ? `/${locale}/my-hr/file?tab=contracts` : acc;
+    crumbs.push({ label: last && title && i > 0 && !sub ? title : label, href });
   });
   const parentParts = parts.slice(0, -1);
   const parent = parentParts.length ? `/${locale}/${parentParts.join("/")}` : home?.href ?? `/${locale}/dashboard`;
