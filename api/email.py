@@ -160,10 +160,12 @@ def _record(msg: EmailMessage, status: str, error: str | None) -> None:
         logger.exception("Could not write e-mail log row")
 
 
-def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
-    """The one Muktasabat email template: logo + Arabic/English company name on
-    the brand maroon, Arabic section (RTL) then English section, branded footer.
-    Table-based inline-styled HTML so Gmail, Outlook and iOS Mail render it."""
+def _frame(content_rows: str, *, preheader: str = "") -> str:
+    """The one Muktasabat email frame: logo + Arabic/English company name on the
+    brand maroon, the given content rows, branded footer. Table-based inline-styled
+    HTML so Gmail, Outlook and iOS Mail render it. Marked translate="no": every
+    message is already bilingual, and browser auto-translation would otherwise
+    turn the Arabic half into English."""
     base = get_settings().web_base_url.rstrip("/")
     logo = f"{base}/brand/email-logo.png"
     font = "Tahoma,Segoe UI,Arial,sans-serif"
@@ -171,12 +173,14 @@ def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
         f"<div style='display:none;max-height:0;overflow:hidden;opacity:0'>{preheader}</div>" if preheader else ""
     )
     return (
-        "<!doctype html><html><head><meta name='color-scheme' content='light only'>"
+        "<!doctype html><html translate='no'><head><meta name='google' content='notranslate'><meta name='color-scheme' content='light only'>"
         "<meta name='supported-color-schemes' content='light'>"
         "<style>:root{color-scheme:light only;supported-color-schemes:light}"
-        "u+.body .mk-maroon{background-image:linear-gradient(#7B1A1A,#7B1A1A)!important}</style></head>"
-        f"<body class='body' style='margin:0;padding:0;background:#F5EFE4'>{pre}"
-        "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#F5EFE4'><tr><td align='center' style='padding:28px 12px'>"
+        "u+.body .mk-maroon{background-image:linear-gradient(#7B1A1A,#7B1A1A)!important}"
+        "@media (max-width:480px){.mk-body{padding:16px 10px 20px!important}.mk-tile-v{font-size:15px!important}"
+        ".mk-outer{padding:12px 4px!important}}</style></head>"
+        f"<body class='body notranslate' translate='no' style='margin:0;padding:0;background:#F5EFE4'>{pre}"
+        "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#F5EFE4'><tr><td align='center' class='mk-outer' style='padding:28px 12px'>"
         "<table role='presentation' width='600' cellpadding='0' cellspacing='0' style='width:100%;max-width:600px;background:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #E3DDD2'>"
         # Header: logo + names
         "<tr><td class='mk-maroon' bgcolor='#7B1A1A' style='background:#7B1A1A;background-image:linear-gradient(#7B1A1A,#7B1A1A);padding:22px 28px'>"
@@ -187,11 +191,7 @@ def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
         "<div style='font-size:13px;color:#E9DCC6;letter-spacing:.3px' dir='ltr'>Muktasabat Real Estate</div>"
         "</td></tr></table></td></tr>"
         "<tr><td style='height:4px;background:#E9DCC6;line-height:4px;font-size:0'>&nbsp;</td></tr>"
-        # Arabic
-        f"<tr><td dir='rtl' style='padding:28px 28px 8px;text-align:right;font-family:{font};font-size:15px;line-height:1.9;color:#1F2328'>{inner_ar}</td></tr>"
-        "<tr><td style='padding:0 28px'><div style='border-top:1px solid #E3DDD2;height:1px;line-height:1px;font-size:0'>&nbsp;</div></td></tr>"
-        # English
-        f"<tr><td dir='ltr' style='padding:20px 28px 28px;text-align:left;font-family:{font};font-size:14.5px;line-height:1.7;color:#1F2328'>{inner_en}</td></tr>"
+        + content_rows +
         # Footer
         f"<tr><td style='background:#FAF7F1;border-top:1px solid #E3DDD2;padding:18px 28px;font-family:{font};font-size:12.5px;color:#5D636B;text-align:center;line-height:1.8'>"
         "<div dir='rtl'><strong style='color:#7B1A1A'>شركة مكتسبات العقارية</strong> · Muktasabat Real Estate</div>"
@@ -199,6 +199,26 @@ def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
         "<div dir='rtl'>رسالة آلية، يرجى عدم الرد عليها.</div>"
         "<div dir='ltr'>This is an automated message, please do not reply.</div>"
         "</td></tr></table></td></tr></table></body></html>"
+    )
+
+
+def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
+    """Arabic section (RTL), divider, English section (LTR) inside the frame."""
+    font = "Tahoma,Segoe UI,Arial,sans-serif"
+    return _frame(
+        f"<tr><td dir='rtl' style='padding:28px 28px 8px;text-align:right;font-family:{font};font-size:15px;line-height:1.9;color:#1F2328'>{inner_ar}</td></tr>"
+        "<tr><td style='padding:0 28px'><div style='border-top:1px solid #E3DDD2;height:1px;line-height:1px;font-size:0'>&nbsp;</div></td></tr>"
+        f"<tr><td dir='ltr' style='padding:20px 28px 28px;text-align:left;font-family:{font};font-size:14.5px;line-height:1.7;color:#1F2328'>{inner_en}</td></tr>",
+        preheader=preheader,
+    )
+
+
+def _branded_one(inner: str, *, preheader: str = "") -> str:
+    """One mixed Arabic + English body (each element sets its own direction)."""
+    font = "Tahoma,Segoe UI,Arial,sans-serif"
+    return _frame(
+        f"<tr><td class='mk-body' style='padding:24px 22px 26px;font-family:{font};font-size:14px;line-height:1.6;color:#1F2328'>{inner}</td></tr>",
+        preheader=preheader,
     )
 
 
