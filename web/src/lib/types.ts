@@ -408,6 +408,7 @@ export type ModuleId =
   | "agents"
   | "tenants"
   | "expenses"
+  | "maintenance"
   | "users"
   | "website"
   | "support";
@@ -437,6 +438,8 @@ export const MODULE_IDS: ModuleId[] = [
   // Finance
   "payments",
   "expenses",
+  // Operations
+  "maintenance",
   // Management
   "users",
   "owner_portal",
