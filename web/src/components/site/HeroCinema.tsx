@@ -210,6 +210,11 @@ export function HeroCinema(p: HeroCinemaProps) {
         <div className="mk-cine__veil" />
         <div className="mk-cine__grain" />
         <div className="mk-cine__glow" />
+        <div className="mk-dust">
+          {Array.from({ length: 18 }, (_, i) => (
+            <span key={i} style={{ ["--x" as string]: `${(i * 53) % 100}%`, ["--d" as string]: `${9 + ((i * 7) % 9)}s`, ["--w" as string]: `${i * 0.7}s`, ["--s" as string]: `${3 + (i % 4) * 2}px` }} />
+          ))}
+        </div>
       </div>
 
       <ul className="mk-floaters" aria-hidden="true">
