@@ -1,0 +1,143 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
+import { RequestDrawer, RequestModal } from "@/components/hr/HrForms";
+import { hrCheckIn, hrCheckOut, hrMyAttendance } from "@/lib/hr-actions";
+import { HR, hl, mins, statusClass, type Balance, type DayStatus, type HrReq } from "@/lib/hr-labels";
+
+export type MyHr = {
+  user: { id: number; name: string; job_title?: string | null; department?: string | null; employee_no?: string | null; hire_date?: string | null;
+    ticket_entitlement: string; ticket_destination?: string | null; ticket_class: string; ticket_family_members: number };
+  balance: Balance; today: DayStatus; work: { start: string; end: string; grace: number; weekend: number[] };
+  approver?: string | null; requests: HrReq[]; colleagues: { id: number; name: string }[];
+};
+
+export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }: { locale: string; data: MyHr; days: (DayStatus & { day: string })[]; month: string; meId: number }) {
+  const ar = locale === "ar";
+  const T = (a: string, e: string) => (ar ? a : e);
+  const router = useRouter();
+  const [newKind, setNewKind] = useState<null | "leave" | "permission" | "ticket">(null);
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [month, setMonth] = useState(m0);
+  const [days, setDays] = useState(initialDays);
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const t = data.today;
+  const b = data.balance;
+  const pct = b.entitlement ? Math.min(100, ((b.used + b.pending) / b.entitlement) * 100) : 0;
+
+  const clock = (fn: typeof hrCheckIn) => start(async () => {
+    setErr(null);
+    const r = await fn();
+    if (!r.ok) return setErr(r.error);
+    router.refresh();
+    const d = await hrMyAttendance(month);
+    if (d.ok) setDays(d.data as typeof days);
+  });
+  const changeMonth = (m: string) => { setMonth(m); hrMyAttendance(m).then((d) => d.ok && setDays(d.data as typeof days)); };
+  const lead = days.length ? (new Date(days[0].day + "T00:00:00").getDay() + 1) % 7 : 0; // grid starts Saturday
+
+  return (
+    <div className="page screen-enter hr">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">{T("خدماتي الوظيفية", "My HR")}</h2>
+          <div className="page-subtitle">{[data.user.job_title, data.user.department, data.user.employee_no && `#${data.user.employee_no}`].filter(Boolean).join(" · ") || data.user.name}</div>
+        </div>
+        <div className="hr-new">
+          <button className="btn btn-primary" onClick={() => setNewKind("leave")}><span className="ms">beach_access</span>{T("طلب إجازة", "Request leave")}</button>
+          <button className="btn btn-secondary" onClick={() => setNewKind("permission")}><span className="ms">schedule</span>{T("استئذان", "Permission")}</button>
+          <button className="btn btn-secondary" onClick={() => setNewKind("ticket")}><span className="ms">flight</span>{T("تذكرة سفر", "Travel ticket")}</button>
+        </div>
+      </div>
+
+      <div className="hr-top">
+        <section className={`hr-clock hr-clock--${t.status}`}>
+          <div className="hr-clock__head">
+            <span className="ms" aria-hidden>badge</span>
+            <div><strong>{T("حضور اليوم", "Today")}</strong><span>{T(`الدوام ${data.work.start} – ${data.work.end}`, `Hours ${data.work.start} – ${data.work.end}`)}</span></div>
+            <span className={`hr-day hr-day--${t.status}`}>{hl(ar, HR.day, t.status)}{t.late_minutes ? ` · ${mins(t.late_minutes, ar)}` : ""}</span>
+          </div>
+          <div className="hr-clock__times">
+            <div><span>{T("الحضور", "Check in")}</span><strong dir="ltr">{t.check_in ?? "--:--"}</strong></div>
+            <div><span>{T("الانصراف", "Check out")}</span><strong dir="ltr">{t.check_out ?? "--:--"}</strong></div>
+            <div><span>{T("ساعات العمل", "Worked")}</span><strong>{t.worked_minutes != null ? mins(t.worked_minutes, ar) : "—"}</strong></div>
+          </div>
+          {t.status !== "on_leave" && (
+            !t.check_in
+              ? <button className="btn btn-primary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckIn)}><span className="ms">login</span>{T("تسجيل الحضور", "Check in")}</button>
+              : !t.check_out
+                ? <button className="btn btn-secondary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckOut)}><span className="ms">logout</span>{T("تسجيل الانصراف", "Check out")}</button>
+                : <p className="text-sec">{T("سُجّل حضورك وانصرافك اليوم.", "You're checked in and out for today.")}</p>
+          )}
+          {err && <p className="mx-err">{err}</p>}
+        </section>
+
+        <section className="hr-bal">
+          <div className="hr-bal__main">
+            <span>{T(`رصيد الإجازة السنوية ${b.year}`, `Annual leave ${b.year}`)}</span>
+            <strong>{b.remaining}<small> / {b.entitlement} {T("يوم", "days")}</small></strong>
+            <div className="hr-meter" aria-hidden><i style={{ width: `${pct}%` }} /></div>
+            <p className="text-sec">{T(`مستخدم ${b.used} · قيد الاعتماد ${b.pending}`, `${b.used} used · ${b.pending} pending`)}</p>
+          </div>
+          <div className="hr-bal__row">
+            <div><span>{T("استئذانات هذا الشهر", "Permissions this month")}</span><strong>{mins(b.permission_minutes_month, ar)}<small> / {mins(b.permission_minutes_cap, ar)}</small></strong></div>
+            <div><span>{T("تذكرة السفر", "Ticket entitlement")}</span><strong>{hl(ar, HR.ticketEnt, data.user.ticket_entitlement)}</strong>
+              {data.user.ticket_entitlement !== "none" && <small className="text-sec">{[data.user.ticket_destination, hl(ar, HR.cls, data.user.ticket_class), data.user.ticket_family_members ? T(`+${data.user.ticket_family_members} مرافقين`, `+${data.user.ticket_family_members} family`) : null].filter(Boolean).join(" · ")}</small>}
+            </div>
+          </div>
+          {data.approver && <p className="text-sec hr-appr"><span className="ms ms-sm">verified_user</span>{T(`يعتمد طلباتك: ${data.approver}`, `Your requests are approved by ${data.approver}`)}</p>}
+        </section>
+      </div>
+
+      <section className="card hr-sec">
+        <header className="hr-sec__head"><h3>{T("طلباتي", "My requests")}</h3></header>
+        {data.requests.length === 0 ? <p className="text-sec">{T("لم تقدّم أي طلب بعد.", "You haven't made any requests yet.")}</p> : (
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead><tr><th>{T("الطلب", "Request")}</th><th>{T("التفاصيل", "Details")}</th><th>{T("الحالة", "Status")}</th><th>{T("التاريخ", "Submitted")}</th></tr></thead>
+              <tbody>
+                {data.requests.map((r) => (
+                  <tr key={r.id} className="mx-row" tabIndex={0} onClick={() => setOpenId(r.id)} onKeyDown={(e) => e.key === "Enter" && setOpenId(r.id)}>
+                    <td><strong>{hl(ar, HR.kind, r.kind)}</strong><div className="text-sec" style={{ fontSize: 12 }}>{r.number}</div></td>
+                    <td>{r.summary}</td>
+                    <td><span className={`mx-status ${statusClass(r.status)}`}>{hl(ar, HR.status, r.status)}</span></td>
+                    <td className="text-sec">{r.created_at.slice(0, 10)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="card hr-sec">
+        <header className="hr-sec__head">
+          <h3>{T("سجل حضوري", "My attendance")}</h3>
+          <input className="input hr-month" type="month" value={month} max={m0} onChange={(e) => e.target.value && changeMonth(e.target.value)} />
+        </header>
+        <div className="hr-cal" role="grid">
+          {[5, 6, 0, 1, 2, 3, 4].map((w) => <div key={w} className="hr-cal__wd">{HR.weekday[w][ar ? 0 : 1]}</div>)}
+          {Array.from({ length: lead }).map((_, i) => <div key={`x${i}`} />)}
+          {days.map((d) => (
+            <div key={d.day} className={`hr-cal__d hr-cal__d--${d.status}`} title={`${d.day} · ${hl(ar, HR.day, d.status)}${d.check_in ? ` · ${d.check_in}–${d.check_out ?? ""}` : ""}`}>
+              <b>{Number(d.day.slice(8))}</b>
+              <span dir="ltr">{d.check_in ? `${d.check_in}${d.check_out ? `–${d.check_out}` : ""}` : d.status === "on_leave" ? hl(ar, HR.day, "on_leave") : ""}</span>
+            </div>
+          ))}
+        </div>
+        <div className="hr-legend">{(["present", "late", "absent", "on_leave", "weekend"] as const).map((k) => <span key={k}><i className={`hr-cal__d--${k}`} />{hl(ar, HR.day, k)}</span>)}</div>
+      </section>
+
+      {newKind && (
+        <RequestModal locale={locale} kind={newKind} colleagues={data.colleagues}
+          leaves={data.requests.filter((r) => r.kind === "leave" && ["pending", "approved"].includes(r.status))}
+          defaults={{ to_city: data.user.ticket_destination, travel_class: data.user.ticket_class, travellers: 1 + (data.user.ticket_family_members || 0) }}
+          onClose={() => setNewKind(null)} onDone={(r) => { setNewKind(null); router.refresh(); setOpenId(r.id); }} />
+      )}
+      {openId != null && <RequestDrawer id={openId} locale={locale} meId={meId} can={{}} onClose={() => { setOpenId(null); router.refresh(); }} />}
+    </div>
+  );
+}

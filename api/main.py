@@ -47,6 +47,7 @@ from api.routers import (
     renewals,
     approvals,
     collections,
+    hr,
     tenant_portal,
     entity_overview,
     owner_portal_detail,
@@ -228,6 +229,7 @@ app.include_router(renewals.router, prefix=API_V1)
 app.include_router(renewals.owner_router, prefix=API_V1)
 app.include_router(approvals.router, prefix=API_V1)
 app.include_router(collections.router, prefix=API_V1)
+app.include_router(hr.router, prefix=API_V1)
 app.include_router(tenant_portal.router, prefix=API_V1)
 app.include_router(owner_portal_detail.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)

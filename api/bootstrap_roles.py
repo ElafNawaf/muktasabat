@@ -28,6 +28,10 @@ _MODULES = [
     "website",
     # Support tickets: `edit` = support staff (sees all tickets, triages, replies).
     "support",
+    # HR: view = see all employees; create = file on behalf; edit = profiles,
+    # attendance, ticket bookings; approve = decide requests + HR settings.
+    # Every staff account has self-service (My HR) without this module.
+    "hr",
 ]
 _ALL = {m: {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1} for m in _MODULES}
 
@@ -157,6 +161,26 @@ DEFAULT_ROLES: list[dict] = [
         ),
     },
     {
+        "code": "hr_manager",
+        "label_en": "HR manager",
+        "label_ar": "مدير الموارد البشرية",
+        "description_en": "Runs HR: employee records, attendance, and approves leave, permissions and travel tickets.",
+        "description_ar": "يدير الموارد البشرية: سجلات الموظفين والحضور، ويعتمد الإجازات والاستئذانات وتذاكر السفر.",
+        "color": "#2F6B5A",
+        "system": False,
+        "permissions": _build({"hr": {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1}}),
+    },
+    {
+        "code": "hr_officer",
+        "label_en": "HR officer",
+        "label_ar": "أخصائي موارد بشرية",
+        "description_en": "Maintains employee records and attendance and books approved tickets; cannot approve requests.",
+        "description_ar": "يحدّث سجلات الموظفين والحضور ويحجز التذاكر المعتمدة، دون صلاحية الاعتماد.",
+        "color": "#5A7D2F",
+        "system": False,
+        "permissions": _build({"hr": {"view": 1, "create": 1, "edit": 1}}),
+    },
+    {
         "code": "owner",
         "label_en": "Property Owner",
         "label_ar": "مالك",
@@ -206,6 +230,8 @@ def _derive(module: str, perms: dict) -> dict:
         # Field work follows property permissions; approving spend stays with managers.
         p = get("properties")
         return dict(_NONE, view=p["view"], create=p["edit"], edit=p["edit"])
+    if module == "hr":
+        return dict(_NONE)  # employee data is sensitive: grant explicitly
     if module == "company":
         return dict(_NONE, view=get("contracts")["view"])
     return dict(_NONE)

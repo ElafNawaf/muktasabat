@@ -51,6 +51,7 @@ def inbox(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^
         "work_order": has_permission(db, user, "maintenance", "approve"),
         "renewal": has_permission(db, user, "contracts", "approve"),
         "payout": has_permission(db, user, "payments", "approve"),
+        "hr": has_permission(db, user, "hr", "approve"),
     }
 
     if can["work_order"]:
@@ -98,6 +99,20 @@ def inbox(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^
                 "waiting_on": "company", "urgent": p.owner_transfer_due_date < today, "href": "payments",
             })
 
+    if can["hr"]:
+        from api.hr_models import HrRequest
+        from api.routers.hr import _summary, _uname
+        from api.models import User as _U
+
+        for r in db.scalars(select(HrRequest).where(HrRequest.status == "pending", HrRequest.user_id != user.id)).all():
+            emp = db.get(_U, r.user_id)
+            items.append({
+                "kind": "hr", "id": r.id, "ref": r.number, "title": _uname(emp, locale), "where": _summary(r, locale), "owner": None, "owner_id": None,
+                "hr_kind": r.kind, "amount": r.estimated_cost if r.kind == "ticket" else None, "reason": r.reason,
+                "since": _iso(r.created_at), "waiting_on": "company",
+                "urgent": bool(r.start_date and (r.start_date - today).days <= 2), "href": f"hr?open={r.id}",
+            })
+
     def sort_key(i: dict):
         return (not i["urgent"], i.get("since") or "")
 
@@ -129,6 +144,16 @@ def history(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern=
             out.append({"kind": "renewal", "id": r.id, "ref": c.contract_number if c else None, "title": None, "where": where, "owner": owner,
                         "decision": "approved" if e.action == "owner_approved" else "rejected", "auto": False,
                         "by": e.actor, "note": e.note, "at": _iso(e.at), "amount": r.proposed_rent, "href": f"renewals?open={r.id}"})
+    if has_permission(db, user, "hr", "view"):
+        from api.hr_models import HrRequest
+        from api.routers.hr import _summary, _uname
+        from api.models import User as _U
+
+        for r in db.scalars(select(HrRequest).where(HrRequest.decided_at.is_not(None), HrRequest.decided_at >= since).order_by(HrRequest.decided_at.desc()).limit(200)).all():
+            out.append({"kind": "hr", "id": r.id, "ref": r.number, "title": _uname(db.get(_U, r.user_id), locale), "where": _summary(r, locale), "owner": None,
+                        "decision": "rejected" if r.status == "rejected" else "approved", "auto": False,
+                        "by": _uname(db.get(_U, r.decided_by_id), locale) if r.decided_by_id else None, "note": r.decision_note,
+                        "at": _iso(r.decided_at), "amount": None, "href": f"hr?open={r.id}"})
     if has_permission(db, user, "payments", "view"):
         cutoff = (date.today() - timedelta(days=days))
         for p in db.scalars(select(Payment).where(Payment.owner_transferred_date.is_not(None), Payment.owner_transferred_date >= cutoff).order_by(Payment.owner_transferred_date.desc()).limit(200)).all():
