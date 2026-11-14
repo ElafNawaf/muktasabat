@@ -26,6 +26,8 @@ class HrProfile(Base):
     department: Mapped[Optional[str]] = mapped_column(String(80))
     job_title: Mapped[Optional[str]] = mapped_column(String(120))
     manager_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    company_id: Mapped[Optional[int]] = mapped_column(Integer, index=True)  # hr_companies.id (group ERP)
+    department_id: Mapped[Optional[int]] = mapped_column(Integer)  # hr_departments.id
     hire_date: Mapped[Optional[date]] = mapped_column(Date)
     nationality: Mapped[Optional[str]] = mapped_column(String(60))
     contract_type: Mapped[str] = mapped_column(String(20), default="full_time", nullable=False)  # full_time|part_time|contractor

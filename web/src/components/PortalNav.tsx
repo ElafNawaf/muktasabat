@@ -75,6 +75,8 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       label: t("hrGroup"),
       items: [
         { id: "my-hr", href: L("my-hr"), icon: "badge", label: t("myHr"), show: true },
+        { id: "my-file", href: L("my-file"), icon: "folder_shared", label: t("myFile"), show: true },
+        { id: "org", href: L("org"), icon: "account_tree", label: t("orgChart"), show: true },
         { id: "hr-attendance", href: L("hr/attendance"), icon: "monitoring", label: t("attendanceDashboard"), show: v("hr") },
         { id: "hr", href: L("hr"), icon: "groups", label: t("hrManagement"), show: v("hr") },
       ],
@@ -173,6 +175,8 @@ export function usePortalNav(): Ctx {
 /** Labels for sub-pages that are not menu items. */
 const SUB_LABELS: Record<string, [string, string]> = {
   settings: ["الإعدادات", "Settings"],
+  people: ["الموظفون", "Employees"],
+  attendance: ["لوحة الحضور", "Attendance dashboard"],
   leads: ["الاستفسارات", "Leads"],
   applications: ["طلبات التوظيف", "Applications"],
   texts: ["نصوص الموقع", "Website texts"],

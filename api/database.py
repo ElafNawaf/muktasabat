@@ -482,6 +482,7 @@ def ensure_hr_location_columns(engine) -> None:
     t, f = ("1", "0") if sqlite else ("true", "false")
     _add_missing_columns(engine, "hr_profiles", [
         ("work_mode", "VARCHAR(10) DEFAULT 'office' NOT NULL"), ("remote_days", "VARCHAR(20)"),
+        ("company_id", "INTEGER"), ("department_id", "INTEGER"),
     ])
     _add_missing_columns(engine, "hr_requests", [("location_type", "VARCHAR(10)"), ("location_note", "VARCHAR(200)")])
     _add_missing_columns(engine, "hr_attendance", [
