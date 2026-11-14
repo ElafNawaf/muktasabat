@@ -2,17 +2,16 @@ import type { MetadataRoute } from "next";
 
 import { SITE_URL } from "@/lib/cms";
 
-const PORTAL = ["dashboard", "properties", "owners", "agents", "tenants", "contracts", "management-contracts", "payments", "expenses", "users", "website", "owner", "login", "register", "forgot-password", "reset-password", "verify-email", "owner-access"];
-
+/**
+ * Only the API is blocked. Portal and sign-in pages are deliberately NOT
+ * disallowed here: they answer with `X-Robots-Tag: noindex` (next.config.mjs)
+ * and a robots meta tag, and Google can only obey those if it may crawl them.
+ * A Disallow would keep the old login URL stuck in search results.
+ */
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: ["/api/", ...PORTAL.flatMap((p) => [`/ar/${p}`, `/en/${p}`])],
-      },
-    ],
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/uploads/private/"] }],
     sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }
