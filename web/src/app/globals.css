@@ -4216,3 +4216,32 @@ input[type="date"].input, input[type="time"].input { min-height: 44px; }
 .tr-receipt { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; padding: 6px 10px; border-radius: 10px; background: var(--tn-info-bg, #e6f0f8); color: var(--tn-info, #2d6fa3); font-size: 13px; font-weight: 600; text-decoration: none; width: fit-content; }
 .tr-receipt small { font-weight: 400; opacity: .8; }
 .tr-receipt.is-missing { background: var(--tn-idle-bg, #f2f2f0); color: var(--tn-idle, #5d636b); }
+
+/* ── Data management: selective export ─────────────────────────── */
+.dm-pickbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 16px; font-size: 13px; font-weight: 600; }
+.dm-pickbar > span { margin-inline-end: auto; }
+.dm-sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; margin-top: 10px; }
+.dm-sheet { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; }
+.dm-sheet input { width: 18px; height: 18px; accent-color: var(--color-primary); flex-shrink: 0; }
+.dm-sheet > .ms { color: var(--color-primary); }
+.dm-sheet__txt { display: grid; min-width: 0; flex: 1; }
+.dm-sheet__txt b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dm-sheet__txt small { font-size: 11px; color: var(--color-text-secondary); }
+.dm-sheet__n { font-weight: 600; }
+.dm-sheet.is-on { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); }
+.dm-sheet.is-linked { border-style: dashed; border-color: #c58a1e; }
+.dm-sheet.is-linked small { color: #8a5a00; }
+.dm-sheet.is-ref { opacity: .7; cursor: default; }
+.dm-sheet:focus-within { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.dm-exportbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--color-border); font-size: 13px; }
+.dm-exportbar > .text-sec { max-width: 560px; display: grid; gap: 4px; }
+.btn.is-disabled { opacity: .45; pointer-events: none; }
+
+/* ── My HR self-service tabs ───────────────────────── */
+.self-wrap { flex: 0 0 auto; padding: 18px 28px 0; }
+@media (max-width: 720px) { .self-wrap { padding: 14px 16px 0; } .self-tabs { display: flex; } .self-tabs a { flex: 1; justify-content: center; } }
+.self-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2, #f1f3f5); border: 1px solid var(--border, #e5e7eb); }
+.self-tabs a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: var(--text-2, #555); text-decoration: none; }
+.self-tabs a:hover { color: var(--text, #111); }
+.self-tabs a.is-on { background: var(--surface, #fff); color: var(--primary, #0f5c4d); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.self-tabs a:focus-visible { outline: 2px solid var(--primary, #0f5c4d); outline-offset: 2px; }

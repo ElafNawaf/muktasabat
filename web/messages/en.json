@@ -1488,7 +1488,7 @@
     "title": "Data management",
     "subtitle": "Bulk export, correct and re-import owners, properties, units, tenants, contracts and every lookup — validated strictly before anything is saved.",
     "exportTitle": "Export to Excel",
-    "exportHelp": "One workbook with a sheet per entity ({records} records), drop-downs bound to the lookups, live name columns beside every link, a Lookups sheet and a data dictionary.",
+    "exportHelp": "Choose only the sheets you need ({records} records in total). Each sheet has drop-downs bound to the lookups and a live name column beside every link; sheets your selection links to are added locked, for reference.",
     "exportAll": "Export all data",
     "exportTemplate": "Empty template",
     "referenceOnly": "Reference only",

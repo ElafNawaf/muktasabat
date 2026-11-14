@@ -1,19 +1,9 @@
-import { EmployeeFile } from "@/components/hr/EmployeeFile";
-import { Topbar } from "@/components/Topbar";
-import { api } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
-import type { EmpFile } from "@/lib/hr-people";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function MyFilePage({ params }: { params: Promise<{ locale: string }> }) {
+/** Old address (emails already sent link here) → My HR › My employee file. */
+export default async function MyFileRedirect({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { locale } = await params;
-  const me = await requireAuth(locale);
-  const data = await api.get<EmpFile>(`/api/v1/hr/me/file?locale=${locale}`);
-  return (
-    <>
-      <Topbar title={locale === "ar" ? "ملفي الوظيفي" : "My employee file"} user={me} />
-      <EmployeeFile locale={locale} data={data} mode="self" />
-    </>
-  );
+  const sp = await searchParams;
+  const tab = typeof sp.tab === "string" ? `?tab=${encodeURIComponent(sp.tab)}` : "";
+  redirect(`/${locale}/my-hr/file${tab}`);
 }

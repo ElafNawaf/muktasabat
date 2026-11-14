@@ -394,9 +394,11 @@ def validate_workbook(db: Session, data: bytes) -> Report:
                            f"Unknown sheet '{name}' — remove it or restore its original name",
                            f"ورقة غير معروفة '{name}' — احذفها أو أعد اسمها الأصلي")
 
+        # Sheets added to a partial export only so links resolve are not imported.
+        ref_copies = {k.strip() for k in str(meta.get("reference_sheets") or "").split(",") if k.strip()}
         ctx = Context(db)
         for sheet in SHEETS:
-            if sheet.reference_only or sheet.title not in wb.sheetnames:
+            if sheet.reference_only or sheet.key in ref_copies or sheet.title not in wb.sheetnames:
                 continue
             _read_sheet(wb[sheet.title], sheet, ctx, report)
     finally:

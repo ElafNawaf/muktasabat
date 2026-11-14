@@ -1,7 +1,7 @@
 """Admin data management (إدارة البيانات): bulk Excel export, validation and import.
 
     GET  /data-io/summary            record counts per entity sheet
-    GET  /data-io/export             full workbook (all entities + lookups)
+    GET  /data-io/export             workbook (all entities, or ?sheets=a,b — linked sheets added as locked references)
     GET  /data-io/export?template=1  same workbook with no data rows
     POST /data-io/validate           check an edited workbook, write nothing
     POST /data-io/apply              re-validate and, only with zero errors, import
@@ -10,6 +10,7 @@ Admin only. The import is all-or-nothing (one transaction).
 """
 import logging
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse, Response
@@ -42,6 +43,7 @@ def summary(db: DbSession, _admin: Perm("data", "view")):
                 "reference_only": s.reference_only,
                 "count": db.scalar(select(func.count()).select_from(s.model)) or 0,
                 "columns": len([f for f in s.fields if not f.readonly and f.kind != "id"]),
+                "refs": sorted({f.ref for f in s.fields if f.kind == "ref" and f.ref}),
             }
             for s in SHEETS
         ],
@@ -53,12 +55,18 @@ def summary(db: DbSession, _admin: Perm("data", "view")):
 
 
 @router.get("/export")
-def export(db: DbSession, admin: Perm("data", "view"), template: bool = False):
-    content = build_workbook(db, template=template, exported_by=admin.username)
+def export(db: DbSession, admin: Perm("data", "view"), template: bool = False, sheets: Optional[str] = None):
+    """`sheets` = comma-separated sheet keys to export (empty → every sheet)."""
+    keys = [k.strip() for k in (sheets or "").split(",") if k.strip()] or None
+    try:
+        content = build_workbook(db, template=template, exported_by=admin.username, keys=keys)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
     stamp = datetime.utcnow().strftime("%Y%m%d-%H%M")
-    name = f"muktasabat-{'template' if template else 'data'}-{stamp}.xlsx"
+    part = "" if not keys else ("-" + "-".join(keys[:3]) + ("-more" if len(keys) > 3 else ""))
+    name = f"muktasabat-{'template' if template else 'data'}{part}-{stamp}.xlsx"
     db.add(AuditLog(user_id=admin.id, username=admin.username, action="data_export",
-                    entity_type="data_io", details={"template": template}))
+                    entity_type="data_io", details={"template": template, "sheets": keys or "all"}))
     db.commit()
     return Response(
         content,
