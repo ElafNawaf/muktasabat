@@ -96,7 +96,8 @@ def login(
 def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
     """Request a password reset. Always returns success message (no email enumeration)."""
     settings = get_settings()
-    user = db.scalar(select(User).where(User.email == str(payload.email)))
+    # Case-insensitive: users type their address with any capitalisation.
+    user = db.scalar(select(User).where(func.lower(User.email) == str(payload.email).strip().lower()))
     debug_url: str | None = None
 
     if user is not None:

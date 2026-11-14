@@ -58,6 +58,9 @@ def send_email(msg: EmailMessage) -> None:
     """Best-effort send. SES errors are logged, never raised — auth flows stay
     user-facing-friendly even if email infrastructure has a hiccup."""
     settings = get_settings()
+    # Mailboxes are case-insensitive in practice, but SES's sandbox recipient
+    # check is not: "Elaf.x@gmail.com" fails when "elaf.x@gmail.com" is verified.
+    msg.to = (msg.to or "").strip().lower()
     if not settings.ses_region or not settings.ses_from_email:
         logger.info(
             "[email:console] to=%s subject=%r\n%s",
