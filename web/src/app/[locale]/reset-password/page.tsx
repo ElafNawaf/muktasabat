@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { LoginSky } from "@/components/LoginSky";
+
+/** Private screen: keep it out of search results (the public website is what should rank). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 
 function Fallback() {
   return (
