@@ -1,6 +1,7 @@
 import { SupportClient } from "@/app/[locale]/(app)/support/SupportClient";
 import { api } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
+import { cms } from "@/lib/cms";
 import type { TicketStats, TicketSummary } from "@/lib/types";
 
 /** Tenant portal → Help & support (tenants only see their own tickets). */
@@ -18,9 +19,12 @@ export default async function TenantSupportPage({
     api.get<TicketStats>("/api/v1/support/stats"),
     api.get<TicketSummary[]>("/api/v1/support/tickets?scope=mine"),
   ]);
+  const site = await cms.site().catch(() => null);
+  const contact = site ? { phone: site.phone, whatsapp: site.whatsapp, email: site.email } : undefined;
   return (
     <div className="ow-embed">
       <SupportClient
+        contact={contact}
         tickets={tickets}
         stats={stats}
         isStaff={false}

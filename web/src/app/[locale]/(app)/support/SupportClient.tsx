@@ -15,6 +15,7 @@ import { formatDateTime } from "@/lib/format";
 import { CATEGORY_ICON, PRIORITY_BADGE, STATUS_BADGE } from "@/lib/support-ui";
 import type { TicketStats, TicketSummary } from "@/lib/types";
 
+import { ContactCard, type SupportContactInfo } from "./ContactCard";
 import { NewTicketModal } from "./NewTicketModal";
 
 type Bucket = "active" | "waiting" | "done" | "all";
@@ -31,7 +32,9 @@ export function SupportClient({
   locale,
   openNew,
   base,
+  contact,
 }: {
+  contact?: SupportContactInfo;
   tickets: TicketSummary[];
   stats: TicketStats;
   isStaff: boolean;
@@ -263,23 +266,7 @@ export function SupportClient({
         </div>
 
         <aside className="support-aside">
-          <div className="card">
-            <div className="card-hd"><h3>{t("contactTitle")}</h3></div>
-            <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
-              <div className="support-contact">
-                <span className="ms ms-sm">call</span>
-                <a href="tel:920007039" className="mono" dir="ltr">920007039</a>
-              </div>
-              <div className="support-contact">
-                <span className="ms ms-sm">chat</span>
-                <a href="https://wa.me/966920007039" target="_blank" rel="noreferrer">WhatsApp</a>
-              </div>
-              <div className="support-contact">
-                <span className="ms ms-sm">schedule</span>
-                <span>{t("officeHours")}</span>
-              </div>
-            </div>
-          </div>
+          <ContactCard locale={locale} info={contact} />
         </aside>
       </div>
 
