@@ -61,6 +61,7 @@ const MODULE_ICON: Record<ModuleId, string> = {
   agents: "support_agent",
   tenants: "person",
   expenses: "receipt_long",
+  maintenance: "handyman",
   users: "admin_panel_settings",
   website: "language",
   support: "support",

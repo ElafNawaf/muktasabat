@@ -8,7 +8,7 @@ nothing is estimated except where a field is labelled `forecast`.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from statistics import mean
 
 from dateutil.relativedelta import relativedelta
@@ -225,6 +225,20 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
         alerts.append({"level": "medium", "kind": "expense_spike", "amount": round(this_cost, 2),
                        "baseline": round(mean(prev), 2), "href": "expenses"})
     order = {"high": 0, "medium": 1, "low": 2}
+    try:
+        from api.maintenance_models import WorkOrder
+        wos = db.scalars(select(WorkOrder).where(WorkOrder.status.in_(["new", "assigned", "awaiting_approval", "approved", "in_progress"]))).all()
+        waiting = [w for w in wos if w.status == "awaiting_approval"]
+        if waiting:
+            alerts.append({"level": "medium", "kind": "wo_approval", "count": len(waiting),
+                           "amount": round(sum(w.estimate_amount or 0 for w in waiting), 2), "href": "maintenance"})
+        now = datetime.utcnow()
+        late = [w for w in wos if w.due_at and w.due_at < now and w.status != "awaiting_approval"]
+        if late:
+            alerts.append({"level": "high" if any(w.priority == "emergency" for w in late) else "medium",
+                           "kind": "wo_overdue", "count": len(late), "href": "maintenance"})
+    except Exception:  # maintenance module optional; never break the dashboard
+        pass
     alerts.sort(key=lambda a: (order[a["level"]], -(a.get("amount") or 0)))
 
     return {

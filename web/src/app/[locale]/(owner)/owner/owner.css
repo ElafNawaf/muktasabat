@@ -190,3 +190,16 @@ html:has(.ow-root), html:has(.ow-root) body { height: auto !important; overflow:
 
 /* Owner portal: staff screens embedded in the owner shell */
 .ow-embed .page { padding: 0; }
+
+/* Maintenance approvals */
+.ow-h2 { font-size: 1.05rem; margin: 0 0 12px; }
+.ow-approvals { border-inline-start: 4px solid #c58a1e; }
+.ow-approval { display: grid; grid-template-columns: 1fr minmax(220px, 280px); gap: 16px; align-items: start; padding: 14px 0; border-top: 1px solid var(--ow-line, #eee); }
+.ow-approval:first-of-type { border-top: 0; padding-top: 0; }
+.ow-approval p { margin: 4px 0; }
+.ow-decide { display: grid; gap: 8px; }
+.ow-decide__btns { display: flex; gap: 8px; }
+.ow-decide__btns .ow-btn { flex: 1; justify-content: center; }
+.ow-input { min-height: 40px; padding: 0 12px; border: 1px solid var(--ow-line, #ddd); border-radius: 8px; font: inherit; background: #fff; }
+.ow-err { color: #b42318; font-size: .875rem; margin: 0; }
+@media (max-width: 720px) { .ow-approval { grid-template-columns: 1fr; } }

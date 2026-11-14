@@ -54,6 +54,7 @@ export const ownerApi = {
   properties: (locale: string, as?: string | null) => api.get<OwnerProperty[]>(`/api/v1/owner-portal/properties?${q(locale, as)}`),
   contracts: (locale: string, as?: string | null) => api.get<OwnerContracts>(`/api/v1/owner-portal/contracts?${q(locale, as)}`),
   payments: (locale: string, year: number, as?: string | null) => api.get<OwnerPayment[]>(`/api/v1/owner-portal/payments?${q(locale, as, { year })}`),
+  workOrders: (locale: string, as?: string | null) => api.get<OwnerWorkOrder[]>(`/api/v1/owner-portal/work-orders?${q(locale, as)}`),
   statement: (locale: string, year: number, month: number | null, as?: string | null) =>
     api.get<Statement>(`/api/v1/owner-portal/statement?${q(locale, as, { year, month })}`),
 };
@@ -80,3 +81,10 @@ export function day(locale: string, iso?: string | null) {
 
 export const MONTHS = (locale: string) =>
   Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", { month: "short" }).format(new Date(2026, i, 1)));
+
+export type OwnerWorkOrder = {
+  id: number; number: string; title: string; description?: string | null; category: string; priority: string; status: string;
+  building: string; unit?: string | null; assignee?: string | null; vendor_name?: string | null;
+  estimate_amount?: number | null; actual_cost?: number | null; charge_to: string; approval_limit?: number | null;
+  approved_by?: string | null; decision_note?: string | null; created_at: string; completed_at?: string | null; resolution?: string | null;
+};

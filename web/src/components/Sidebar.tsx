@@ -77,6 +77,12 @@ export function Sidebar({
       ],
     },
     {
+      label: t("operations"),
+      items: [
+        { id: "maintenance", href: L("maintenance"), icon: "handyman", label: t("maintenance"), show: v("maintenance") },
+      ],
+    },
+    {
       label: t("management"),
       items: [
         { id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users"), show: isAdmin },

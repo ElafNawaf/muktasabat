@@ -19,6 +19,7 @@ _MODULES = [
     "agents",
     "tenants",
     "expenses",
+    "maintenance",
     "management_contracts",
     "company",
     "owner_portal",
@@ -64,6 +65,7 @@ DEFAULT_ROLES: list[dict] = [
                 "properties": {"view": 1, "create": 1, "edit": 1, "approve": 1},
                 "contracts": {"view": 1, "create": 1, "edit": 1, "approve": 1},
                 "management_contracts": {"view": 1, "create": 1, "edit": 1, "approve": 1},
+                "maintenance": {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1},
                 "company": {"view": 1},
                 "owner_portal": {"view": 1, "create": 1, "edit": 1},
                 "payments": {"view": 1, "create": 1, "edit": 1, "approve": 1},
@@ -200,6 +202,10 @@ def _derive(module: str, perms: dict) -> dict:
     if module == "dashboard":
         # Company-wide finance figures: only roles that already see money or properties.
         return dict(_NONE, view=int(bool(get("payments")["view"] or get("properties")["view"])))
+    if module == "maintenance":
+        # Field work follows property permissions; approving spend stays with managers.
+        p = get("properties")
+        return dict(_NONE, view=p["view"], create=p["edit"], edit=p["edit"])
     if module == "company":
         return dict(_NONE, view=get("contracts")["view"])
     return dict(_NONE)
