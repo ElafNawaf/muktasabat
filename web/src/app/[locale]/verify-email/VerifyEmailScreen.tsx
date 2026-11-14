@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
+import { LoginSky } from "@/components/LoginSky";
 
 type Status = "verifying" | "success" | "invalid" | "missing";
 
@@ -53,7 +54,7 @@ export function VerifyEmailScreen() {
 
   return (
     <div className="login-page">
-      <div className="login-pattern" />
+      <LoginSky />
       <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={verifyHref}>
         {locale === "en" ? "العربية" : "English"}

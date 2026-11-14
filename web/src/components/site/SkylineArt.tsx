@@ -1,5 +1,5 @@
 /**
- * Animated dusk skyline — the hero backdrop until the editor uploads photos
+ * Animated skyline (palette comes from CSS custom properties --sk-*; see site.css) — the hero backdrop until the editor uploads photos
  * or a video. Three parallax layers (distant towers, mid-rise blocks, Najdi
  * mud-brick buildings with shurfat parapets), windows that light up one by
  * one, twinkling stars, drifting haze and a flock of birds.
@@ -112,28 +112,28 @@ export function SkylineArt({ className }: { className?: string }) {
     >
       <defs>
         <linearGradient id="sk-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1d0606" />
-          <stop offset="0.38" stopColor="#4a0f0f" />
-          <stop offset="0.66" stopColor="#8f2323" />
-          <stop offset="0.84" stopColor="#c8643f" />
-          <stop offset="1" stopColor="#e9b77d" />
+          <stop offset="0" style={{ stopColor: "var(--sk-sky1)" }} />
+          <stop offset="0.38" style={{ stopColor: "var(--sk-sky2)" }} />
+          <stop offset="0.66" style={{ stopColor: "var(--sk-sky3)" }} />
+          <stop offset="0.84" style={{ stopColor: "var(--sk-sky4)" }} />
+          <stop offset="1" style={{ stopColor: "var(--sk-sky5)" }} />
         </linearGradient>
         <radialGradient id="sk-sun" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#ffe7b8" stopOpacity="1" />
-          <stop offset="0.35" stopColor="#ffc078" stopOpacity="0.85" />
-          <stop offset="1" stopColor="#ff8a4c" stopOpacity="0" />
+          <stop offset="0" style={{ stopColor: "var(--sk-sun1)" }} stopOpacity="1" />
+          <stop offset="0.35" style={{ stopColor: "var(--sk-sun2)" }} stopOpacity="0.85" />
+          <stop offset="1" style={{ stopColor: "var(--sk-sun2)" }} stopOpacity="0" />
         </radialGradient>
         <linearGradient id="sk-far" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#5d1a1a" />
-          <stop offset="1" stopColor="#7b2a20" />
+          <stop offset="0" style={{ stopColor: "var(--sk-far1)" }} />
+          <stop offset="1" style={{ stopColor: "var(--sk-far2)" }} />
         </linearGradient>
         <linearGradient id="sk-mid" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#3b0c0c" />
-          <stop offset="1" stopColor="#4e1410" />
+          <stop offset="0" style={{ stopColor: "var(--sk-mid1)" }} />
+          <stop offset="1" style={{ stopColor: "var(--sk-mid2)" }} />
         </linearGradient>
         <linearGradient id="sk-near" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#260707" />
-          <stop offset="1" stopColor="#1a0505" />
+          <stop offset="0" style={{ stopColor: "var(--sk-near1)" }} />
+          <stop offset="1" style={{ stopColor: "var(--sk-near2)" }} />
         </linearGradient>
         <filter id="sk-blur" x="-20%" y="-50%" width="140%" height="200%">
           <feGaussianBlur stdDeviation="18" />
@@ -144,19 +144,19 @@ export function SkylineArt({ className }: { className?: string }) {
 
       <g className="sk-stars">
         {STARS.map((s, i) => (
-          <circle key={i} cx={s.x} cy={s.y} r={s.s} fill="#fff" style={{ animationDelay: `${s.d}s` }} />
+          <circle key={i} cx={s.x} cy={s.y} r={s.s} style={{ fill: "var(--sk-star)", animationDelay: `${s.d}s` }} />
         ))}
       </g>
 
       <circle className="sk-sun" cx="420" cy="590" r="260" fill="url(#sk-sun)" />
 
       <g className="sk-haze" filter="url(#sk-blur)">
-        <ellipse cx="300" cy="430" rx="260" ry="26" fill="#f3c9a0" opacity=".22" />
-        <ellipse cx="1180" cy="380" rx="320" ry="22" fill="#f3c9a0" opacity=".18" />
-        <ellipse cx="760" cy="470" rx="220" ry="18" fill="#ffd9b0" opacity=".2" />
+        <ellipse cx="300" cy="430" rx="260" ry="26" style={{ fill: "var(--sk-haze)" }} opacity=".22" />
+        <ellipse cx="1180" cy="380" rx="320" ry="22" style={{ fill: "var(--sk-haze)" }} opacity=".18" />
+        <ellipse cx="760" cy="470" rx="220" ry="18" style={{ fill: "var(--sk-haze)" }} opacity=".2" />
       </g>
 
-      <g className="sk-birds" fill="none" stroke="#2a0a0a" strokeWidth="2.2" strokeLinecap="round">
+      <g className="sk-birds" fill="none" style={{ stroke: "var(--sk-bird)" }} strokeWidth="2.2" strokeLinecap="round">
         <path d="M0 0 q6 -6 12 0 q6 -6 12 0" />
         <path d="M30 -14 q5 -5 10 0 q5 -5 10 0" />
         <path d="M22 16 q4 -4 8 0 q4 -4 8 0" />
@@ -189,7 +189,7 @@ export function SkylineArt({ className }: { className?: string }) {
           const n = Math.max(2, Math.floor(b.w / 26));
           const y = H - b.h + 16;
           return (
-            <g key={`v${i}`} fill="#4a1410">
+            <g key={`v${i}`} style={{ fill: "var(--sk-vent)" }}>
               {Array.from({ length: n }, (_, k) => {
                 const x = Math.round(b.x + ((k + 0.5) * b.w) / n);
                 return <path key={k} d={`M${x - 5} ${y + 9} L${x} ${y} L${x + 5} ${y + 9} Z`} />;

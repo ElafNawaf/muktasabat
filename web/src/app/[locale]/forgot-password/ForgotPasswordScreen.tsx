@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
+import { LoginSky } from "@/components/LoginSky";
 
 export function ForgotPasswordScreen() {
   const t = useTranslations("forgotPage");
@@ -47,7 +48,7 @@ export function ForgotPasswordScreen() {
 
   return (
     <div className="login-page">
-      <div className="login-pattern" />
+      <LoginSky />
       <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={`/${otherLocale}/forgot-password`}>
         {locale === "en" ? "العربية" : "English"}

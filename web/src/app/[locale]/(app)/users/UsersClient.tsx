@@ -316,117 +316,89 @@ export function UsersClient({
               {tCommon("noResults")}
             </div>
           ) : (
-            <div className="owner-grid">
-              {filtered.map((u) => {
-                const isMe = u.id === meId;
-                const isBusy = busyId === u.id;
-                const role = rolesState.find((r) => r.code === u.role);
-                const color = role?.color ?? "#6B7280";
-                const initials = u.username.slice(0, 2).toUpperCase();
-                return (
-                  <div className="user-card" key={u.id}>
-                    <div className="user-card-hd">
-                      <div
-                        className="user-card-avatar"
-                        style={{
-                          background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-                        }}
-                      >
-                        {initials}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="user-card-name">
-                          {u.username}
-                          {isMe && (
-                            <span
-                              className="badge"
-                              style={{
-                                marginInlineStart: 8,
-                                fontSize: 10,
-                                padding: "2px 6px",
-                              }}
-                            >
-                              {t("you")}
+            <div className="card card-tight ulist">
+              <table className="tbl ulist-tbl">
+                <thead>
+                  <tr>
+                    <th>{t("usersTab")}</th>
+                    <th>{t("roles")}</th>
+                    <th>{locale === "ar" ? "الحالة" : "Status"}</th>
+                    <th>{t("createdAt")}</th>
+                    <th aria-label="actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((u) => {
+                    const isMe = u.id === meId;
+                    const isBusy = busyId === u.id;
+                    const role = rolesState.find((r) => r.code === u.role);
+                    const color = role?.color ?? "#6B7280";
+                    const initials = u.username.slice(0, 2).toUpperCase();
+                    return (
+                      <tr key={u.id} className={u.is_active_user ? undefined : "is-off"}>
+                        <td>
+                          <div className="ulist-who">
+                            <span className="ulist-av" style={{ ["--c" as string]: color }}>{initials}</span>
+                            <span className="ulist-id">
+                              <strong>
+                                {u.username}
+                                {isMe && <span className="badge badge-neutral ulist-me">{t("you")}</span>}
+                              </strong>
+                              <small dir="ltr">{u.email}</small>
                             </span>
-                          )}
-                        </div>
-                        <div className="user-card-email mono">{u.email}</div>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 8,
-                      }}
-                    >
-                      <select
-                        className="select"
-                        value={u.role}
-                        onChange={(e) => onChangeRole(u, e.target.value)}
-                        disabled={isBusy || isMe}
-                        style={{
-                          height: 30,
-                          fontSize: 12,
-                          width: "auto",
-                          padding: "4px 28px 4px 10px",
-                          background: color + "1A",
-                          color,
-                          borderColor: color + "55",
-                          fontWeight: 600,
-                          borderRadius: 999,
-                        }}
-                      >
-                        {userRoles.map((r) => (
-                          <option key={r.code} value={r.code}>
-                            {r.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className={
-                          "btn btn-sm " +
-                          (u.is_active_user ? "btn-secondary" : "btn-primary")
-                        }
-                        onClick={() => onToggle(u)}
-                        disabled={isBusy || isMe}
-                      >
-                        <span className="ms ms-sm">
-                          {u.is_active_user ? "block" : "check"}
-                        </span>
-                        {u.is_active_user ? t("deactivate") : t("activate")}
-                      </button>
-                      {canDeleteUser && !isMe && (
-                        <button
-                          className="icon-btn icon-btn--danger"
-                          title={tCommon("delete")}
-                          onClick={() => setConfirmDel(u)}
-                          disabled={isBusy}
-                        >
-                          <span className="ms ms-sm">delete</span>
-                        </button>
-                      )}
-                    </div>
-                    <div className="user-card-meta">
-                      <span className="user-card-status">
-                        <span
-                          className="dot"
-                          style={{
-                            background: u.is_active_user
-                              ? "var(--color-success)"
-                              : "var(--color-text-secondary)",
-                          }}
-                        />
-                        {u.is_active_user ? t("active") : t("inactive")}
-                      </span>
-                      <span>
-                        {t("createdAt")}: {fmtDate(u.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="ulist-role" style={{ ["--c" as string]: color }}>
+                            <select
+                              value={u.role}
+                              onChange={(e) => onChangeRole(u, e.target.value)}
+                              disabled={isBusy || isMe}
+                              aria-label={t("roles")}
+                            >
+                              {userRoles.map((r) => (
+                                <option key={r.code} value={r.code}>
+                                  {r.label}
+                                </option>
+                              ))}
+                            </select>
+                          </span>
+                        </td>
+                        <td>
+                          <span className={"badge " + (u.is_active_user ? "badge-success" : "badge-neutral")}>
+                            <span className="dot" />
+                            {u.is_active_user ? t("active") : t("inactive")}
+                          </span>
+                        </td>
+                        <td className="text-sec">{fmtDate(u.created_at)}</td>
+                        <td>
+                          <div className="ulist-actions">
+                            <button
+                              className={"btn btn-sm " + (u.is_active_user ? "btn-ghost" : "btn-secondary")}
+                              onClick={() => onToggle(u)}
+                              disabled={isBusy || isMe}
+                            >
+                              <span className="ms ms-sm">{u.is_active_user ? "block" : "check"}</span>
+                              {u.is_active_user ? t("deactivate") : t("activate")}
+                            </button>
+                            {canDeleteUser && !isMe && (
+                              <button
+                                className="icon-btn icon-btn--danger"
+                                title={tCommon("delete")}
+                                aria-label={tCommon("delete")}
+                                onClick={() => setConfirmDel(u)}
+                                disabled={isBusy}
+                              >
+                                <span className="ms ms-sm">delete</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </>

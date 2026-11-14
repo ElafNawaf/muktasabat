@@ -14,6 +14,16 @@ import { ImageGalleryEditor } from "@/components/ImageGalleryEditor";
 import { ConfirmDialog } from "@/components/Modal";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { BuildingArt, MapPreview, UnitArt } from "@/components/PropertyArt";
+
+const UNIT_ICON: Record<string, string> = {
+  apartment: "apartment",
+  villa: "villa",
+  office: "business_center",
+  shop: "storefront",
+  warehouse: "warehouse",
+  floor: "layers",
+  duplex: "stairs",
+};
 import { deleteBuilding, deleteUnit } from "@/lib/actions";
 import { ALL_BUILDING_TYPES, BUILDING_TYPE_ICONS, RESIDENCE_TYPES } from "@/lib/building-types";
 import { localizedCity, localizedDistrict, uniqueSorted } from "@/lib/filters";
@@ -553,18 +563,26 @@ export function PropertiesClient({
                 }}
               >
                 <span className="ms chev">chevron_right</span>
-                <div
-                  className="prop-thumb"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLightbox({ kind: "building", building: b, meta });
-                  }}
-                >
-                  <BuildingArt buildingId={b.id} meta={meta} />
-                  <span className="prop-thumb-tag">
-                    <span className="ms ms-sm">image</span>
-                  </span>
-                </div>
+                {b.images.length > 0 ? (
+                  <div
+                    className="prop-thumb"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setLightbox({ kind: "building", building: b, meta });
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={b.images[0].url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <span className="prop-thumb-tag">
+                      <span className="ms ms-sm">image</span>
+                    </span>
+                  </div>
+                ) : (
+                  // Most buildings have no photos yet — lead with the type, not placeholder art.
+                  <div className="prop-icon" aria-hidden="true">
+                    <span className="ms">{(b.property_type && BUILDING_TYPE_ICONS[b.property_type]) || "apartment"}</span>
+                  </div>
+                )}
                 <div className="title-block">
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <div className={locale === "ar" ? "ar" : "en"}>
@@ -672,81 +690,100 @@ export function PropertiesClient({
 
               <div className="drill-body">
                 <div className="prop-detail-grid">
-                  <div className="prop-gallery">
-                    <div
-                      className="prop-hero"
-                      onClick={() => setLightbox({ kind: "building", building: b, meta })}
-                    >
-                      {b.images.length > 0 ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={b.images[0].url}
-                          alt={localized(b, "name", locale)}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <BuildingArt buildingId={b.id} meta={meta} cityLabel={cityLabel ?? ""} big />
-                      )}
-                      <div className="prop-hero-shade" />
-                      <div className="prop-hero-actions">
-                        <button
-                          className="prop-pill"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLightbox({ kind: "building", building: b, meta });
-                          }}
-                        >
-                          <span className="ms ms-sm">photo_library</span> {t("viewPhotos")}
-                          <span style={{ opacity: 0.7, marginInlineStart: 4 }}>
-                            · {b.images.length || 0}
-                          </span>
-                        </button>
-                        <button
-                          className="prop-pill"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setGallery({ kind: "buildings", building: b });
-                          }}
-                        >
-                          <span className="ms ms-sm">add_a_photo</span> {t("managePhotos")}
-                        </button>
+                  {b.images.length > 0 ? (
+                    <div className="prop-gallery">
+                      <div
+                        className="prop-hero"
+                        onClick={() => setLightbox({ kind: "building", building: b, meta })}
+                      >
+                        {b.images.length > 0 ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={b.images[0].url}
+                            alt={localized(b, "name", locale)}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <BuildingArt buildingId={b.id} meta={meta} cityLabel={cityLabel ?? ""} big />
+                        )}
+                        <div className="prop-hero-shade" />
+                        <div className="prop-hero-actions">
+                          <button
+                            className="prop-pill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLightbox({ kind: "building", building: b, meta });
+                            }}
+                          >
+                            <span className="ms ms-sm">photo_library</span> {t("viewPhotos")}
+                            <span style={{ opacity: 0.7, marginInlineStart: 4 }}>
+                              · {b.images.length || 0}
+                            </span>
+                          </button>
+                          <button
+                            className="prop-pill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setGallery({ kind: "buildings", building: b });
+                            }}
+                          >
+                            <span className="ms ms-sm">add_a_photo</span> {t("managePhotos")}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="prop-thumbs">
+                        {b.images.length > 0
+                          ? b.images.slice(0, 4).map((img) => (
+                              <div
+                                key={img.id}
+                                className="prop-thumb-sm"
+                                onClick={() => setLightbox({ kind: "building", building: b, meta })}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={img.url}
+                                  alt=""
+                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                              </div>
+                            ))
+                          : [0, 1, 2, 3].map((i) => (
+                              <div
+                                key={i}
+                                className="prop-thumb-sm"
+                                onClick={() => setLightbox({ kind: "building", building: b, meta })}
+                              >
+                                <BuildingArt buildingId={b.id} meta={meta} />
+                              </div>
+                            ))}
+                        {b.images.length > 4 && (
+                          <div
+                            className="prop-thumb-sm prop-thumb-more"
+                            onClick={() => setLightbox({ kind: "building", building: b, meta })}
+                          >
+                            <span>+{b.images.length - 4}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="prop-thumbs">
-                      {b.images.length > 0
-                        ? b.images.slice(0, 4).map((img) => (
-                            <div
-                              key={img.id}
-                              className="prop-thumb-sm"
-                              onClick={() => setLightbox({ kind: "building", building: b, meta })}
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={img.url}
-                                alt=""
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                              />
-                            </div>
-                          ))
-                        : [0, 1, 2, 3].map((i) => (
-                            <div
-                              key={i}
-                              className="prop-thumb-sm"
-                              onClick={() => setLightbox({ kind: "building", building: b, meta })}
-                            >
-                              <BuildingArt buildingId={b.id} meta={meta} />
-                            </div>
-                          ))}
-                      {b.images.length > 4 && (
-                        <div
-                          className="prop-thumb-sm prop-thumb-more"
-                          onClick={() => setLightbox({ kind: "building", building: b, meta })}
-                        >
-                          <span>+{b.images.length - 4}</span>
+                  ) : (
+                    <div className="prop-nophoto">
+                      <div className="prop-nophoto-ico" aria-hidden="true">
+                        <span className="ms">{(b.property_type && BUILDING_TYPE_ICONS[b.property_type]) || "apartment"}</span>
+                      </div>
+                      <div className="prop-nophoto-facts">
+                        <div className="prop-fact"><span>{t("nUnits")}</span><strong>{us.length}</strong></div>
+                        <div className="prop-fact"><span>{t("available")}</span><strong>{us.filter((u) => u.is_available).length}</strong></div>
+                        <div className="prop-fact">
+                          <span>{locale === "ar" ? "إجمالي الإيجار المتوقع" : "Total asking rent"}</span>
+                          <strong>{formatSAR(us.reduce((sum, u) => sum + (u.rent_amount || 0), 0), locale)}</strong>
                         </div>
-                      )}
+                      </div>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setGallery({ kind: "buildings", building: b })}>
+                        <span className="ms ms-sm">add_a_photo</span> {t("managePhotos")}
+                      </button>
                     </div>
-                  </div>
+                  )}
                   <div className="prop-side">
                     <div className="prop-map-card">
                       <div className="prop-map-img">
@@ -843,10 +880,10 @@ export function PropertiesClient({
                         onClick={() => setSelectedUnit(u.id)}
                       >
                         <div
-                          className="unit-img"
+                          className={u.images.length > 0 ? "unit-img" : "unit-img unit-img--none"}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setLightbox({ kind: "unit", unit: u, building: b, meta });
+                            if (u.images.length > 0) setLightbox({ kind: "unit", unit: u, building: b, meta });
                           }}
                         >
                           {u.images.length > 0 ? (
@@ -857,12 +894,9 @@ export function PropertiesClient({
                               style={{ width: "100%", height: "100%", objectFit: "cover" }}
                             />
                           ) : (
-                            <UnitArt
-                              unitId={u.id}
-                              unitType={u.unit_type}
-                              meta={meta}
-                              typeLabel={typeLabel(u.unit_type)}
-                            />
+                            <span className="unit-ico" aria-hidden="true">
+                              <span className="ms">{UNIT_ICON[u.unit_type ?? ""] ?? "door_front"}</span>
+                            </span>
                           )}
                           <span
                             className={

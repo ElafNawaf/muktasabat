@@ -57,6 +57,8 @@ export function HeroCinema(p: HeroCinemaProps) {
   const [videoOk, setVideoOk] = useState(false);
   const L = (path: string) => `/${p.locale}${path}`;
   const hasSlides = p.slides.length > 0;
+  // Photos / video get a dark veil + white type; the default artwork is a calm daylight scene.
+  const hasMedia = hasSlides || !!p.video;
 
   // Rotating property-type word.
   useEffect(() => {
@@ -130,7 +132,12 @@ export function HeroCinema(p: HeroCinemaProps) {
   const words = p.title.split(/\s+/).filter(Boolean);
 
   return (
-    <section ref={root} className="mk-cine" data-hero-dark aria-labelledby="mk-cine-h">
+    <section
+      ref={root}
+      className={`mk-cine${hasMedia ? " mk-cine--media" : ""}`}
+      data-hero-dark={hasMedia || undefined}
+      aria-labelledby="mk-cine-h"
+    >
       {/* ── Backdrop ── */}
       <div className="mk-cine__bg" aria-hidden="true">
         {hasSlides ? (
