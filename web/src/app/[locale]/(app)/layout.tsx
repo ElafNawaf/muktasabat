@@ -22,7 +22,14 @@ export default async function AppLayout({
 
   return (
     <PermissionsProvider role={user.role} permissions={myRole?.permissions ?? {}}>
-      <AppShell user={{ username: user.username, role: user.role }}>{children}</AppShell>
+      <AppShell
+        user={{
+          username: user.username,
+          role: user.role,
+          full_name: locale === "ar" ? user.full_name_ar || user.full_name : user.full_name || user.full_name_ar,
+          avatar_url: user.avatar_url,
+        }}
+      >{children}</AppShell>
     </PermissionsProvider>
   );
 }

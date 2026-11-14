@@ -24,6 +24,7 @@ class EmailMessage:
     subject: str
     text_body: str
     html_body: str | None = None
+    cc: list[str] | None = None
 
 
 def _send_via_ses(msg: EmailMessage) -> None:
@@ -42,7 +43,7 @@ def _send_via_ses(msg: EmailMessage) -> None:
 
     kwargs = {
         "Source": settings.ses_from_email,
-        "Destination": {"ToAddresses": [msg.to]},
+        "Destination": {"ToAddresses": [msg.to], **({"CcAddresses": msg.cc} if msg.cc else {})},
         "Message": {
             "Subject": {"Data": msg.subject, "Charset": "UTF-8"},
             "Body": body,
@@ -90,10 +91,12 @@ def send_email(msg: EmailMessage) -> bool:
     # Mailboxes are case-insensitive in practice, but SES's sandbox recipient
     # check is not: "Elaf.x@gmail.com" fails when "elaf.x@gmail.com" is verified.
     msg.to = (msg.to or "").strip().lower()
+    msg.cc = [c for c in dict.fromkeys((c or "").strip().lower() for c in (msg.cc or [])) if c and c != msg.to] or None
     if not settings.ses_region or not settings.ses_from_email:
         logger.info(
-            "[email:console] to=%s subject=%r\n%s",
+            "[email:console] to=%s cc=%s subject=%r\n%s",
             _mask(msg.to),
+            ",".join(_mask(c) for c in msg.cc or []),
             msg.subject,
             msg.text_body,
         )
@@ -264,3 +267,160 @@ def send_user_invite(to: str, username: str, role: str, accept_url: str) -> None
         + "<p style='color:#5D636B;font-size:13px'>The link expires in 24 hours.</p>",
     )
     send_email(EmailMessage(to=to, subject="دعوة إلى مكتسبات | You're invited to Muktasabat", text_body=text, html_body=html))
+
+
+# ---------------------------------------------------------------------------
+# My account — security notices, and support-ticket notifications.
+# Same house template as everything above (Arabic first, then English).
+# `locale` is accepted for call-site symmetry; the template is always AR → EN.
+# ---------------------------------------------------------------------------
+
+from html import escape as _esc  # noqa: E402
+
+
+def _notice(
+    to: str,
+    *,
+    subject_ar: str,
+    subject_en: str,
+    ar: str,
+    en: str,
+    button: tuple[str, str, str] | None = None,  # (url, label_ar, label_en)
+    preheader: str = "",
+) -> bool:
+    """Send one bilingual notice. `ar` / `en` are HTML paragraphs; escape any
+    user-supplied values with `_esc` before passing them in."""
+    import re
+
+    if button:
+        ar = ar + _button(button[0], button[1])
+        en = en + _button(button[0], button[2])
+    plain = lambda h: re.sub(r"<[^>]+>", "", h.replace("</p>", "\n")).strip()  # noqa: E731
+    text = plain(ar) + (f"\n{button[0]}" if button else "") + "\n\n" + plain(en) + (f"\n{button[0]}" if button else "")
+    return send_email(
+        EmailMessage(
+            to=to,
+            subject=f"{subject_ar} | {subject_en}",
+            text_body=text,
+            html_body=_branded(ar, en, preheader=preheader),
+        )
+    )
+
+
+_MUTED = "<p style='color:#5D636B;font-size:13px'>{}</p>"
+
+
+def send_password_changed_notice(to: str, username: str, locale: str | None = None) -> bool:
+    u = _esc(username)
+    return _notice(
+        to,
+        subject_ar="تم تغيير كلمة المرور",
+        subject_en="Your password was changed",
+        ar=f"<p>تم تغيير كلمة المرور لحساب <strong dir='ltr'>{u}</strong> وتسجيل الخروج من جميع الأجهزة الأخرى.</p>"
+        + _MUTED.format("إن لم تقم بذلك، استخدم «نسيت كلمة المرور» فورًا وتواصل مع الدعم الفني على 920007039."),
+        en=f"<p>The password for <strong>{u}</strong> was changed and all other devices were signed out.</p>"
+        + _MUTED.format("If this wasn't you, use “Forgot password” right away and contact support on 920007039."),
+        preheader="Password changed · تم تغيير كلمة المرور",
+    )
+
+
+def send_email_change_confirmation(to: str, confirm_url: str, username: str, locale: str | None = None) -> bool:
+    """Sent to the NEW address — the change only applies once confirmed."""
+    u = _esc(username)
+    return _notice(
+        to,
+        subject_ar="تأكيد البريد الإلكتروني الجديد",
+        subject_en="Confirm your new email address",
+        ar=f"<p>طُلب تغيير البريد الإلكتروني لحساب <strong dir='ltr'>{u}</strong> إلى هذا العنوان.</p>",
+        en=f"<p>A request was made to change the email of <strong>{u}</strong> to this address.</p>",
+        button=(confirm_url, "تأكيد البريد الجديد", "Confirm new email"),
+    )
+
+
+def send_email_change_alert(to: str, new_email: str, username: str, locale: str | None = None) -> bool:
+    """Sent to the OLD address so a takeover attempt is visible."""
+    u, n = _esc(username), _esc(new_email)
+    return _notice(
+        to,
+        subject_ar="طلب تغيير البريد الإلكتروني",
+        subject_en="Email change requested",
+        ar=f"<p>طُلب تغيير البريد الإلكتروني لحساب <strong dir='ltr'>{u}</strong> إلى <strong dir='ltr'>{n}</strong>.</p>"
+        + _MUTED.format("إن لم تقم بذلك، غيّر كلمة المرور فورًا وتواصل مع الدعم الفني."),
+        en=f"<p>A request was made to change the email of <strong>{u}</strong> to <strong>{n}</strong>.</p>"
+        + _MUTED.format("If this wasn't you, change your password right away and contact support."),
+    )
+
+
+def send_ticket_created_to_staff(
+    to: str, ticket_ref: str, subject: str, requester: str, priority: str, url: str
+) -> bool:
+    s, r, p = _esc(subject), _esc(requester), _esc(priority)
+    return _notice(
+        to,
+        subject_ar=f"تذكرة دعم جديدة {ticket_ref}",
+        subject_en=f"New support ticket {ticket_ref}",
+        ar=f"<p>فتح <strong>{r}</strong> تذكرة دعم جديدة.</p><p>الموضوع: <strong>{s}</strong><br>الأولوية: {p}</p>",
+        en=f"<p><strong>{r}</strong> opened a new support ticket.</p><p>Subject: <strong>{s}</strong><br>Priority: {p}</p>",
+        button=(url, "عرض التذكرة", "View ticket"),
+    )
+
+
+def send_ticket_received(to: str, ticket_ref: str, subject: str, url: str, locale: str | None = None) -> bool:
+    s = _esc(subject)
+    return _notice(
+        to,
+        subject_ar=f"استلمنا طلبك {ticket_ref}",
+        subject_en=f"We received your request {ticket_ref}",
+        ar=f"<p>شكرًا لتواصلك. استلمنا تذكرتك <strong>{s}</strong> برقم {ticket_ref}.</p>"
+        + _MUTED.format("سيرد فريق الدعم خلال ساعات العمل (السبت–الخميس، 9 ص – 9 م)."),
+        en=f"<p>Thanks for reaching out. We received your ticket <strong>{s}</strong> ({ticket_ref}).</p>"
+        + _MUTED.format("Our support team will reply during office hours (Sat–Thu, 9 AM–9 PM)."),
+        button=(url, "متابعة التذكرة", "Track ticket"),
+    )
+
+
+def send_ticket_reply_to_user(
+    to: str, ticket_ref: str, subject: str, excerpt: str, url: str, locale: str | None = None
+) -> bool:
+    s, x = _esc(subject), _esc(excerpt)
+    quote = f"<p style='border-inline-start:3px solid #E5DCCB;padding:4px 12px;color:#374151'>{x}</p>"
+    return _notice(
+        to,
+        subject_ar=f"رد جديد على تذكرتك {ticket_ref}",
+        subject_en=f"New reply on your ticket {ticket_ref}",
+        ar=f"<p>رد فريق الدعم على تذكرتك <strong>{s}</strong>:</p>{quote}",
+        en=f"<p>Support replied to your ticket <strong>{s}</strong>:</p>{quote}",
+        button=(url, "عرض الرد", "View reply"),
+    )
+
+
+def send_ticket_status_to_user(
+    to: str,
+    ticket_ref: str,
+    subject: str,
+    status_ar: str,
+    status_en: str,
+    url: str,
+    locale: str | None = None,
+) -> bool:
+    s = _esc(subject)
+    return _notice(
+        to,
+        subject_ar=f"تحديث حالة التذكرة {ticket_ref}",
+        subject_en=f"Ticket {ticket_ref} updated",
+        ar=f"<p>تم تحديث حالة تذكرتك <strong>{s}</strong> إلى: <strong>{_esc(status_ar)}</strong>.</p>",
+        en=f"<p>Your ticket <strong>{s}</strong> is now: <strong>{_esc(status_en)}</strong>.</p>",
+        button=(url, "عرض التذكرة", "View ticket"),
+    )
+
+
+def send_ticket_user_reply_to_staff(to: str, ticket_ref: str, subject: str, requester: str, url: str) -> bool:
+    s, r = _esc(subject), _esc(requester)
+    return _notice(
+        to,
+        subject_ar=f"رد من المستخدم على {ticket_ref}",
+        subject_en=f"Customer replied on {ticket_ref}",
+        ar=f"<p>أضاف <strong>{r}</strong> ردًا على التذكرة <strong>{s}</strong>.</p>",
+        en=f"<p><strong>{r}</strong> replied on <strong>{s}</strong>.</p>",
+        button=(url, "عرض التذكرة", "View ticket"),
+    )

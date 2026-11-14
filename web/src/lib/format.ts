@@ -33,3 +33,22 @@ export function formatDate(iso: string, locale: string = "en"): string {
     timeZone: "UTC",
   }).format(new Date(iso));
 }
+
+/**
+ * Date + time, pinned to Riyadh time on both server and browser so SSR and
+ * hydration render the same string.
+ */
+export function formatDateTime(iso: string | null | undefined, locale: string = "en"): string {
+  if (!iso) return "—";
+  // API datetimes are naive UTC; make that explicit before parsing.
+  const d = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : iso + "Z");
+  const lc = locale === "ar" ? "ar-SA-u-ca-gregory-nu-latn" : "en-GB";
+  return new Intl.DateTimeFormat(lc, {
+    timeZone: "Asia/Riyadh",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}

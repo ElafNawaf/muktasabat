@@ -40,3 +40,6 @@ uploads/
 
 # The web app's /uploads proxy route is source code, not user uploads
 !web/src/app/uploads/
+
+# Data-management exports (contain customer personal data)
+exports/

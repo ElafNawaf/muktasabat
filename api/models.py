@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -50,6 +51,30 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     email_verification_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     email_verification_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # --- Self-service profile (My account) ---
+    full_name: Mapped[Optional[str]] = mapped_column(String(150))
+    full_name_ar: Mapped[Optional[str]] = mapped_column(String(150))
+    phone: Mapped[Optional[str]] = mapped_column(String(20))
+    job_title: Mapped[Optional[str]] = mapped_column(String(120))
+    avatar_key: Mapped[Optional[str]] = mapped_column(String(255))
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(500))
+    # "ar" | "en" — drives the UI default and the language-first order of emails.
+    preferred_locale: Mapped[str] = mapped_column(String(5), default="ar", nullable=False)
+    # Email me when a support ticket I opened gets a reply / status change.
+    notify_ticket_updates: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Bumped on password change / "sign out everywhere". Every JWT carries the
+    # version it was issued at; a mismatch invalidates the token.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    password_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    # Email change is two-step: the new address must be confirmed before it
+    # replaces `email`.
+    pending_email: Mapped[Optional[str]] = mapped_column(String(120))
+    email_change_token: Mapped[Optional[str]] = mapped_column(String(128))
+    email_change_expires: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     employee: Mapped[Optional["Employee"]] = relationship(back_populates="user", uselist=False)
     owner_link: Mapped[Optional["OwnerUser"]] = relationship(back_populates="user", uselist=False)
@@ -481,12 +506,46 @@ class Payment(Base):
     payment_method: Mapped[Optional[str]] = mapped_column(String(50))
     receipt_number: Mapped[Optional[str]] = mapped_column(String(50))
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    # ── Owner remittance (تحويل حصة المالك) ──────────────────────────────────
+    # موعد تحويل حصة المالك — set when the tenant pays (paid_date + OWNER_TRANSFER_DAYS)
+    owner_transfer_due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # تاريخ التحويل الفعلي للمالك — stops the owner-transfer alerts
+    owner_transferred_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    # مرجع الحوالة البنكية
+    owner_transfer_reference: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     contract: Mapped["Contract"] = relationship(back_populates="payments")
     splits: Mapped[list["PaymentSplit"]] = relationship(
         back_populates="payment", cascade="all, delete-orphan"
     )
+
+
+class PaymentAlertLog(Base):
+    """One row per payment alert e-mail (تنبيهات الدفعات).
+
+    The unique key (payment, kind, stage) is what makes the scheduler safe to
+    run repeatedly — and from more than one process (the deploy preflight
+    container shares the database): a stage is *claimed* by inserting its row
+    before the e-mail goes out, so it can never be sent twice.
+    """
+
+    __tablename__ = "payment_alert_logs"
+    __table_args__ = (UniqueConstraint("payment_id", "kind", "stage", name="uq_payment_alert"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payment_id: Mapped[int] = mapped_column(
+        ForeignKey("payments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # tenant_due | tenant_overdue | tenant_paid | owner_due | owner_overdue | owner_paid
+    kind: Mapped[str] = mapped_column(String(30), nullable=False)
+    # "d-7", "d0", "d+1", "now" …
+    stage: Mapped[str] = mapped_column(String(20), nullable=False)
+    to_email: Mapped[Optional[str]] = mapped_column(String(255))
+    cc_emails: Mapped[Optional[str]] = mapped_column(String(500))
+    delivered: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    error: Mapped[Optional[str]] = mapped_column(String(120))
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class PaymentSplit(Base):
@@ -903,3 +962,60 @@ class ManagementContractAttachment(Base):
     management_contract: Mapped["ManagementContract"] = relationship(
         back_populates="attachments"
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Support tickets (الدعم الفني)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class SupportTicket(Base):
+    """A technical-support request opened by any portal user."""
+
+    __tablename__ = "support_tickets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(200), nullable=False)
+    # technical | account | data | billing | feature | other
+    category: Mapped[str] = mapped_column(String(20), nullable=False, default="technical")
+    # low | normal | high | urgent
+    priority: Mapped[str] = mapped_column(String(10), nullable=False, default="normal")
+    # open | in_progress | waiting_user | resolved | closed
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open", index=True)
+    assignee_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    # Where the user was when the problem happened + browser, for triage.
+    page_url: Mapped[Optional[str]] = mapped_column(String(500))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
+    assignee: Mapped[Optional["User"]] = relationship(foreign_keys=[assignee_id])
+    messages: Mapped[list["SupportTicketMessage"]] = relationship(
+        back_populates="ticket",
+        order_by="SupportTicketMessage.created_at",
+        cascade="all, delete-orphan",
+    )
+
+
+class SupportTicketMessage(Base):
+    __tablename__ = "support_ticket_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(
+        ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    author_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    is_staff: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Staff-only note — never shown to the ticket owner.
+    internal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    attachment_key: Mapped[Optional[str]] = mapped_column(String(255))
+    attachment_url: Mapped[Optional[str]] = mapped_column(String(500))
+    attachment_name: Mapped[Optional[str]] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    ticket: Mapped["SupportTicket"] = relationship(back_populates="messages")
+    author: Mapped[Optional["User"]] = relationship()

@@ -1,7 +1,7 @@
 import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Annotated
 
 import jwt
@@ -12,7 +12,12 @@ from sqlalchemy import func, select
 from api.config import get_settings
 from api.deps import AdminUser, CurrentUser, DbSession
 from api.permissions import Perm
-from api.email import send_email_verification, send_password_reset_email, send_user_invite
+from api.email import (
+    send_email_verification,
+    send_password_changed_notice,
+    send_password_reset_email,
+    send_user_invite,
+)
 from api.models import AuditLog, User
 from api.schemas.auth import (
     AccessTokenResponse,
@@ -31,7 +36,7 @@ from api.schemas.auth import (
     VerifyEmailRequest,
     VerifyEmailResponse,
 )
-from api.security import create_token, decode_token
+from api.security import create_token, decode_token, is_expired, token_matches_user, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -44,17 +49,29 @@ def _hash_verify_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def _aware(dt: datetime | None) -> datetime | None:
-    """Postgres TIMESTAMP columns come back naive (stored as UTC wall time);
-    SQLite may return aware values. Normalise so comparisons never raise."""
-    if dt is None:
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-
 def _absolute(path: str) -> str:
     base = get_settings().web_base_url.rstrip("/")
     return f"{base}{path}"
+
+
+def _loc(locale: str | None, user: User | None = None) -> str:
+    """Locale for links in emails: explicit request locale, else the user's."""
+    for v in (locale, getattr(user, "preferred_locale", None)):
+        if v in ("ar", "en"):
+            return v
+    return "ar"
+
+
+def issue_tokens(user: User) -> tuple[str, str]:
+    v = user.token_version or 0
+    return create_token(user.id, "access", version=v), create_token(user.id, "refresh", version=v)
+
+
+def _issue_reset_token(user: User, hours: int) -> str:
+    raw = secrets.token_urlsafe(32)
+    user.password_reset_token = _hash_reset_token(raw)
+    user.password_reset_expires = utcnow() + timedelta(hours=hours)
+    return raw
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -89,16 +106,27 @@ def login(
             username=user.username,
             action="login",
             entity_type="user",
-            ip_address=request.client.host if request.client else None,
+            ip_address=_client_ip(request),
         )
     )
+    user.last_login_at = utcnow()
     db.commit()
+    db.refresh(user)
 
+    access, refresh_tok = issue_tokens(user)
     return LoginResponse(
-        access_token=create_token(user.id, "access"),
-        refresh_token=create_token(user.id, "refresh"),
+        access_token=access,
+        refresh_token=refresh_tok,
         user=UserRead.model_validate(user),
     )
+
+
+def _client_ip(request: Request) -> str | None:
+    """Real client IP — Next.js forwards X-Forwarded-For from Caddy."""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()[:45]
+    return request.client.host if request.client else None
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
@@ -109,16 +137,13 @@ def forgot_password(payload: ForgotPasswordRequest, db: DbSession):
     user = db.scalar(select(User).where(func.lower(User.email) == str(payload.email).strip().lower()))
     debug_url: str | None = None
 
-    if user is not None:
-        raw = secrets.token_urlsafe(32)
-        user.password_reset_token = _hash_reset_token(raw)
-        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    if user is not None and user.is_active_user:
+        raw = _issue_reset_token(user, hours=1)
         db.add(user)
         db.commit()
 
-        # Email link uses the public web base URL; locale is unknown here so
-        # the frontend's /reset-password route handles both locales.
-        reset_url = _absolute(f"/ar/reset-password?token={raw}")
+        loc = _loc(payload.locale, user)
+        reset_url = _absolute(f"/{loc}/reset-password?token={raw}")
         send_password_reset_email(to=user.email, reset_url=reset_url, username=user.username)
 
         if settings.reset_password_debug:
@@ -140,15 +165,23 @@ def reset_password(payload: ResetPasswordRequest, db: DbSession):
     """Complete password reset using token from forgot-password email (or debug URL)."""
     digest = _hash_reset_token(payload.token)
     user = db.scalar(select(User).where(User.password_reset_token == digest))
-    now = datetime.now(timezone.utc)
-    if user is None or user.password_reset_expires is None or _aware(user.password_reset_expires) < now:
+    if user is None or is_expired(user.password_reset_expires):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset link")
 
     user.set_password(payload.new_password)
     user.password_reset_token = None
     user.password_reset_expires = None
+    user.password_changed_at = utcnow()
+    # Following an emailed link proves the inbox.
+    user.email_verified = True
+    # Revoke every existing session — whoever had the old password is out.
+    user.token_version = (user.token_version or 0) + 1
+    db.add(
+        AuditLog(user_id=user.id, username=user.username, action="password_reset", entity_type="user")
+    )
     db.add(user)
     db.commit()
+    send_password_changed_notice(to=user.email, username=user.username, locale=user.preferred_locale)
     return None
 
 
@@ -164,13 +197,13 @@ def register(payload: RegisterRequest, db: DbSession):
 
     raw = secrets.token_urlsafe(32)
     user.email_verification_token = _hash_verify_token(raw)
-    user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+    user.email_verification_expires = utcnow() + timedelta(hours=24)
 
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    verify_url = _absolute(f"/ar/verify-email?token={raw}")
+    verify_url = _absolute(f"/{_loc(None, user)}/verify-email?token={raw}")
     send_email_verification(to=user.email, verify_url=verify_url)
     return user
 
@@ -179,8 +212,7 @@ def register(payload: RegisterRequest, db: DbSession):
 def verify_email(payload: VerifyEmailRequest, db: DbSession):
     digest = _hash_verify_token(payload.token)
     user = db.scalar(select(User).where(User.email_verification_token == digest))
-    now = datetime.now(timezone.utc)
-    if user is None or user.email_verification_expires is None or _aware(user.email_verification_expires) < now:
+    if user is None or is_expired(user.email_verification_expires):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired verification link")
 
     user.email_verified = True
@@ -200,10 +232,10 @@ def resend_verification(payload: ResendVerificationRequest, db: DbSession):
     if user is not None and not user.email_verified:
         raw = secrets.token_urlsafe(32)
         user.email_verification_token = _hash_verify_token(raw)
-        user.email_verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        user.email_verification_expires = utcnow() + timedelta(hours=24)
         db.add(user)
         db.commit()
-        verify_url = _absolute(f"/ar/verify-email?token={raw}")
+        verify_url = _absolute(f"/{_loc(None, user)}/verify-email?token={raw}")
         send_email_verification(to=user.email, verify_url=verify_url)
         if settings.reset_password_debug:
             debug_url = f"/verify-email?token={raw}"
@@ -224,8 +256,12 @@ def refresh(payload: RefreshRequest, db: DbSession):
     user = db.get(User, user_id)
     if user is None or not user.is_active_user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User no longer active")
+    if not token_matches_user(decoded, user):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session was signed out")
 
-    return AccessTokenResponse(access_token=create_token(user.id, "access"))
+    return AccessTokenResponse(
+        access_token=create_token(user.id, "access", version=user.token_version or 0)
+    )
 
 
 @router.get("/me", response_model=UserRead)
@@ -268,7 +304,11 @@ def toggle_active(user_id: int, db: DbSession, _admin: AdminUser):
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if user.id == _admin.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot deactivate your own account")
     user.is_active_user = not user.is_active_user
+    if not user.is_active_user:
+        user.token_version = (user.token_version or 0) + 1
     db.commit()
     db.refresh(user)
     return user
@@ -348,18 +388,19 @@ def invite_user(payload: InviteUserRequest, db: DbSession, _admin: AdminUser):
     )
     user.set_password(secrets.token_urlsafe(24))
 
-    raw = secrets.token_urlsafe(32)
-    user.password_reset_token = _hash_reset_token(raw)
     # 24h window matches the email copy.
-    user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+    raw = _issue_reset_token(user, hours=24)
 
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    accept_url = _absolute(f"/ar/reset-password?token={raw}")
+    accept_url = _absolute(f"/{_loc(None, user)}/reset-password?token={raw}")
     send_user_invite(
-        to=user.email, username=user.username, role=user.role, accept_url=accept_url
+        to=user.email,
+        username=user.username,
+        role=user.role,
+        accept_url=accept_url,
     )
 
     debug_url = f"/reset-password?token={raw}" if settings.reset_password_debug else None
@@ -373,3 +414,50 @@ def reinvite_all_users(db: DbSession, admin: AdminUser):
     from api.services.reinvite import reinvite_users
 
     return reinvite_users(db, exclude_usernames={"admin"}, actor=admin)
+
+
+@router.post("/admin/users/{user_id}/send-reset", response_model=ForgotPasswordResponse)
+def admin_send_reset(user_id: int, db: DbSession, admin: AdminUser):
+    """Admin helpdesk action: email the user a fresh password-reset link (24h)."""
+    settings = get_settings()
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    if not user.is_active_user:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "User is deactivated")
+    raw = _issue_reset_token(user, hours=24)
+    db.add(
+        AuditLog(
+            user_id=admin.id,
+            username=admin.username,
+            action="admin_send_reset",
+            entity_type="user",
+            entity_id=str(user.id),
+        )
+    )
+    db.commit()
+    reset_url = _absolute(f"/{_loc(None, user)}/reset-password?token={raw}")
+    send_password_reset_email(to=user.email, reset_url=reset_url, username=user.username)
+    return ForgotPasswordResponse(
+        message="Reset link sent.",
+        debug_reset_url=f"/reset-password?token={raw}" if settings.reset_password_debug else None,
+    )
+
+
+@router.post("/admin/users/{user_id}/revoke-sessions", status_code=status.HTTP_204_NO_CONTENT)
+def admin_revoke_sessions(user_id: int, db: DbSession, admin: AdminUser):
+    """Sign a user out of every device (e.g. lost laptop)."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    user.token_version = (user.token_version or 0) + 1
+    db.add(
+        AuditLog(
+            user_id=admin.id,
+            username=admin.username,
+            action="admin_revoke_sessions",
+            entity_type="user",
+            entity_id=str(user.id),
+        )
+    )
+    db.commit()

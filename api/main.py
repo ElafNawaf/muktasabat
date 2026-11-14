@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -20,26 +21,31 @@ from api.database import (
     ensure_ejar_party_columns,
     ensure_ejar_property_columns,
     ensure_owner_agent_id_column,
+    ensure_payment_owner_transfer_columns,
     ensure_tenant_extended_columns,
     migrate_tenant_escorts_to_companions,
     ensure_user_email_verification_columns,
     ensure_user_password_reset_columns,
+    ensure_user_profile_columns,
 )
 from api.logging_config import setup_logging
 from api.request_logging import RequestLoggingMiddleware
 from api.storage import local_upload_root, uses_local_storage
 from api.routers import (
+    account,
     agents,
     analytics,
     auth,
     buildings,
     contracts,
+    data_io,
     employees,
     expenses,
     management,
     owners,
     payments,
     roles,
+    support,
     tenants,
     translate,
     units,
@@ -64,6 +70,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_user_password_reset_columns(engine)
     ensure_user_email_verification_columns(engine)
+    ensure_user_profile_columns(engine)
     ensure_building_assignee_column(engine)
     ensure_building_location_columns(engine)
     ensure_building_extended_columns(engine)
@@ -77,6 +84,7 @@ async def lifespan(app: FastAPI):
     ensure_ejar_party_columns(engine)
     ensure_ejar_property_columns(engine)
     ensure_contract_ejar_columns(engine)
+    ensure_payment_owner_transfer_columns(engine)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -142,7 +150,15 @@ async def lifespan(app: FastAPI):
                         "was present. Set DISABLE_BOOTSTRAP_ADMIN=1 in production when appropriate."
                     )
 
-    yield
+    # Payment-timeline alerts (tenant due / overdue / received, owner payout) —
+    # hourly, in-process; see api/services/payment_alerts.py.
+    from api.services.payment_alerts import alert_loop
+
+    alerts_task = asyncio.create_task(alert_loop())
+    try:
+        yield
+    finally:
+        alerts_task.cancel()
 
 
 settings = get_settings()
@@ -176,6 +192,9 @@ def health():
 
 API_V1 = "/api/v1"
 app.include_router(auth.router, prefix=API_V1)
+# Self-service profile / credentials / sessions + support tickets
+app.include_router(account.router, prefix=API_V1)
+app.include_router(support.router, prefix=API_V1)
 app.include_router(owners.router, prefix=API_V1)
 app.include_router(agents.router, prefix=API_V1)
 app.include_router(buildings.router, prefix=API_V1)
@@ -189,6 +208,8 @@ app.include_router(expenses.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)
+# Admin bulk data management — Excel export / validate / import
+app.include_router(data_io.router, prefix=API_V1)
 # Public website CMS — /api/v1/cms/public/* (anonymous) and /api/v1/cms/admin/*
 app.include_router(cms.public, prefix=API_V1)
 app.include_router(cms.admin, prefix=API_V1)

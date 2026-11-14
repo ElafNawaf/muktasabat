@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from api.database import get_db
 from api.models import User
-from api.security import decode_token
+from api.security import decode_token, token_matches_user
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -17,7 +17,14 @@ DbSession = Annotated[Session, Depends(get_db)]
 # Owner accounts (role "owner") may only reach these API paths. Every other
 # route is staff-only: many staff endpoints are not owner-scoped, so letting an
 # owner call them would expose other owners' data.
-OWNER_ALLOWED_PREFIXES = ("/api/v1/owner-portal/", "/api/v1/auth/me")
+OWNER_ALLOWED_PREFIXES = (
+    "/api/v1/owner-portal/",
+    "/api/v1/auth/me",
+    # Self-service: own profile/password/sessions, and own support tickets
+    # (both routers only ever act on the calling user's data for non-staff).
+    "/api/v1/account/",
+    "/api/v1/support/",
+)
 
 
 def get_current_user(
@@ -48,6 +55,9 @@ def get_current_user(
         path = request.url.path
         if not path.startswith(OWNER_ALLOWED_PREFIXES) or path.startswith("/api/v1/owner-portal/admin"):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Owner accounts can only use the owner portal")
+    # Revoked by a password change or "sign out of all devices".
+    if not token_matches_user(payload, user):
+        raise credentials_error
     return user
 
 

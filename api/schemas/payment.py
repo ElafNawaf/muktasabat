@@ -29,6 +29,9 @@ class PaymentRead(BaseModel):
     payment_method: Optional[str] = None
     receipt_number: Optional[str] = None
     notes: Optional[str] = None
+    owner_transfer_due_date: Optional[date] = None
+    owner_transferred_date: Optional[date] = None
+    owner_transfer_reference: Optional[str] = None
     created_at: datetime
     splits: list[PaymentSplitRead] = []
 
@@ -44,3 +47,21 @@ class PaymentUpdateRequest(BaseModel):
     amount: float = Field(gt=0)
     due_date: date
     notes: Optional[str] = None
+
+
+class OwnerTransferRequest(BaseModel):
+    transferred_date: Optional[date] = None
+    reference: Optional[str] = Field(default=None, max_length=80)
+
+
+class PaymentAlertLogRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    kind: str
+    stage: str
+    to_email: Optional[str] = None
+    cc_emails: Optional[str] = None
+    delivered: bool
+    error: Optional[str] = None
+    sent_at: datetime
