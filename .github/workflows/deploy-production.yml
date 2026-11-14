@@ -70,6 +70,30 @@ jobs:
           docker save muktasabat-web:v$NEW_WEB | gzip -1 > web.tar.gz
           ls -lh *.tar.gz
 
+      - name: Free disk space on the server
+        # Every release leaves two images on the small Lightsail disk; without
+        # cleanup "docker load" eventually fails with "no space left on device".
+        # Keeps the running version (needed for rollback) and the one before it.
+        run: |
+          $SSH "KEEP_API=$CUR_API KEEP_WEB=$CUR_WEB bash -s" <<'REMOTE'
+          set -u
+          rm -f /home/ubuntu/api.tar.gz /home/ubuntu/web.tar.gz
+          echo "before:"; df -h / | tail -1
+          prune() {
+            repo=$1; keep=$2
+            for t in $(docker images "$repo" --format '{{.Tag}}'); do
+              v=${t#v}
+              case "$v" in ''|*[!0-9]*) continue;; esac
+              if [ "$v" -lt $((keep - 1)) ]; then docker rmi "$repo:$t" >/dev/null 2>&1 && echo "removed $repo:$t" || true; fi
+            done
+          }
+          prune muktasabat-api "$KEEP_API"
+          prune muktasabat-web "$KEEP_WEB"
+          docker image prune -f >/dev/null 2>&1 || true
+          docker builder prune -af >/dev/null 2>&1 || true
+          echo "after:"; df -h / | tail -1
+          REMOTE
+
       - name: Ship and load
         run: |
           $SCP api.tar.gz web.tar.gz $USER@$HOST:/home/ubuntu/
