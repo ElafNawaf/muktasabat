@@ -37,6 +37,17 @@ export function ReinviteModal({ result, locale, onClose }: { result: ReinviteRes
       )}
       footer={<button className="btn btn-primary" onClick={onClose}>{T("تم", "Done")}</button>}
     >
+      {result.links.some((l) => l.reason === "ses_sandbox_unverified_recipient") && (
+        <div className="reinvite-note" role="note">
+          <span className="ms" aria-hidden>info</span>
+          <div>
+            {T(
+              "لم تصل بعض الرسائل لأن خدمة البريد في Amazon (SES) ما زالت في الوضع التجريبي، وفيه لا تُرسل الرسائل إلا إلى عناوين تم التحقق منها مسبقًا. بعد موافقة Amazon على «طلب الوصول للإنتاج» ستصل الرسائل للجميع. إلى ذلك الحين شارك الدعوة عبر واتساب أو انسخها.",
+              "Some emails were not delivered because Amazon's email service (SES) is still in sandbox mode, which only delivers to addresses verified in advance. Once Amazon approves production access, email will reach everyone. Until then, share the invite on WhatsApp or copy it.",
+            )}
+          </div>
+        </div>
+      )}
       <ul className="reinvite-list">
         {result.links.map((l) => (
           <li key={l.id}>
@@ -45,8 +56,19 @@ export function ReinviteModal({ result, locale, onClose }: { result: ReinviteRes
               <small dir="ltr">{l.email}</small>
             </div>
             <span className={`badge ${l.emailed ? "badge-success" : "badge-warning"}`}>
-              {l.emailed ? T("أُرسلت بالبريد", "Emailed") : T("لم تصل بالبريد", "Not emailed")}
+              {l.emailed ? T("أُرسلت بالبريد", "Emailed") : T("لم تُرسل بالبريد", "Not emailed")}
             </span>
+            {!l.emailed && l.reason && (
+              <small className="reinvite-reason">
+                {l.reason === "ses_sandbox_unverified_recipient"
+                  ? T("العنوان غير مُتحقَّق منه في SES (الوضع التجريبي)", "Address not verified in SES (sandbox)")
+                  : l.reason === "ses_quota_exceeded"
+                    ? T("تجاوز الحد اليومي للإرسال", "Daily sending limit reached")
+                    : l.reason === "ses_permission_denied"
+                      ? T("صلاحيات AWS لا تسمح بالإرسال", "AWS permissions block sending")
+                      : T("تعذّر الإرسال", "Sending failed")}
+              </small>
+            )}
             <div className="reinvite-actions">
               <button className="btn btn-sm btn-secondary" onClick={() => copy(l.id, message(l.username, l.url))}>
                 <span className="ms ms-sm">{copied === l.id ? "check" : "content_copy"}</span>

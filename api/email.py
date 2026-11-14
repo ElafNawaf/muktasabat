@@ -60,6 +60,29 @@ def _mask(addr: str) -> str:
     return f"{local[:1]}***@{domain}" if domain else "***"
 
 
+import threading
+
+_last = threading.local()
+
+
+def last_send_error() -> str | None:
+    """Plain-language reason the most recent send_email() on this thread failed."""
+    return getattr(_last, "error", None)
+
+
+def _reason(e: Exception) -> str:
+    text = str(e)
+    if "not verified" in text and "identities failed the check" in text:
+        return "ses_sandbox_unverified_recipient"
+    if "not verified" in text:
+        return "ses_sender_not_verified"
+    if "AccessDenied" in text or "not authorized" in text:
+        return "ses_permission_denied"
+    if "Daily message quota exceeded" in text or "Maximum sending rate" in text:
+        return "ses_quota_exceeded"
+    return "send_failed"
+
+
 def send_email(msg: EmailMessage) -> bool:
     """Best-effort send. SES errors are logged, never raised — auth flows stay
     user-facing-friendly even if email infrastructure has a hiccup."""
@@ -75,12 +98,16 @@ def send_email(msg: EmailMessage) -> bool:
             msg.text_body,
         )
         return True
+    _last.error = None
     try:
         _send_via_ses(msg)
         logger.info("Sent email to %s via SES (subject=%r)", _mask(msg.to), msg.subject)
         return True
     except Exception:
-        logger.exception("Failed to send email to %s via SES", _mask(msg.to))
+        import sys
+
+        _last.error = _reason(sys.exc_info()[1])
+        logger.exception("Failed to send email to %s via SES (%s)", _mask(msg.to), _last.error)
         return False
 
 
@@ -95,11 +122,15 @@ def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
         f"<div style='display:none;max-height:0;overflow:hidden;opacity:0'>{preheader}</div>" if preheader else ""
     )
     return (
-        f"<!doctype html><html><body style='margin:0;padding:0;background:#F5EFE4'>{pre}"
+        "<!doctype html><html><head><meta name='color-scheme' content='light only'>"
+        "<meta name='supported-color-schemes' content='light'>"
+        "<style>:root{color-scheme:light only;supported-color-schemes:light}"
+        "u+.body .mk-maroon{background-image:linear-gradient(#7B1A1A,#7B1A1A)!important}</style></head>"
+        f"<body class='body' style='margin:0;padding:0;background:#F5EFE4'>{pre}"
         "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' style='background:#F5EFE4'><tr><td align='center' style='padding:28px 12px'>"
         "<table role='presentation' width='600' cellpadding='0' cellspacing='0' style='width:100%;max-width:600px;background:#FFFFFF;border-radius:12px;overflow:hidden;border:1px solid #E3DDD2'>"
         # Header: logo + names
-        "<tr><td style='background:#7B1A1A;padding:22px 28px'>"
+        "<tr><td class='mk-maroon' bgcolor='#7B1A1A' style='background:#7B1A1A;background-image:linear-gradient(#7B1A1A,#7B1A1A);padding:22px 28px'>"
         "<table role='presentation' dir='rtl' width='100%' cellpadding='0' cellspacing='0'><tr>"
         f"<td width='62' style='width:56px'><img src='{logo}' width='48' height='48' alt='Muktasabat' style='display:block;border:0;border-radius:10px;margin-left:14px'></td>"
         f"<td dir='rtl' style='text-align:right;font-family:{font};color:#FFFFFF'>"
@@ -124,8 +155,10 @@ def _branded(inner_ar: str, inner_en: str, *, preheader: str = "") -> str:
 
 def _button(url: str, label: str) -> str:
     return (
-        f"<p style='margin:22px 0'><a href='{url}' style='display:inline-block;background:#7B1A1A;color:#FFFFFF;"
-        f"text-decoration:none;padding:13px 28px;border-radius:8px;font-weight:bold;font-size:15px'>{label}</a></p>"
+        f"<table role='presentation' cellpadding='0' cellspacing='0' style='margin:22px 0'><tr>"
+        f"<td class='mk-maroon' bgcolor='#7B1A1A' style='border-radius:8px;background:#7B1A1A;background-image:linear-gradient(#7B1A1A,#7B1A1A)'>"
+        f"<a href='{url}' style='display:inline-block;color:#FFFFFF;text-decoration:none;padding:13px 28px;"
+        f"border-radius:8px;font-weight:bold;font-size:15px'>{label}</a></td></tr></table>"
     )
 
 

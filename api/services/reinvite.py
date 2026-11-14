@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.config import get_settings
-from api.email import send_account_invite
+from api.email import last_send_error, send_account_invite
 from api.models import AuditLog, User
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,10 @@ def reinvite_users(db: Session, *, exclude_usernames: set[str] | None = None, ac
         portal = "owner" if user.role == "owner" else "staff"
         ok = send_account_invite(email, user.username, url, INVITE_HOURS, portal)
         (report["sent"] if ok else report["failed"]).append(f"{tag} {_mask(email)}")
-        links.append({"id": user.id, "username": user.username, "email": email, "role": user.role, "emailed": ok, "url": url})
+        links.append({
+            "id": user.id, "username": user.username, "email": email, "role": user.role,
+            "emailed": ok, "url": url, "reason": None if ok else last_send_error(),
+        })
         db.add(
             AuditLog(
                 user_id=actor.id if actor else None,
