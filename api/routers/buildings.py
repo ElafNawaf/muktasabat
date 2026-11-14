@@ -37,7 +37,7 @@ def _validate_assignee(db, assignee_id: int | None) -> None:
 
 
 @router.post("", response_model=BuildingRead, status_code=status.HTTP_201_CREATED)
-def create_building(payload: BuildingCreate, db: DbSession, _user: CurrentUser):
+def create_building(payload: BuildingCreate, db: DbSession, _user: Perm("properties", "create")):
     if db.get(Owner, payload.owner_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Owner not found")
     _validate_assignee(db, payload.assignee_id)
@@ -53,7 +53,7 @@ def update_building(
     building_id: int,
     payload: BuildingUpdate,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("properties", "edit"),
 ):
     building = db.get(Building, building_id)
     if building is None:
@@ -92,7 +92,7 @@ def delete_building(building_id: int, db: DbSession, _user: Perm("properties", "
 async def upload_building_image(
     building_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("properties", "edit"),
     file: UploadFile = File(...),
 ):
     building = db.get(Building, building_id)
@@ -154,7 +154,7 @@ def delete_building_image(
 async def upload_building_document(
     building_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("properties", "edit"),
     file: UploadFile = File(...),
 ):
     building = db.get(Building, building_id)

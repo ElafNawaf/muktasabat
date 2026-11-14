@@ -56,7 +56,7 @@ def get_tenant(tenant_id: int, db: DbSession, _user: CurrentUser):
 
 
 @router.post("", response_model=TenantRead, status_code=status.HTTP_201_CREATED)
-def create_tenant(payload: TenantCreate, db: DbSession, _user: CurrentUser):
+def create_tenant(payload: TenantCreate, db: DbSession, _user: Perm("tenants", "create")):
     data = payload.model_dump(exclude={"companions"})
     tenant = Tenant(**data)
     _sync_companions(tenant, payload.companions, payload.tenant_type)
@@ -70,7 +70,7 @@ def update_tenant(
     tenant_id: int,
     payload: TenantUpdate,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("tenants", "edit"),
 ):
     tenant = _load_tenant(db, tenant_id)
     if tenant is None:

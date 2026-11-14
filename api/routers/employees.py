@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
+from api.permissions import Perm
 from api.deps import AdminUser, CurrentUser, DbSession
 from api.models import Employee, Owner, User
 from api.schemas.employee import EmployeeCreate, EmployeeRead, EmployeeUpdate
@@ -36,7 +37,7 @@ def get_employee(employee_id: int, db: DbSession, _user: CurrentUser):
 
 
 @router.post("", response_model=EmployeeRead, status_code=status.HTTP_201_CREATED)
-def create_employee(payload: EmployeeCreate, db: DbSession, _admin: AdminUser):
+def create_employee(payload: EmployeeCreate, db: DbSession, _admin: Perm("users", "create")):
     if db.get(User, payload.user_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     if db.scalar(select(Employee).where(Employee.user_id == payload.user_id)):
@@ -64,7 +65,7 @@ def update_employee(
     employee_id: int,
     payload: EmployeeUpdate,
     db: DbSession,
-    _admin: AdminUser,
+    _admin: Perm("users", "edit"),
 ):
     employee = db.get(Employee, employee_id)
     if employee is None:

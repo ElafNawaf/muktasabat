@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { NoAccess } from "@/components/NoAccess";
+import { canServer } from "@/lib/perm";
 import { getTranslations } from "next-intl/server";
 
 import { Topbar } from "@/components/Topbar";
@@ -65,6 +68,11 @@ export default async function DashboardPage({
   const t = await getTranslations("dashboard");
   const tCurrency = await getTranslations("currency");
   const me = await requireAuth(locale);
+  if (!(await canServer(locale, "dashboard", "view"))) {
+    // Landing page after sign-in: send roles without dashboard access to their own area.
+    if (await canServer(locale, "website", "view")) redirect(`/${locale}/website`);
+    return <NoAccess locale={locale} title={t("title")} user={me} />;
+  }
   const isAr = locale === "ar";
 
   let portfolio: Portfolio | null = null;

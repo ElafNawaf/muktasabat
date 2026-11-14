@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 
+from api.permissions import Perm
 from api.deps import CurrentUser, DbSession
 from api.i18n import Locale, get_locale, localized_value
 from api.models import (
@@ -60,7 +61,7 @@ LocaleDep = Annotated[Locale, Depends(get_locale)]
 # ───────────────────────── PORTFOLIO OVERVIEW ─────────────────────────
 
 @router.get("/portfolio", response_model=PortfolioResponse)
-def portfolio_overview(db: DbSession, _user: CurrentUser):
+def portfolio_overview(db: DbSession, _user: Perm("dashboard", "view")):
     today = date.today()
 
     owners_count = db.scalar(select(func.count(Owner.id))) or 0
@@ -137,7 +138,7 @@ def portfolio_overview(db: DbSession, _user: CurrentUser):
 # ───────────────────────── REVENUE TRENDS (12mo) ─────────────────────────
 
 @router.get("/revenue-trends", response_model=RevenueTrendsResponse)
-def revenue_trends(db: DbSession, _user: CurrentUser):
+def revenue_trends(db: DbSession, _user: Perm("dashboard", "view")):
     today = date.today()
     months: list[MonthlyRevenue] = []
 
@@ -189,7 +190,7 @@ def revenue_trends(db: DbSession, _user: CurrentUser):
 # ───────────────────────── AGING RECEIVABLES ─────────────────────────
 
 @router.get("/aging", response_model=AgingResponse)
-def aging_receivables(db: DbSession, _user: CurrentUser, locale: LocaleDep):
+def aging_receivables(db: DbSession, _user: Perm("dashboard", "view"), locale: LocaleDep):
     today = date.today()
     overdue = db.scalars(
         select(Payment).where(Payment.status == "pending", Payment.due_date < today)
@@ -238,7 +239,7 @@ def aging_receivables(db: DbSession, _user: CurrentUser, locale: LocaleDep):
 # ───────────────────────── CONTRACT INTELLIGENCE ─────────────────────────
 
 @router.get("/contract-intel", response_model=ContractIntelResponse)
-def contract_intelligence(db: DbSession, _user: CurrentUser, locale: LocaleDep):
+def contract_intelligence(db: DbSession, _user: Perm("dashboard", "view"), locale: LocaleDep):
     today = date.today()
     active = db.scalars(select(Contract).where(Contract.status == "active")).all()
 
@@ -316,7 +317,7 @@ def contract_intelligence(db: DbSession, _user: CurrentUser, locale: LocaleDep):
 # ───────────────────────── EXPENSE ANALYTICS ─────────────────────────
 
 @router.get("/expenses", response_model=ExpenseAnalyticsResponse)
-def expense_analytics(db: DbSession, _user: CurrentUser, locale: LocaleDep):
+def expense_analytics(db: DbSession, _user: Perm("dashboard", "view"), locale: LocaleDep):
     today = date.today()
     year_start = today.replace(month=1, day=1)
 
@@ -394,7 +395,7 @@ def expense_analytics(db: DbSession, _user: CurrentUser, locale: LocaleDep):
 # ───────────────────────── EMPLOYEE PERFORMANCE ─────────────────────────
 
 @router.get("/employee-performance", response_model=EmployeePerformanceResponse)
-def employee_perf(db: DbSession, _user: CurrentUser, locale: LocaleDep):
+def employee_perf(db: DbSession, _user: Perm("dashboard", "view"), locale: LocaleDep):
     today = date.today()
     employees = db.scalars(select(Employee)).all()
     result: list[EmployeePerformance] = []
@@ -467,7 +468,7 @@ def employee_perf(db: DbSession, _user: CurrentUser, locale: LocaleDep):
 def owner_statement(
     owner_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("dashboard", "view"),
     locale: LocaleDep,
     year: int = Query(default_factory=lambda: date.today().year, ge=2000, le=2100),
     month: int = Query(default_factory=lambda: date.today().month, ge=1, le=12),
@@ -566,7 +567,7 @@ def owner_statement(
 # ───────────────────────── BUILDING YIELD ─────────────────────────
 
 @router.get("/yield-analysis", response_model=YieldAnalysisResponse)
-def yield_analysis(db: DbSession, _user: CurrentUser, locale: LocaleDep):
+def yield_analysis(db: DbSession, _user: Perm("dashboard", "view"), locale: LocaleDep):
     buildings = db.scalars(select(Building)).all()
     result: list[BuildingYield] = []
 

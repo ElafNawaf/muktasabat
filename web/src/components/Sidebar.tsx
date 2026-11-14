@@ -45,46 +45,45 @@ export function Sidebar({
   const L = (p: string) => `/${locale}/${p}`;
 
   // Grouped by what the data is about: portfolio → contracts → money → running the company.
-  const sections: { label: string; items: NavItem[] }[] = [
+  // Each item shows only when the user's role can view that module.
+  const v = (m: Parameters<typeof can>[0]) => isAdmin || can(m, "view");
+  type Item = NavItem & { show?: boolean };
+  const raw: { label: string; items: Item[] }[] = [
     {
       label: t("overview"),
-      items: [{ id: "dashboard", href: L("dashboard"), icon: "space_dashboard", label: t("dashboard") }],
+      items: [{ id: "dashboard", href: L("dashboard"), icon: "space_dashboard", label: t("dashboard"), show: v("dashboard") }],
     },
     {
       label: t("portfolio"),
       items: [
-        { id: "properties", href: L("properties"), icon: "domain", label: t("properties") },
-        { id: "owners", href: L("owners"), icon: "group", label: t("owners") },
-        { id: "tenants", href: L("tenants"), icon: "person", label: t("tenants") },
-        { id: "agents", href: L("agents"), icon: "support_agent", label: t("agents") },
+        { id: "properties", href: L("properties"), icon: "domain", label: t("properties"), show: v("properties") },
+        { id: "owners", href: L("owners"), icon: "group", label: t("owners"), show: v("owners") },
+        { id: "tenants", href: L("tenants"), icon: "person", label: t("tenants"), show: v("tenants") },
+        { id: "agents", href: L("agents"), icon: "support_agent", label: t("agents"), show: v("agents") },
       ],
     },
     {
       label: t("contractsGroup"),
       items: [
-        { id: "contracts", href: L("contracts"), icon: "description", label: t("leaseContracts") },
-        { id: "management-contracts", href: L("management-contracts"), icon: "handshake", label: t("managementContracts") },
+        { id: "contracts", href: L("contracts"), icon: "description", label: t("leaseContracts"), show: v("contracts") },
+        { id: "management-contracts", href: L("management-contracts"), icon: "handshake", label: t("managementContracts"), show: v("management_contracts") },
       ],
     },
     {
       label: t("finance"),
       items: [
-        { id: "payments", href: L("payments"), icon: "payments", label: t("payments") },
-        { id: "expenses", href: L("expenses"), icon: "receipt_long", label: t("expenses") },
+        { id: "payments", href: L("payments"), icon: "payments", label: t("payments"), show: v("payments") },
+        { id: "expenses", href: L("expenses"), icon: "receipt_long", label: t("expenses"), show: v("expenses") },
       ],
     },
     {
       label: t("management"),
       items: [
-        ...(isAdmin ? [{ id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users") }] : []),
-        ...(isAdmin ? [{ id: "data-management", href: L("data-management"), icon: "database", label: t("dataManagement") }] : []),
-        ...(user?.is_super_admin ? [{ id: "email-log", href: L("email-log"), icon: "outgoing_mail", label: t("emailLog") }] : []),
-        ...(isAdmin || can("owners", "view")
-          ? [{ id: "owner-access", href: L("owner-access"), icon: "key", label: t("ownerAccess") }]
-          : []),
-        ...(isAdmin || user?.role === "content_editor"
-          ? [{ id: "website", href: L("website"), icon: "language", label: t("website") }]
-          : []),
+        { id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users"), show: isAdmin },
+        { id: "owner-access", href: L("owner-access"), icon: "key", label: t("ownerAccess"), show: v("owner_portal") },
+        { id: "website", href: L("website"), icon: "language", label: t("website"), show: v("website") },
+        { id: "data-management", href: L("data-management"), icon: "database", label: t("dataManagement"), show: v("data") },
+        { id: "email-log", href: L("email-log"), icon: "outgoing_mail", label: t("emailLog"), show: !!user?.is_super_admin },
       ],
     },
     {
@@ -94,7 +93,10 @@ export function Sidebar({
         { id: "support", href: L("support"), icon: "support_agent", label: t("support") },
       ],
     },
-  ].filter((sec) => sec.items.length > 0);
+  ];
+  const sections: { label: string; items: NavItem[] }[] = raw
+    .map((sec) => ({ ...sec, items: sec.items.filter((it) => it.show !== false) }))
+    .filter((sec) => sec.items.length > 0);
 
   const otherLocale = locale === "en" ? "ar" : "en";
   const displayName = user ? user.full_name || user.username : "—";

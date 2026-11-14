@@ -32,6 +32,7 @@ export default async function WebsiteLayout({ children, params }: { children: Re
     { href: "leads", label: ar ? "الاستفسارات" : "Enquiries", icon: "inbox", badge: inbox.new_leads },
     { href: "applications", label: ar ? "طلبات التوظيف" : "Applications", icon: "badge", badge: inbox.new_applications },
     { href: "settings", label: ar ? "إعدادات الموقع" : "Site settings", icon: "tune" },
+    { href: "texts", label: ar ? "نصوص الموقع" : "Website texts", icon: "translate" },
     ...kinds.map((k) => ({ href: k, label: ar ? KIND_META[k].title[1] : KIND_META[k].title[0], icon: KIND_META[k].icon })),
   ];
   return (

@@ -1,3 +1,5 @@
+import { NoAccess } from "@/components/NoAccess";
+import { canServer } from "@/lib/perm";
 import { getTranslations } from "next-intl/server";
 
 import { Topbar } from "@/components/Topbar";
@@ -14,6 +16,7 @@ export default async function DataManagementPage({
   const { locale } = await params;
   const t = await getTranslations("dataManagement");
   const me = await requireAuth(locale);
+  if (!(await canServer(locale, "data", "view"))) return <NoAccess locale={locale} title={t("title")} user={me} />;
   const summary = await api.get<DataSummary>("/api/v1/data-io/summary");
 
   return (

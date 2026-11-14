@@ -62,7 +62,7 @@ def get_company(db: DbSession, _user: CurrentUser):
 def upsert_company(
     payload: ManagementCompanyUpsert,
     db: DbSession,
-    _user: Perm("users", "edit"),
+    _user: Perm("company", "edit"),
 ):
     """Create or update the establishment this portal files Ejar contracts under."""
     company = get_active_company(db)
@@ -151,14 +151,14 @@ def _replace_properties(db: Session, contract: ManagementContract, payload) -> N
 
 
 @router.get("/contracts", response_model=list[ManagementContractRead])
-def list_management_contracts(db: DbSession, _user: CurrentUser):
+def list_management_contracts(db: DbSession, _user: Perm("management_contracts", "view")):
     return db.scalars(
         select(ManagementContract).order_by(ManagementContract.created_at.desc())
     ).all()
 
 
 @router.get("/contracts/{contract_id}", response_model=ManagementContractRead)
-def get_management_contract(contract_id: int, db: DbSession, _user: CurrentUser):
+def get_management_contract(contract_id: int, db: DbSession, _user: Perm("management_contracts", "view")):
     contract = db.get(ManagementContract, contract_id)
     if contract is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Management contract not found")
@@ -173,7 +173,7 @@ def get_management_contract(contract_id: int, db: DbSession, _user: CurrentUser)
 def create_management_contract(
     payload: ManagementContractCreate,
     db: DbSession,
-    _user: Perm("contracts", "create"),
+    _user: Perm("management_contracts", "create"),
 ):
     if db.get(Owner, payload.owner_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Owner not found")
@@ -206,7 +206,7 @@ def update_management_contract(
     contract_id: int,
     payload: ManagementContractUpdate,
     db: DbSession,
-    _user: Perm("contracts", "edit"),
+    _user: Perm("management_contracts", "edit"),
 ):
     contract = db.get(ManagementContract, contract_id)
     if contract is None:
@@ -247,7 +247,7 @@ def update_management_contract(
 def terminate_management_contract(
     contract_id: int,
     db: DbSession,
-    _user: Perm("contracts", "delete"),
+    _user: Perm("management_contracts", "delete"),
 ):
     contract = db.get(ManagementContract, contract_id)
     if contract is None:
@@ -262,7 +262,7 @@ def terminate_management_contract(
 def delete_management_contract(
     contract_id: int,
     db: DbSession,
-    _user: Perm("contracts", "delete"),
+    _user: Perm("management_contracts", "delete"),
 ):
     contract = db.get(ManagementContract, contract_id)
     if contract is None:
@@ -376,7 +376,7 @@ def validate_management_contract(contract_id: int, db: DbSession, _user: Current
 async def register_management_contract_on_ejar(
     contract_id: int,
     db: DbSession,
-    _user: Perm("contracts", "create"),
+    _user: Perm("management_contracts", "approve"),
 ):
     """Register this property management contract on Ejar.
 
@@ -435,7 +435,7 @@ async def register_management_contract_on_ejar(
 async def cancel_management_contract_on_ejar(
     contract_id: int,
     db: DbSession,
-    _user: Perm("contracts", "delete"),
+    _user: Perm("management_contracts", "approve"),
 ):
     """Cancel this management contract's registration on Ejar."""
     contract = db.get(ManagementContract, contract_id)
@@ -470,7 +470,7 @@ async def cancel_management_contract_on_ejar(
 async def refresh_management_contract_status(
     contract_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("management_contracts", "view"),
 ):
     """Pull the live status from Ejar and store it on the contract."""
     contract = db.get(ManagementContract, contract_id)
@@ -493,7 +493,7 @@ async def refresh_management_contract_status(
 @router.post("/ejar/sync", response_model=ManagementSyncResponse)
 async def sync_management_contracts_from_ejar(
     db: DbSession,
-    _user: Perm("contracts", "create"),
+    _user: Perm("management_contracts", "create"),
 ):
     """Import every management contract registered for this establishment on Ejar.
 

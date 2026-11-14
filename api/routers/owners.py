@@ -28,7 +28,7 @@ def get_owner(owner_id: int, db: DbSession, _user: CurrentUser):
 
 
 @router.post("", response_model=OwnerRead, status_code=status.HTTP_201_CREATED)
-def create_owner(payload: OwnerCreate, db: DbSession, _user: CurrentUser):
+def create_owner(payload: OwnerCreate, db: DbSession, _user: Perm("owners", "create")):
     _validate_agent_id(db, payload.agent_id)
     owner = Owner(**payload.model_dump())
     db.add(owner)
@@ -42,7 +42,7 @@ def update_owner(
     owner_id: int,
     payload: OwnerUpdate,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("owners", "edit"),
 ):
     owner = db.get(Owner, owner_id)
     if owner is None:

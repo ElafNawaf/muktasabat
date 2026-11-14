@@ -108,7 +108,7 @@ def get_contract(contract_id: int, db: DbSession, _user: CurrentUser):
 def create_contract(
     payload: ContractCreateRequest,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("contracts", "create"),
 ):
     is_lease = payload.contract_type in LEASE_CONTRACT_TYPES
 
@@ -182,7 +182,7 @@ def update_contract(
     contract_id: int,
     payload: ContractUpdateRequest,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("contracts", "edit"),
 ):
     contract = db.get(Contract, contract_id)
     if contract is None:
@@ -398,7 +398,7 @@ async def ejar_sync_contracts(
 async def ejar_register_contract(
     contract_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("contracts", "approve"),
 ):
     """
     Register this contract on the Ejar platform.
@@ -475,7 +475,7 @@ async def ejar_register_contract(
 
 
 @router.get("/{contract_id}/ejar/validate", response_model=EjarReadinessResponse)
-def ejar_validate_contract(contract_id: int, db: DbSession, _user: CurrentUser):
+def ejar_validate_contract(contract_id: int, db: DbSession, _user: Perm("contracts", "view")):
     """Report which fields Ejar would reject this lease for, without submitting."""
     contract = db.get(Contract, contract_id)
     if contract is None:
@@ -496,7 +496,7 @@ def ejar_validate_contract(contract_id: int, db: DbSession, _user: CurrentUser):
 async def ejar_cancel_contract(
     contract_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("contracts", "approve"),
 ):
     """Cancel this contract's registration on the Ejar platform."""
     contract = db.get(Contract, contract_id)
@@ -528,7 +528,7 @@ async def ejar_cancel_contract(
 async def ejar_get_status(
     contract_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("contracts", "view"),
 ):
     """Fetch the live status of this contract from the Ejar platform."""
     contract = db.get(Contract, contract_id)

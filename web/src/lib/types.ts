@@ -396,6 +396,11 @@ export function issueMessage(issue: EjarIssue, locale: string): string {
 
 export type PermissionAction = "view" | "create" | "edit" | "delete" | "approve";
 export type ModuleId =
+  | "dashboard"
+  | "management_contracts"
+  | "company"
+  | "owner_portal"
+  | "data"
   | "properties"
   | "contracts"
   | "payments"
@@ -419,14 +424,24 @@ export type Role = {
 };
 
 export const MODULE_IDS: ModuleId[] = [
+  // Overview
+  "dashboard",
+  // Portfolio & clients
   "properties",
-  "contracts",
-  "payments",
   "owners",
-  "agents",
   "tenants",
+  "agents",
+  // Contracts
+  "contracts",
+  "management_contracts",
+  // Finance
+  "payments",
   "expenses",
+  // Management
   "users",
+  "owner_portal",
+  "company",
+  "data",
   "website",
   "support",
 ];

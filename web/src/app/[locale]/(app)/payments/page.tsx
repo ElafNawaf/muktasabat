@@ -1,3 +1,5 @@
+import { NoAccess } from "@/components/NoAccess";
+import { canServer } from "@/lib/perm";
 import { getTranslations } from "next-intl/server";
 
 import { Topbar } from "@/components/Topbar";
@@ -15,6 +17,7 @@ export default async function PaymentsPage({
   const { locale } = await params;
   const t = await getTranslations("paymentsPage");
   const me = await requireAuth(locale);
+  if (!(await canServer(locale, "payments", "view"))) return <NoAccess locale={locale} title={t("title")} user={me} />;
 
   const [payments, contracts, units, tenants, buildings] = await Promise.all([
     api.get<PaymentRow[]>("/api/v1/payments"),

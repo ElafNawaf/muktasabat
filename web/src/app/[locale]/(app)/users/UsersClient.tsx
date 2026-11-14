@@ -49,6 +49,11 @@ export type AdminUserRow = {
 };
 
 const MODULE_ICON: Record<ModuleId, string> = {
+  dashboard: "space_dashboard",
+  management_contracts: "handshake",
+  company: "apartment",
+  owner_portal: "key",
+  data: "database",
   properties: "domain",
   contracts: "description",
   payments: "payments",

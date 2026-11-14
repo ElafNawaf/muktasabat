@@ -46,6 +46,7 @@ export type SiteData = {
   maps_url?: string | null;
   aqar_url?: string | null;
   coverage?: Bi;
+  texts?: Record<string, Bi>;
   social: Record<string, string | null>;
   cr_number?: string | null;
   fal_licence?: string | null;

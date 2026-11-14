@@ -282,9 +282,11 @@ export function ContractsClient({
               {syncPending ? t("syncing") : t("syncEjar")}
             </button>
           )}
+          {canCreate && (
           <button className="btn btn-primary" onClick={() => setFormOpen(true)}>
             <span className="ms">add</span> {t("newContract")}
           </button>
+          )}
         </div>
       </div>
 

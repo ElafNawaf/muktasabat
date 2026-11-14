@@ -393,6 +393,26 @@ def put_settings_admin(payload: SiteSettingsAdmin, db: DbSession, _u: Perm("webs
     return payload
 
 
+class _TextsIn(BaseModel):
+    texts: dict[str, dict[str, Optional[str]]] = {}
+
+
+@admin.put("/texts")
+def put_texts(payload: _TextsIn, db: DbSession, _u: Perm("website", "edit")):
+    """Save only the public-site text overrides (leaves every other setting untouched)."""
+    row = _settings_row(db)
+    data = dict(row.data or {})
+    data["texts"] = payload.texts
+    try:
+        clean = SiteData.model_validate(data).model_dump(mode="json")
+    except ValidationError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, e.errors(include_url=False, include_context=False))
+    data["texts"] = clean["texts"]
+    row.data = data
+    db.commit()
+    return {"texts": clean["texts"]}
+
+
 @admin.get("/inbox", response_model=InboxCounts)
 def inbox_counts(db: DbSession, _u: Perm("website", "view")):
     return InboxCounts(

@@ -34,7 +34,7 @@ def get_unit(unit_id: int, db: DbSession, _user: CurrentUser):
 
 
 @router.post("", response_model=UnitRead, status_code=status.HTTP_201_CREATED)
-def create_unit(payload: UnitCreate, db: DbSession, _user: CurrentUser):
+def create_unit(payload: UnitCreate, db: DbSession, _user: Perm("properties", "create")):
     if db.get(Building, payload.building_id) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Building not found")
     unit = Unit(**payload.model_dump())
@@ -45,7 +45,7 @@ def create_unit(payload: UnitCreate, db: DbSession, _user: CurrentUser):
 
 
 @router.put("/{unit_id}", response_model=UnitRead)
-def update_unit(unit_id: int, payload: UnitUpdate, db: DbSession, _user: CurrentUser):
+def update_unit(unit_id: int, payload: UnitUpdate, db: DbSession, _user: Perm("properties", "edit")):
     unit = db.get(Unit, unit_id)
     if unit is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unit not found")
@@ -81,7 +81,7 @@ def delete_unit(unit_id: int, db: DbSession, _user: Perm("properties", "delete")
 async def upload_unit_image(
     unit_id: int,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("properties", "edit"),
     file: UploadFile = File(...),
 ):
     unit = db.get(Unit, unit_id)

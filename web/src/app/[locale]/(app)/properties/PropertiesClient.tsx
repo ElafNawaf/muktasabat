@@ -76,6 +76,7 @@ export function PropertiesClient({
   const tFilters = useTranslations("filters");
   const tBuildingForm = useTranslations("buildingForm");
   const { can } = usePermissions();
+  const canCreate = can("properties", "create");
   const canDelete = can("properties", "delete");
   const tCurrency = useTranslations("currency");
 
@@ -381,12 +382,14 @@ export function PropertiesClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {canCreate && (
           <button
             className="btn btn-primary"
             onClick={() => setBuildingForm({ open: true, editing: null })}
           >
             <span className="ms">add</span> {t("addBuilding")}
           </button>
+          )}
         </div>
       </div>
 

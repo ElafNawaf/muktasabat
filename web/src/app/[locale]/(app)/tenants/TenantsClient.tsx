@@ -54,6 +54,7 @@ export function TenantsClient({
   const tFilters = useTranslations("filters");
   const tCurrency = useTranslations("currency");
   const { can } = usePermissions();
+  const canCreate = can("tenants", "create");
   const canDelete = can("tenants", "delete");
 
   const [search, setSearch] = useState("");
@@ -273,9 +274,11 @@ export function TenantsClient({
           <button className="btn btn-secondary" onClick={doExport}>
             <span className="ms">file_download</span> {tCommon("export")}
           </button>
+          {canCreate && (
           <button className="btn btn-primary" onClick={openCreate}>
             <span className="ms">add</span> {tCommon("addNew")}
           </button>
+          )}
         </div>
       </div>
 

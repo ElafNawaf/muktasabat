@@ -15,6 +15,7 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, select
 
+from api.permissions import Perm
 from api.deps import AdminUser, DbSession
 from api.models import AuditLog
 from api.services.data_io.export import build_workbook
@@ -30,7 +31,7 @@ XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 @router.get("/summary")
-def summary(db: DbSession, _admin: AdminUser):
+def summary(db: DbSession, _admin: Perm("data", "view")):
     return {
         "sheets": [
             {
@@ -52,7 +53,7 @@ def summary(db: DbSession, _admin: AdminUser):
 
 
 @router.get("/export")
-def export(db: DbSession, admin: AdminUser, template: bool = False):
+def export(db: DbSession, admin: Perm("data", "view"), template: bool = False):
     content = build_workbook(db, template=template, exported_by=admin.username)
     stamp = datetime.utcnow().strftime("%Y%m%d-%H%M")
     name = f"muktasabat-{'template' if template else 'data'}-{stamp}.xlsx"
@@ -88,7 +89,7 @@ def _fatal(e: FatalImportError) -> JSONResponse:
 
 
 @router.post("/validate")
-async def validate(db: DbSession, _admin: AdminUser, file: UploadFile = File(...)):
+async def validate(db: DbSession, _admin: Perm("data", "create"), file: UploadFile = File(...)):
     data = await _read_upload(file)
     try:
         report = validate_workbook(db, data)
@@ -98,7 +99,7 @@ async def validate(db: DbSession, _admin: AdminUser, file: UploadFile = File(...
 
 
 @router.post("/apply")
-async def apply(request: Request, db: DbSession, admin: AdminUser, file: UploadFile = File(...)):
+async def apply(request: Request, db: DbSession, admin: Perm("data", "create"), file: UploadFile = File(...)):
     data = await _read_upload(file)
     try:
         report = validate_workbook(db, data)

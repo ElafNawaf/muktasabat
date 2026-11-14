@@ -12,7 +12,7 @@ router = APIRouter(prefix="/expenses", tags=["expenses"])
 @router.get("", response_model=list[ExpenseRead])
 def list_expenses(
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("expenses", "view"),
     category: ExpenseCategory | None = Query(default=None),
 ):
     stmt = select(Expense)
@@ -22,7 +22,7 @@ def list_expenses(
 
 
 @router.get("/{expense_id}", response_model=ExpenseRead)
-def get_expense(expense_id: int, db: DbSession, _user: CurrentUser):
+def get_expense(expense_id: int, db: DbSession, _user: Perm("expenses", "view")):
     expense = db.get(Expense, expense_id)
     if expense is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Expense not found")
@@ -30,7 +30,7 @@ def get_expense(expense_id: int, db: DbSession, _user: CurrentUser):
 
 
 @router.post("", response_model=ExpenseRead, status_code=status.HTTP_201_CREATED)
-def create_expense(payload: ExpenseCreate, db: DbSession, _user: CurrentUser):
+def create_expense(payload: ExpenseCreate, db: DbSession, _user: Perm("expenses", "create")):
     expense = Expense(**payload.model_dump())
     db.add(expense)
     db.commit()
@@ -43,7 +43,7 @@ def update_expense(
     expense_id: int,
     payload: ExpenseCreate,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("expenses", "edit"),
 ):
     expense = db.get(Expense, expense_id)
     if expense is None:

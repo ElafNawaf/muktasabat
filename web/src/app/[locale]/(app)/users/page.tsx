@@ -1,3 +1,4 @@
+import { NoAccess } from "@/components/NoAccess";
 import { getTranslations } from "next-intl/server";
 
 import { Topbar } from "@/components/Topbar";
@@ -15,6 +16,7 @@ export default async function UsersPage({
   const { locale } = await params;
   const t = await getTranslations("usersPage");
   const me = await requireAuth(locale);
+  if (me.role !== "admin") return <NoAccess locale={locale} title={t("title")} user={me} />;
 
   const [users, roles] = await Promise.all([
     api.get<AdminUserRow[]>("/api/v1/auth/admin/users"),

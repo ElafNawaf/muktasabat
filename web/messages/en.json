@@ -74,7 +74,7 @@
     "translate": "Auto-translate",
     "modules": {
       "properties": "Properties",
-      "contracts": "Contracts",
+      "contracts": "Lease contracts",
       "payments": "Payments",
       "owners": "Owners",
       "agents": "Agents",
@@ -82,7 +82,12 @@
       "expenses": "Expenses",
       "users": "User management",
       "website": "Website",
-      "support": "Support"
+      "support": "Support",
+      "dashboard": "Dashboard & reports",
+      "management_contracts": "Management contracts",
+      "company": "Company & Ejar settings",
+      "owner_portal": "Owner portal access",
+      "data": "Data import / export"
     }
   },
   "filters": {

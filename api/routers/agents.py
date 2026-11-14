@@ -23,7 +23,7 @@ def get_agent(agent_id: int, db: DbSession, _user: CurrentUser):
 
 
 @router.post("", response_model=AgentRead, status_code=status.HTTP_201_CREATED)
-def create_agent(payload: AgentCreate, db: DbSession, _user: CurrentUser):
+def create_agent(payload: AgentCreate, db: DbSession, _user: Perm("agents", "create")):
     agent = Agent(**payload.model_dump())
     db.add(agent)
     db.commit()
@@ -36,7 +36,7 @@ def update_agent(
     agent_id: int,
     payload: AgentUpdate,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("agents", "edit"),
 ):
     agent = db.get(Agent, agent_id)
     if agent is None:

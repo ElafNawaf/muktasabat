@@ -23,7 +23,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 @router.get("", response_model=list[PaymentRead])
 def list_payments(
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("payments", "view"),
     status_filter: Optional[str] = Query(default=None, alias="status"),
 ):
     """List payments. `status` may be: pending, paid, overdue."""
@@ -56,7 +56,7 @@ def run_payment_alerts(
 
 
 @router.get("/{payment_id}/alerts", response_model=list[PaymentAlertLogRead])
-def payment_alert_history(payment_id: int, db: DbSession, _user: CurrentUser):
+def payment_alert_history(payment_id: int, db: DbSession, _user: Perm("payments", "view")):
     return db.scalars(
         select(PaymentAlertLog)
         .where(PaymentAlertLog.payment_id == payment_id)
@@ -69,7 +69,7 @@ def mark_owner_transferred(
     payment_id: int,
     payload: OwnerTransferRequest,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("payments", "approve"),
 ):
     """Record that the owner's share of this instalment was transferred.
     Stops the owner-payout reminders and sends a confirmation."""
@@ -87,7 +87,7 @@ def mark_owner_transferred(
 
 
 @router.get("/{payment_id}", response_model=PaymentRead)
-def get_payment(payment_id: int, db: DbSession, _user: CurrentUser):
+def get_payment(payment_id: int, db: DbSession, _user: Perm("payments", "view")):
     payment = db.get(Payment, payment_id)
     if payment is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Payment not found")
@@ -99,7 +99,7 @@ def mark_paid(
     payment_id: int,
     payload: PaymentMarkPaidRequest,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("payments", "edit"),
 ):
     payment = db.get(Payment, payment_id)
     if payment is None:
@@ -127,7 +127,7 @@ def update_payment(
     payment_id: int,
     payload: PaymentUpdateRequest,
     db: DbSession,
-    _user: CurrentUser,
+    _user: Perm("payments", "edit"),
 ):
     payment = db.get(Payment, payment_id)
     if payment is None:

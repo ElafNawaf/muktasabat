@@ -1,3 +1,5 @@
+import { NoAccess } from "@/components/NoAccess";
+import { canServer } from "@/lib/perm";
 import { getTranslations } from "next-intl/server";
 
 import { Topbar } from "@/components/Topbar";
@@ -21,6 +23,7 @@ export default async function ManagementContractsPage({
   const { locale } = await params;
   const t = await getTranslations("managementContracts");
   const me = await requireAuth(locale);
+  if (!(await canServer(locale, "management_contracts", "view"))) return <NoAccess locale={locale} title={t("title")} user={me} />;
 
   const [contracts, owners, buildings, units, company] = await Promise.all([
     api.get<ManagementContract[]>("/api/v1/management/contracts"),

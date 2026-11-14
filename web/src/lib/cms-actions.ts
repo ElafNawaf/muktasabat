@@ -128,3 +128,13 @@ export async function cmsTestEmail(to: string): Promise<CmsResult<{ ok: boolean;
     return fail(e);
   }
 }
+
+export async function cmsSaveTexts(texts: Record<string, { ar?: string | null; en?: string | null }>): Promise<CmsResult<unknown>> {
+  try {
+    const data = await api.put<unknown>("/api/v1/cms/admin/texts", { texts });
+    revalidateTag(CMS_TAG);
+    return { ok: true, data };
+  } catch (e) {
+    return fail(e);
+  }
+}

@@ -79,6 +79,8 @@ class SiteData(_Base):
     # photo slideshow. Empty → the animated skyline artwork is shown.
     hero_video_url: SafeUrl = None
     hero_slides: list[SafeUrl] = Field(default_factory=list, max_length=6)
+    # Editor overrides for any public-site text (key = message path under `site.`).
+    texts: dict[str, Bilingual] = Field(default_factory=dict)
 
     about_title: Bilingual = Bilingual()
     about_body: Bilingual = Bilingual()
@@ -112,6 +114,21 @@ class SiteData(_Base):
     seo_title: Bilingual = Bilingual()
     seo_description: Bilingual = Bilingual()
     og_image_url: SafeUrl = None
+
+    @field_validator("texts")
+    @classmethod
+    def _texts(cls, v: dict[str, Any]) -> dict[str, Any]:
+        if len(v) > 600:
+            raise ValueError("Too many text overrides")
+        out = {}
+        for k, val in v.items():
+            if not re.match(r"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+){0,5}$", k or ""):
+                continue
+            ar = (getattr(val, "ar", None) if not isinstance(val, dict) else val.get("ar")) or ""
+            en = (getattr(val, "en", None) if not isinstance(val, dict) else val.get("en")) or ""
+            if ar.strip() or en.strip():
+                out[k] = val
+        return out
 
     @field_validator("social")
     @classmethod

@@ -59,8 +59,8 @@ export function ManagementContractsClient({
   const tFilters = useTranslations("filters");
   const tCurrency = useTranslations("currency");
   const { can } = usePermissions();
-  const canCreate = can("contracts", "create");
-  const canDelete = can("contracts", "delete");
+  const canCreate = can("management_contracts", "create");
+  const canDelete = can("management_contracts", "delete");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -225,9 +225,11 @@ export function ManagementContractsClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-secondary" onClick={() => setCompanyOpen(true)}>
-            <span className="ms">apartment</span> {t("establishment")}
-          </button>
+          {can("company", "view") && (
+            <button className="btn btn-secondary" onClick={() => setCompanyOpen(true)}>
+              <span className="ms">apartment</span> {t("establishment")}
+            </button>
+          )}
           {canCreate && (
             <button className="btn btn-secondary" onClick={doSync} disabled={ejarPending}>
               <span className="ms">sync</span>{" "}

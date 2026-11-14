@@ -34,6 +34,7 @@ export function AgentsClient({
   const tCommon = useTranslations("common");
   const tFilters = useTranslations("filters");
   const { can } = usePermissions();
+  const canCreate = can("agents", "create");
   const canDelete = can("agents", "delete");
 
   const [search, setSearch] = useState("");
@@ -107,9 +108,11 @@ export function AgentsClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          {canCreate && (
           <button className="btn btn-primary" onClick={() => { setEditing(null); setFormOpen(true); }}>
             <span className="ms">add</span> {tCommon("addNew")}
           </button>
+          )}
         </div>
       </div>
 

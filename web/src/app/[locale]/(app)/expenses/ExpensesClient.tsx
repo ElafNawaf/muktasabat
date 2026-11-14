@@ -56,6 +56,7 @@ export function ExpensesClient({
   const tCommon = useTranslations("common");
   const tCurrency = useTranslations("currency");
   const { can } = usePermissions();
+  const canCreate = can("expenses", "create");
   const canDelete = can("expenses", "delete");
 
   const [search, setSearch] = useState("");
@@ -137,9 +138,11 @@ export function ExpensesClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          {canCreate && (
           <button className="btn btn-primary" onClick={() => setFormOpen(true)}>
             <span className="ms">add</span> {t("newExpense")}
           </button>
+          )}
         </div>
       </div>
 

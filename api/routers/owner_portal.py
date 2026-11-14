@@ -79,8 +79,8 @@ def _resolve_owner_id(db: Session, user: User, as_owner: Optional[int]) -> int:
     # Staff preview ("View as owner")
     if as_owner is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "as_owner is required for staff preview")
-    if not has_permission(db, user, "owners", "view"):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied: owners.view")
+    if not has_permission(db, user, "owner_portal", "view"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied: owner_portal.view")
     return as_owner
 
 
@@ -624,8 +624,8 @@ def statement_csv(
 
 
 def _require_owner_perm(db: Session, user: User, action: str) -> None:
-    if user.role == "owner" or not has_permission(db, user, "owners", action):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Permission denied: owners.{action}")
+    if user.role == "owner" or not has_permission(db, user, "owner_portal", action):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Permission denied: owner_portal.{action}")
 
 
 class InviteIn(BaseModel):
@@ -714,7 +714,7 @@ def invite_owner(owner_id: int, payload: InviteIn, db: DbSession, user: CurrentU
     The link is returned to staff as well as emailed, so it can be shared over
     WhatsApp while SES delivery is being set up.
     """
-    _require_owner_perm(db, user, "edit")
+    _require_owner_perm(db, user, "create")
     owner = db.get(Owner, owner_id)
     if owner is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Owner not found")
@@ -751,7 +751,7 @@ def invite_owner(owner_id: int, payload: InviteIn, db: DbSession, user: CurrentU
 
 @router.post("/admin/owners/{owner_id}/revoke")
 def revoke_owner(owner_id: int, db: DbSession, user: CurrentUser):
-    _require_owner_perm(db, user, "edit")
+    _require_owner_perm(db, user, "delete")
     link = db.scalar(select(OwnerUser).where(OwnerUser.owner_id == owner_id))
     if link is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No portal account")
