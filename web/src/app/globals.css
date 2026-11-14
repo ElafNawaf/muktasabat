@@ -3581,7 +3581,6 @@ a.bd-person:hover { background: rgba(255,255,255,.22); }
 .hr-bal__row > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--color-bg); }
 .hr-bal__row span { font-size: 12px; color: var(--color-text-secondary); }
 .hr-bal__row strong { font-size: 16px; }
-.hr-appr { display: flex; gap: 6px; align-items: center; margin: 0; font-size: 12.5px; }
 .hr-day { display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; background: var(--color-bg); color: var(--color-text-secondary); }
 .hr-day--present { background: #e7f4ec; color: #22663e; }
 .hr-day--late { background: #fdf1dc; color: #8a5a00; }
