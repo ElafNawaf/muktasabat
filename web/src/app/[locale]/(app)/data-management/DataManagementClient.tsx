@@ -79,6 +79,7 @@ const SHEET_ICON: Record<string, string> = {
   hr_personal: "id_card",
   hr_family_members: "family_restroom",
   hr_contract_templates: "article",
+  hr_work_sites: "pin_drop",
   hr_contracts: "contract",
   collection_actions: "phone_in_talk",
   hr_assets: "devices",

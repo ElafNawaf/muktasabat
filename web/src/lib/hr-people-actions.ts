@@ -71,3 +71,8 @@ export async function hrContractDoc(id: number) { return call(() => api.get<{ bo
 export async function hrGetSignatory(cid: number) { return call(() => api.get<{ signatory_name?: string | null; signatory_title?: string | null; signature?: string | null }>(`${B}/companies/${cid}/signatory`)); }
 export async function hrSetSignatory(cid: number, b: Body) { return call(() => api.put(`${B}/companies/${cid}/signatory`, b)); }
 export async function hrDeleteLogo(cid: number) { return call(() => api.delete(`${B}/companies/${cid}/logo`)); }
+// attendance zones
+export async function hrSaveSite(id: number | null, b: Body) { return call(() => (id ? api.put(`${B}/sites/${id}`, b) : api.post(`${B}/sites`, b))); }
+export async function hrDeleteSite(id: number) { return call(() => api.delete<{ ok: boolean; archived: boolean }>(`${B}/sites/${id}`)); }
+export async function hrAssignSite(uid: number, b: Body) { return call(() => api.put(`${B}/sites-assign/${uid}`, b)); }
+export async function hrAssignSites(b: Body) { return call(() => api.put<{ updated: number }>(`${B}/sites-assign`, b)); }

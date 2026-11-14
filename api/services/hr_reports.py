@@ -47,7 +47,10 @@ def live(db: Session, locale: str) -> dict:
     last_ping: dict[int, LocationPing] = {}
     for pg in db.scalars(select(LocationPing).where(LocationPing.day == today).order_by(LocationPing.id)).all():
         last_ping[pg.user_id] = pg
-    cos0 = math.cos(math.radians(s.office_lat))
+    hr.seed_sites(db, s)
+    from api.hr_models import HrWorkSite
+
+    all_sites = {x.id: x for x in db.scalars(select(HrWorkSite).where(HrWorkSite.active.is_(True))).all()}
     stale_after = max(3 * s.ping_minutes, 15)
     people = []
     for u in hr._staff(db, working_only=True):
@@ -70,9 +73,20 @@ def live(db: Session, locale: str) -> dict:
         pg = last_ping.get(u.id)
         seen = (a.last_ping_at if a and a.last_ping_at else (pg.at if pg else None))
         x = y = None
+        site = None
         if pg and pg.lat is not None and pg.lng is not None:
-            y = round((pg.lat - s.office_lat) * 111320, 1)
-            x = round((pg.lng - s.office_lng) * 111320 * cos0, 1)
+            # Position relative to the employee's nearest allowed zone (for the per-zone radar).
+            site, _d, _in = hr.nearest_site(hr.sites_for(db, s, p), pg.lat, pg.lng, pg.accuracy)
+            if site is None and a and a.in_site_id in all_sites:
+                site = all_sites[a.in_site_id]
+            if site is not None:
+                y = round((pg.lat - site.lat) * 111320, 1)
+                x = round((pg.lng - site.lng) * 111320 * math.cos(math.radians(site.lat)), 1)
+        elif a and a.in_site_id in all_sites:
+            site = all_sites[a.in_site_id]
+        if site is None and p is not None:
+            mine = hr.sites_for(db, s, p)
+            site = mine[0] if mine else None
         wl = hr.work_location_on(db, u.id, today)
         people.append({
             "user_id": u.id, "name": hr._uname(u, locale), "department": p.department if p else None,
@@ -86,6 +100,7 @@ def live(db: Session, locale: str) -> dict:
             "distance": pg.distance if pg else None, "inside": pg.inside if pg else None, "x": x, "y": y,
             "reading_kind": pg.kind if pg else None, "leave_type": ds.get("leave_type"),
             "work_location": hr._summary(wl, locale) if wl else None,
+            "site_id": site.id if site else None,
         })
     order = {"away": 0, "absent": 1, "in_office": 2, "remote": 3, "field": 3, "not_yet": 4, "checked_out": 5, "on_leave": 6, "weekend": 7, "untracked": 8}
     people.sort(key=lambda r: (order.get(r["status"], 9), r["name"]))
@@ -95,6 +110,7 @@ def live(db: Session, locale: str) -> dict:
     return {
         "now": now.strftime("%H:%M"), "date": today.isoformat(), "headcount": len(people), "counts": counts, "people": people,
         "office": {"lat": s.office_lat, "lng": s.office_lng, "radius": s.geofence_radius_m},
+        "sites": [{"id": x.id, "name": hr.site_name(x, locale), "radius": x.radius_m, "lat": x.lat, "lng": x.lng} for x in all_sites.values()],
         "work": {"start": s.work_start.strftime("%H:%M"), "end": s.work_end.strftime("%H:%M")},
     }
 
