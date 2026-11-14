@@ -66,16 +66,20 @@ export function HeroCinema(p: HeroCinemaProps) {
     const el = root.current;
     if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let raf = 0;
+    let fade = 0;
     const onMove = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || raf) return;
+      if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
         const r = el.getBoundingClientRect();
-        el.style.setProperty("--mx", (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3));
-        el.style.setProperty("--my", (((e.clientY - r.top) / r.height) * 2 - 1).toFixed(3));
         el.style.setProperty("--gx", `${Math.round(e.clientX - r.left)}px`);
         el.style.setProperty("--gy", `${Math.round(e.clientY - r.top)}px`);
         el.classList.add("is-pointer");
+        // Touch: the glow follows the finger, then fades out after it lifts.
+        if (e.pointerType !== "mouse") {
+          window.clearTimeout(fade);
+          fade = window.setTimeout(() => el.classList.remove("is-pointer"), 900);
+        }
       });
     };
     const onLeave = () => {
@@ -84,11 +88,14 @@ export function HeroCinema(p: HeroCinemaProps) {
       el.style.setProperty("--my", "0");
     };
     el.addEventListener("pointermove", onMove, { passive: true });
+    el.addEventListener("pointerdown", onMove, { passive: true });
     el.addEventListener("pointerleave", onLeave);
     return () => {
       el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerdown", onMove);
       el.removeEventListener("pointerleave", onLeave);
       cancelAnimationFrame(raf);
+      window.clearTimeout(fade);
     };
   }, []);
 

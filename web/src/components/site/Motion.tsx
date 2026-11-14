@@ -141,6 +141,34 @@ export function Motion() {
     document.addEventListener("pointermove", onMove, { passive: true });
     document.addEventListener("pointerout", onLeave, { passive: true });
 
+    // Touch: a tap lights the card where the finger lands and tilts it towards
+    // that point, then settles back — the same feedback the mouse gets.
+    let settle = 0;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") return;
+      const t = e.target as HTMLElement | null;
+      const spot = t?.closest<HTMLElement>("[data-spot]");
+      if (spot) {
+        const r = spot.getBoundingClientRect();
+        spot.style.setProperty("--mx", `${e.clientX - r.left}px`);
+        spot.style.setProperty("--my", `${e.clientY - r.top}px`);
+        spot.classList.add("is-touch");
+      }
+      const tilt = reduce ? null : t?.closest<HTMLElement>("[data-tilt]");
+      if (tilt) {
+        const r = tilt.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        tilt.style.rotate = `${(-y).toFixed(3)} ${x.toFixed(3)} 0 ${Math.min(6, Math.hypot(x, y) * 10).toFixed(2)}deg`;
+      }
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => {
+        spot?.classList.remove("is-touch");
+        if (tilt) tilt.style.rotate = "";
+      }, 650);
+    };
+    document.addEventListener("pointerdown", onDown, { passive: true });
+
     // Scroll-linked progress (page bar + [data-progress] sections).
     const bar = document.querySelector<HTMLElement>(".mk-progressbar");
     const tracked = Array.from(document.querySelectorAll<HTMLElement>("[data-progress]"));
@@ -168,6 +196,8 @@ export function Motion() {
       mo.disconnect();
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerout", onLeave);
+      document.removeEventListener("pointerdown", onDown);
+      window.clearTimeout(settle);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       cancelAnimationFrame(raf);

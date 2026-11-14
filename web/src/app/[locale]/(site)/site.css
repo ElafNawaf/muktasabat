@@ -1294,7 +1294,6 @@ html:has(.mk-site) { scrollbar-color: #cdbfa9 #f6f2eb; }
 @keyframes mk-floatin { from { opacity: 0; transform: translateY(16px) scale(.94); } to { opacity: 1; transform: none; } }
 @keyframes mk-bob { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
 .mk-cine--media .mk-floater { background: rgba(20, 16, 14, .45); color: #fff; border-color: rgba(255, 255, 255, .22); }
-@media (max-width: 1180px) { .mk-floaters { display: none; } }
 
 /* ── Section headings: a gold rule draws in under each title ── */
 .mk-sechead .mk-h2, .mk-why__intro .mk-h2, .mk-faqsec header .mk-h2, .mk-section > .mk-wrap > .mk-h2 { position: relative; }
@@ -1485,4 +1484,27 @@ html:has(.mk-site) { scrollbar-color: #cdbfa9 #f6f2eb; }
   .mk-cine__rot > span, .mk-why::before, .mk-valuation, .mk-valuation .mk-btn--light, .mk-footer::before { animation: none !important; }
   .mk-js .mk-mock[data-reveal="zoom"]:not(.is-in) { transform: none !important; }
 }
-@media (max-width: 760px) { .mk-dust span:nth-child(n+9) { display: none; } }
+
+/* ═══ 2026-11i: phones & tablets get the same motion as desktop ═══
+   No mouse → the hero sways on its own (registered custom properties animate
+   smoothly), taps light and tilt cards (Motion.tsx), the glow follows the finger,
+   and the floating proof tags sit over the skyline instead of disappearing. */
+@property --px { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --py { syntax: "<number>"; inherits: true; initial-value: 0; }
+@media (hover: none), (max-width: 1180px) {
+  .mk-cine { animation: mk-sway 9s ease-in-out infinite alternate; }
+  @keyframes mk-sway { 0% { --px: -.7; --py: -.25; } 50% { --px: .2; --py: .3; } 100% { --px: .75; --py: -.15; } }
+  .sk-layer, .mk-aurora, .mk-floater { transition: none; }
+  .mk-site [data-spot].is-touch::after { opacity: 1; }
+  .mk-site [data-tilt] { transition: rotate .45s cubic-bezier(.16, 1, .3, 1); }
+}
+@media (max-width: 1180px) {
+  .mk-floaters { inset: auto 0 0 0; height: 150px; }
+  .mk-floater { font-size: 12.5px; padding: 7px 12px 7px 8px; gap: 6px; --d: 10px !important; }
+  .mk-floater .ms { width: 24px; height: 24px; font-size: 15px; }
+  .mk-site[dir] .mk-floater--1 { top: 18px; bottom: auto; inset-inline-start: 4%; inset-inline-end: auto; }
+  .mk-site[dir] .mk-floater--2 { top: 64px; bottom: auto; inset-inline-end: 4%; inset-inline-start: auto; }
+  .mk-site[dir] .mk-floater--3 { top: 104px; bottom: auto; inset-inline-start: 14%; inset-inline-end: auto; }
+}
+@media (max-width: 420px) { .mk-site[dir] .mk-floater--3 { display: none; } }
+@media (prefers-reduced-motion: reduce) { .mk-cine { animation: none !important; } }
