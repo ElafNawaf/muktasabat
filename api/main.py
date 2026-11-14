@@ -96,6 +96,9 @@ async def lifespan(app: FastAPI):
     ensure_ejar_property_columns(engine)
     ensure_contract_ejar_columns(engine)
     ensure_payment_owner_transfer_columns(engine)
+    from api.database import ensure_hr_location_columns
+
+    ensure_hr_location_columns(engine)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -169,10 +172,16 @@ async def lifespan(app: FastAPI):
     from api.services.payment_alerts import alert_loop
 
     alerts_task = asyncio.create_task(alert_loop())
+    # HR attendance monitor (reminders, left-the-office alerts, auto close) —
+    # every 5 minutes; see api/services/hr_monitor.py.
+    from api.services.hr_monitor import monitor_loop
+
+    hr_task = asyncio.create_task(monitor_loop())
     try:
         yield
     finally:
         alerts_task.cancel()
+        hr_task.cancel()
 
 
 settings = get_settings()

@@ -14,7 +14,7 @@ export type Item = {
   kind: Kind; id: number; ref?: string | null; title?: string | null; where: string; owner?: string | null;
   amount?: number | null; limit?: number | null; current?: number | null; gross?: number | null; change_pct?: number | null;
   since?: string | null; due?: string | null; days_late?: number; days_left?: number; priority?: string;
-  waiting_on: "owner" | "company"; urgent: boolean; href: string; hr_kind?: "leave" | "permission" | "ticket"; reason?: string | null;
+  waiting_on: "owner" | "company"; urgent: boolean; href: string; hr_kind?: "leave" | "permission" | "ticket" | "work_location"; reason?: string | null;
 };
 export type Inbox = { items: Item[]; can: Record<Kind, boolean>; counts: Record<Kind, number> };
 export type HistoryItem = {
@@ -31,6 +31,7 @@ const KIND: Record<Kind, { icon: string; ar: string; en: string }> = {
 };
 const HR_KIND: Record<string, [string, string, string]> = {
   leave: ["beach_access", "طلب إجازة", "Leave request"], permission: ["schedule", "طلب استئذان", "Permission request"], ticket: ["flight", "طلب تذكرة سفر", "Travel ticket request"],
+  work_location: ["home_work", "طلب عمل عن بُعد / ميداني", "Remote / field work request"],
 };
 
 export function ApprovalsClient({ locale, inbox, history }: { locale: string; inbox: Inbox; history: HistoryItem[] }) {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/AppShell";
+import { PresenceTracker } from "@/components/hr/PresenceTracker";
 import { PermissionsProvider } from "@/components/PermissionsProvider";
 import { api } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
@@ -36,7 +37,7 @@ export default async function AppLayout({
           avatar_url: user.avatar_url,
           is_super_admin: !!user.is_super_admin,
         }}
-      >{children}</AppShell>
+      >{children}<PresenceTracker /></AppShell>
     </PermissionsProvider>
   );
 }

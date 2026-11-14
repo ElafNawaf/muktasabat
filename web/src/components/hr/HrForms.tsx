@@ -10,7 +10,7 @@ type Opt = { id: number; name: string };
 
 /* ───────── New request ───────── */
 export function RequestModal({ locale, kind, onClose, onDone, employees, colleagues, leaves, defaults }: {
-  locale: string; kind: "leave" | "permission" | "ticket"; onClose: () => void; onDone: (r: HrReq) => void;
+  locale: string; kind: "leave" | "permission" | "ticket" | "work_location"; onClose: () => void; onDone: (r: HrReq) => void;
   employees?: Opt[]; colleagues?: Opt[]; leaves?: HrReq[];
   defaults?: { to_city?: string | null; travel_class?: string | null; travellers?: number };
 }) {
@@ -18,7 +18,7 @@ export function RequestModal({ locale, kind, onClose, onDone, employees, colleag
   const T = (a: string, e: string) => (ar ? a : e);
   const today = new Date().toISOString().slice(0, 10);
   const [f, setF] = useState<Record<string, string>>({
-    leave_type: "annual", permission_type: "early_leave", ticket_purpose: "annual_leave", start_date: today, round_trip: "1",
+    leave_type: "annual", permission_type: "early_leave", location_type: "field", ticket_purpose: "annual_leave", start_date: today, round_trip: "1",
     travellers: String(defaults?.travellers ?? 1), to_city: defaults?.to_city ?? "", from_city: ar ? "الرياض" : "Riyadh",
     travel_class: defaults?.travel_class ?? "economy",
   });
@@ -34,6 +34,10 @@ export function RequestModal({ locale, kind, onClose, onDone, employees, colleag
     if (v("user_id")) body.user_id = Number(v("user_id"));
     if (kind === "leave") Object.assign(body, { leave_type: v("leave_type"), end_date: v("end_date") || v("start_date"), delegate_user_id: v("delegate") ? Number(v("delegate")) : null });
     if (kind === "permission") Object.assign(body, { permission_type: v("permission_type"), from_time: v("from_time"), to_time: v("to_time") });
+    if (kind === "work_location") Object.assign(body, {
+      location_type: v("location_type"), location_note: v("location_note") || null, end_date: v("end_date") || v("start_date"),
+      from_time: v("from_time") || null, to_time: v("to_time") || null,
+    });
     if (kind === "ticket") Object.assign(body, {
       ticket_purpose: v("ticket_purpose"), from_city: v("from_city"), to_city: v("to_city"), return_date: v("round_trip") === "1" ? v("return_date") || null : null,
       round_trip: v("round_trip") === "1", travellers: Number(v("travellers") || 1), travel_class: v("travel_class"),
@@ -45,8 +49,10 @@ export function RequestModal({ locale, kind, onClose, onDone, employees, colleag
       onDone(r.data as HrReq);
     });
   }
-  const title = kind === "leave" ? T("طلب إجازة", "Request leave") : kind === "permission" ? T("طلب استئذان", "Request permission") : T("طلب تذكرة سفر", "Request a travel ticket");
-  const hint = kind === "permission"
+  const title = kind === "work_location" ? T("طلب عمل عن بُعد / ميداني", "Remote or field work request") : kind === "leave" ? T("طلب إجازة", "Request leave") : kind === "permission" ? T("طلب استئذان", "Request permission") : T("طلب تذكرة سفر", "Request a travel ticket");
+  const hint = kind === "work_location"
+    ? T("بعد الاعتماد يمكنك تسجيل الحضور من خارج المكتب في الأيام المحددة.", "Once approved, you can check in away from the office on these days.")
+    : kind === "permission"
     ? T("الاستئذان: خروج أو تأخر لساعات خلال يوم عمل.", "A permission covers a few hours of a working day (late arrival, early leave, or stepping out).")
     : T("يُرسل الطلب لمدير الموارد البشرية للاعتماد، مع نسخة للرئيس التنفيذي.", "Goes to the HR manager for approval, with the CEO copied.");
 
@@ -69,6 +75,20 @@ export function RequestModal({ locale, kind, onClose, onDone, employees, colleag
             </label>
             <label className="field"><span>{T("من", "From")}</span><input className="input" type="date" required value={v("start_date")} onChange={(e) => set("start_date", e.target.value)} /></label>
             <label className="field"><span>{T("إلى", "To")}</span><input className="input" type="date" required min={v("start_date")} value={v("end_date")} onChange={(e) => set("end_date", e.target.value)} /></label>
+          </div>
+        )}
+        {kind === "work_location" && (
+          <div className="mx-grid2">
+            <label className="field"><span>{T("النوع", "Type")}</span>
+              <select className="select" value={v("location_type")} onChange={(e) => set("location_type", e.target.value)}>{Object.keys(HR.loc).map((k) => <option key={k} value={k}>{hl(ar, HR.loc, k)}</option>)}</select>
+            </label>
+            <label className="field"><span>{v("location_type") === "field" ? T("المكان (عقار، حي، عميل)", "Where (property, area, client)") : T("المكان (اختياري)", "Where (optional)")}</span>
+              <input className="input" required={v("location_type") === "field"} maxLength={200} value={v("location_note")} onChange={(e) => set("location_note", e.target.value)} placeholder={T("مثال: معاينة عمارة قرطبة 12", "e.g. Inspection, Qurtubah building 12")} />
+            </label>
+            <label className="field"><span>{T("من تاريخ", "From")}</span><input className="input" type="date" required value={v("start_date")} onChange={(e) => set("start_date", e.target.value)} /></label>
+            <label className="field"><span>{T("إلى تاريخ", "To")}</span><input className="input" type="date" min={v("start_date")} value={v("end_date")} onChange={(e) => set("end_date", e.target.value)} /></label>
+            <label className="field"><span>{T("من الساعة (اختياري)", "From time (optional)")}</span><input className="input" type="time" value={v("from_time")} onChange={(e) => set("from_time", e.target.value)} /></label>
+            <label className="field"><span>{T("إلى الساعة (اختياري)", "To time (optional)")}</span><input className="input" type="time" value={v("to_time")} onChange={(e) => set("to_time", e.target.value)} /></label>
           </div>
         )}
         {kind === "permission" && (
@@ -144,6 +164,7 @@ export function RequestDrawer({ id, locale, onClose, can, meId }: {
           {r.kind === "leave" && <span className="mx-chip">{hl(ar, HR.leave, r.leave_type)}</span>}
           {r.kind === "permission" && <span className="mx-chip">{hl(ar, HR.permission, r.permission_type)}</span>}
           {r.kind === "ticket" && <span className="mx-chip">{hl(ar, HR.purpose, r.ticket_purpose)}</span>}
+          {r.kind === "work_location" && <span className="mx-chip">{hl(ar, HR.loc, r.location_type)}</span>}
         </div>
         <dl className="mx-facts">
           {r.kind === "leave" && <>
@@ -151,6 +172,11 @@ export function RequestDrawer({ id, locale, onClose, can, meId }: {
             <div><dt>{T("أيام العمل", "Working days")}</dt><dd>{r.days}</dd></div>
             <div><dt>{T("القائم بالأعمال", "Covering")}</dt><dd>{r.delegate || "—"}</dd></div>
             {r.balance && <div><dt>{T("رصيد الإجازة السنوية", "Annual leave balance")}</dt><dd>{T(`المتبقي ${r.balance.remaining} من ${r.balance.entitlement}`, `${r.balance.remaining} of ${r.balance.entitlement} left`)}</dd></div>}
+          </>}
+          {r.kind === "work_location" && <>
+            <div><dt>{T("الفترة", "Dates")}</dt><dd>{r.start_date}{r.end_date && r.end_date !== r.start_date ? ` → ${r.end_date}` : ""}</dd></div>
+            {r.from_time && <div><dt>{T("الوقت", "Time")}</dt><dd dir="ltr">{r.from_time} – {r.to_time}</dd></div>}
+            <div><dt>{T("المكان", "Where")}</dt><dd>{r.location_note || "—"}</dd></div>
           </>}
           {r.kind === "permission" && <>
             <div><dt>{T("التاريخ", "Date")}</dt><dd>{r.start_date}</dd></div>

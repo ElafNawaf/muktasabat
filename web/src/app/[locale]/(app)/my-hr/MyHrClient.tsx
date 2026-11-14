@@ -1,16 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { RequestDrawer, RequestModal } from "@/components/hr/HrForms";
+import { geoErrorText, getPosition } from "@/lib/geo";
 import { hrCheckIn, hrCheckOut, hrMyAttendance } from "@/lib/hr-actions";
 import { HR, hl, mins, statusClass, type Balance, type DayStatus, type HrReq } from "@/lib/hr-labels";
 
 export type MyHr = {
   user: { id: number; name: string; job_title?: string | null; department?: string | null; employee_no?: string | null; hire_date?: string | null;
     ticket_entitlement: string; ticket_destination?: string | null; ticket_class: string; ticket_family_members: number };
-  balance: Balance; today: DayStatus; work: { start: string; end: string; grace: number; weekend: number[] };
+  balance: Balance; today: DayStatus; work: { start: string; end: string; grace: number; weekend: number[]; mode: string };
+  location: { mode_today: "office" | "remote" | "field"; via?: string | null; radius: number; enforce: boolean; office_lat: number; office_lng: number };
   approver?: string | null; requests: HrReq[]; colleagues: { id: number; name: string }[];
 };
 
@@ -18,7 +20,10 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
   const router = useRouter();
-  const [newKind, setNewKind] = useState<null | "leave" | "permission" | "ticket">(null);
+  const [newKind, setNewKind] = useState<null | "leave" | "permission" | "ticket" | "work_location">(null);
+  const [locating, setLocating] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("new") === "work_location") setNewKind("work_location"); }, []);
   const [openId, setOpenId] = useState<number | null>(null);
   const [month, setMonth] = useState(m0);
   const [days, setDays] = useState(initialDays);
@@ -28,10 +33,19 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
   const b = data.balance;
   const pct = b.entitlement ? Math.min(100, ((b.used + b.pending) / b.entitlement) * 100) : 0;
 
+  const loc = data.location;
+  const needLoc = loc.mode_today === "office" && loc.enforce;
   const clock = (fn: typeof hrCheckIn) => start(async () => {
-    setErr(null);
-    const r = await fn();
+    setErr(null); setInfo(null);
+    setLocating(true);
+    const g = await getPosition();
+    setLocating(false);
+    if (!g.ok && needLoc) return setErr(geoErrorText(g.error, ar));
+    const r = await fn(g.ok ? g.pos : { error: g.error });
     if (!r.ok) return setErr(r.error);
+    const res = r.data as { distance?: number | null; verified_minutes?: number; away?: boolean };
+    if (res.away) setInfo(T("سُجّل الانصراف بعيدًا عن المكتب؛ تُحتسب ساعاتك حتى آخر وقت كنت فيه في المكتب.", "You checked out away from the office; your hours count until the last time you were seen there."));
+    else if (res.distance != null) setInfo(T(`تم. المسافة عن المكتب ${Math.round(res.distance)} م.`, `Done. ${Math.round(res.distance)} m from the office.`));
     router.refresh();
     const d = await hrMyAttendance(month);
     if (d.ok) setDays(d.data as typeof days);
@@ -49,6 +63,7 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
         <div className="hr-new">
           <button className="btn btn-primary" onClick={() => setNewKind("leave")}><span className="ms">beach_access</span>{T("طلب إجازة", "Request leave")}</button>
           <button className="btn btn-secondary" onClick={() => setNewKind("permission")}><span className="ms">schedule</span>{T("استئذان", "Permission")}</button>
+          <button className="btn btn-secondary" onClick={() => setNewKind("work_location")}><span className="ms">home_work</span>{T("عن بُعد / ميداني", "Remote / field")}</button>
           <button className="btn btn-secondary" onClick={() => setNewKind("ticket")}><span className="ms">flight</span>{T("تذكرة سفر", "Travel ticket")}</button>
         </div>
       </div>
@@ -60,19 +75,30 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
             <div><strong>{T("حضور اليوم", "Today")}</strong><span>{T(`الدوام ${data.work.start} – ${data.work.end}`, `Hours ${data.work.start} – ${data.work.end}`)}</span></div>
             <span className={`hr-day hr-day--${t.status}`}>{hl(ar, HR.day, t.status)}{t.late_minutes ? ` · ${mins(t.late_minutes, ar)}` : ""}</span>
           </div>
+          <p className={`hr-where hr-where--${loc.mode_today}`}>
+            <span className="ms ms-sm" aria-hidden>{loc.mode_today === "office" ? "location_on" : loc.mode_today === "field" ? "directions_car" : "home"}</span>
+            {loc.mode_today === "office"
+              ? (loc.enforce ? T(`اليوم من المكتب: يُسجَّل الحضور ضمن ${loc.radius} م من المقر.`, `Office day: check in within ${loc.radius} m of headquarters.`) : T("اليوم من المكتب.", "Office day."))
+              : loc.mode_today === "field" ? T(`عمل ميداني معتمد${loc.via ? ` (${loc.via})` : ""}: يمكنك التسجيل من أي مكان.`, `Approved field work${loc.via ? ` (${loc.via})` : ""}: check in from anywhere.`)
+              : T(`عمل عن بُعد${loc.via ? ` معتمد (${loc.via})` : ""}: يمكنك التسجيل من أي مكان.`, `Remote day${loc.via ? `, approved (${loc.via})` : ""}: check in from anywhere.`)}
+          </p>
           <div className="hr-clock__times">
             <div><span>{T("الحضور", "Check in")}</span><strong dir="ltr">{t.check_in ?? "--:--"}</strong></div>
             <div><span>{T("الانصراف", "Check out")}</span><strong dir="ltr">{t.check_out ?? "--:--"}</strong></div>
-            <div><span>{T("ساعات العمل", "Worked")}</span><strong>{t.worked_minutes != null ? mins(t.worked_minutes, ar) : "—"}</strong></div>
+            <div><span>{T("الساعات الفعلية", "Actual hours")}</span><strong>{t.verified_minutes != null ? mins(t.verified_minutes, ar) : "—"}</strong></div>
           </div>
           {t.status !== "on_leave" && (
             !t.check_in
-              ? <button className="btn btn-primary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckIn)}><span className="ms">login</span>{T("تسجيل الحضور", "Check in")}</button>
+              ? <button className="btn btn-primary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckIn)}><span className="ms">login</span>{locating ? T("جارٍ تحديد موقعك…", "Finding your location…") : T("تسجيل الحضور", "Check in")}</button>
               : !t.check_out
-                ? <button className="btn btn-secondary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckOut)}><span className="ms">logout</span>{T("تسجيل الانصراف", "Check out")}</button>
+                ? <button className="btn btn-secondary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckOut)}><span className="ms">logout</span>{locating ? T("جارٍ تحديد موقعك…", "Finding your location…") : T("تسجيل الانصراف", "Check out")}</button>
                 : <p className="text-sec">{T("سُجّل حضورك وانصرافك اليوم.", "You're checked in and out for today.")}</p>
           )}
+          {(t.flags ?? []).map((f) => <p key={f} className="hr-flag"><span className="ms ms-sm" aria-hidden>warning</span>{hl(ar, HR.flag, f)}{f === "left_area" && t.outside_since ? T(` منذ ${t.outside_since}`, ` since ${t.outside_since}`) : ""}</p>)}
+          {!!t.away_minutes && <p className="text-sec hr-note">{T(`وقت خارج المكتب اليوم: ${mins(t.away_minutes, true)} (غير محتسب)`, `Time away from the office today: ${mins(t.away_minutes, false)} (not counted)`)}</p>}
+          {info && <p className="col-ok">{info}</p>}
           {err && <p className="mx-err">{err}</p>}
+          {err && needLoc && <button className="btn btn-ghost btn-sm" onClick={() => setNewKind("work_location")}>{T("لست في المكتب؟ قدّم طلب عمل عن بُعد / ميداني", "Not at the office? Request remote or field work")}</button>}
         </section>
 
         <section className="hr-bal">

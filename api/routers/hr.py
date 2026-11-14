@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import calendar
 import logging
+import math
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from html import escape
@@ -17,13 +18,13 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from api.config import get_settings
 from api.deps import CurrentUser, DbSession
 from api.email import EmailMessage, _branded, _button, send_email
-from api.hr_models import Attendance, HrProfile, HrRequest, HrRequestEvent, HrSettings
+from api.hr_models import Attendance, HrProfile, HrRequest, HrRequestEvent, HrSettings, LocationPing
 from api.models import User
 from api.permissions import Perm, has_permission
 
@@ -41,8 +42,11 @@ LEAVE_AR = {"annual": "إجازة سنوية", "sick": "إجازة مرضية", 
             "marriage": "إجازة زواج", "bereavement": "إجازة وفاة", "maternity": "إجازة وضع", "paternity": "إجازة مولود", "exam": "إجازة اختبار", "other": "إجازة أخرى"}
 LEAVE_EN = {"annual": "Annual leave", "sick": "Sick leave", "emergency": "Emergency leave", "unpaid": "Unpaid leave", "hajj": "Hajj leave",
             "marriage": "Marriage leave", "bereavement": "Bereavement leave", "maternity": "Maternity leave", "paternity": "Paternity leave", "exam": "Exam leave", "other": "Other leave"}
-KIND_AR = {"leave": "طلب إجازة", "permission": "طلب استئذان", "ticket": "طلب تذكرة سفر"}
-KIND_EN = {"leave": "Leave request", "permission": "Permission request", "ticket": "Travel ticket request"}
+KIND_AR = {"leave": "طلب إجازة", "permission": "طلب استئذان", "ticket": "طلب تذكرة سفر", "work_location": "طلب عمل عن بُعد / خارج المكتب"}
+KIND_EN = {"leave": "Leave request", "permission": "Permission request", "ticket": "Travel ticket request", "work_location": "Remote / field work request"}
+LOC_AR = {"remote": "عمل عن بُعد", "field": "عمل ميداني"}
+LOC_EN = {"remote": "Remote work", "field": "Field work"}
+CHECKOUT_TOLERANCE_M = 150  # checking out from the car park still counts as leaving the office
 
 
 # ───────────────────────── helpers ─────────────────────────
@@ -91,6 +95,30 @@ def working_days(a: date, b: date, weekend: set[int]) -> int:
     if b < a:
         return 0
     return sum(1 for i in range((b - a).days + 1) if (a + timedelta(days=i)).weekday() not in weekend)
+
+
+def distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in metres (haversine)."""
+    r = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def geo_check(s: HrSettings, lat: float, lng: float, accuracy: Optional[float]) -> tuple[float, bool]:
+    """Distance to HQ and whether the reading counts as inside the geofence.
+    A phone's reported accuracy is a radius of uncertainty; we allow it to
+    overlap the fence by at most max(radius, 20 m) so a 15 m fence still works
+    indoors without accepting someone down the street."""
+    d = distance_m(lat, lng, s.office_lat, s.office_lng)
+    slack = min(accuracy or 0, max(s.geofence_radius_m, 20))
+    return round(d, 1), d - slack <= s.geofence_radius_m
+
+
+def local_now() -> datetime:
+    """Riyadh wall-clock time as a naive datetime (how attendance stores times)."""
+    return now_riyadh().replace(tzinfo=None, microsecond=0)
 
 
 def _minutes(a: time, b: time) -> int:
@@ -161,6 +189,11 @@ def _summary(r: HrRequest, locale: str) -> str:
         return f"{lt}: {r.start_date} → {r.end_date} ({n} {'يوم عمل' if locale == 'ar' else 'working days'})"
     if r.kind == "permission":
         return f"{r.start_date} {r.from_time.strftime('%H:%M') if r.from_time else ''}–{r.to_time.strftime('%H:%M') if r.to_time else ''} ({r.minutes} {'دقيقة' if locale == 'ar' else 'min'})"
+    if r.kind == "work_location":
+        lt = (LOC_AR if locale == "ar" else LOC_EN).get(r.location_type or "", r.location_type or "")
+        when = f"{r.start_date}" + (f" → {r.end_date}" if r.end_date and r.end_date != r.start_date else "")
+        hrs = f" {r.from_time.strftime('%H:%M')}–{r.to_time.strftime('%H:%M')}" if r.from_time and r.to_time else ""
+        return f"{lt}: {when}{hrs}" + (f" · {r.location_note}" if r.location_note else "")
     route = f"{r.from_city or ''} → {r.to_city or ''}"
     return f"{route} · {r.start_date}{(' ↔ ' + str(r.return_date)) if r.round_trip and r.return_date else ''} · {r.travellers}"
 
@@ -193,7 +226,7 @@ def _out(db: Session, r: HrRequest, locale: str, detail: bool = False) -> dict:
         "ticket_purpose": r.ticket_purpose, "from_city": r.from_city, "to_city": r.to_city,
         "return_date": r.return_date.isoformat() if r.return_date else None, "round_trip": r.round_trip, "travellers": r.travellers,
         "travel_class": r.travel_class, "estimated_cost": r.estimated_cost, "booking_ref": r.booking_ref, "actual_cost": r.actual_cost,
-        "leave_request_id": r.leave_request_id,
+        "leave_request_id": r.leave_request_id, "location_type": r.location_type, "location_note": r.location_note,
         "decided_by": _uname(db.get(User, r.decided_by_id), locale) if r.decided_by_id else None,
         "decided_at": r.decided_at.isoformat() if r.decided_at else None, "decision_note": r.decision_note,
         "created_at": r.created_at.isoformat(), "summary": _summary(r, locale),
@@ -216,6 +249,44 @@ def _get(db: Session, rid: int) -> HrRequest:
 def _leave_on(db: Session, user_id: int, d: date) -> Optional[HrRequest]:
     return db.scalar(select(HrRequest).where(HrRequest.user_id == user_id, HrRequest.kind == "leave", HrRequest.status == "approved",
                                              HrRequest.start_date <= d, HrRequest.end_date >= d))
+
+
+def work_location_on(db: Session, user_id: int, d: date) -> Optional[HrRequest]:
+    return db.scalar(select(HrRequest).where(HrRequest.user_id == user_id, HrRequest.kind == "work_location", HrRequest.status == "approved",
+                                             HrRequest.start_date <= d, HrRequest.end_date >= d).order_by(HrRequest.id.desc()))
+
+
+def mode_for(db: Session, p: Optional[HrProfile], user_id: int, d: date) -> tuple[str, Optional[HrRequest]]:
+    """office (geofenced) · remote · field — and the approval that allows it."""
+    if p and p.work_mode == "remote":
+        return "remote", None
+    if p and p.work_mode == "hybrid" and p.remote_days and str(d.weekday()) in p.remote_days.split(","):
+        return "remote", None
+    wl = work_location_on(db, user_id, d)
+    if wl:
+        return (wl.location_type or "remote"), wl
+    return "office", None
+
+
+def verified_minutes(att: Attendance, now: datetime) -> Optional[int]:
+    """Time we can vouch for. Office days: from check-in until the employee
+    left the geofence (if they left without checking out, or checked out far
+    away), minus time spent outside it. Remote / field days: check-in to check-out."""
+    if not att or not att.check_in:
+        return None
+    start = datetime.combine(att.day, att.check_in)
+    if att.check_out:
+        end = datetime.combine(att.day, att.check_out)
+    elif att.day == now.date():
+        end = now
+    else:
+        end = att.last_inside_at or att.last_ping_at or start
+    if att.mode == "office":
+        far_checkout = att.check_out and att.out_distance is not None and att.out_distance > CHECKOUT_TOLERANCE_M
+        if (att.outside_since or far_checkout) and att.last_inside_at:
+            end = min(end, att.last_inside_at)
+    total = max(0, int((end - start).total_seconds() // 60))
+    return max(0, total - (att.away_minutes or 0)) if att.mode == "office" else total
 
 
 def _day_status(db: Session, s: HrSettings, p: Optional[HrProfile], user_id: int, d: date, att: Optional[Attendance], now: datetime) -> dict:
@@ -247,7 +318,22 @@ def _day_status(db: Session, s: HrSettings, p: Optional[HrProfile], user_id: int
     early = 0
     if att and att.check_out and att.check_out < end and d < now.date():
         early = _minutes(att.check_out, end)
+    mode = att.mode if att and att.check_in else mode_for(db, p, user_id, d)[0]
+    flags = []
+    if att and att.check_in:
+        if att.mode == "office" and att.outside_since and not att.check_out:
+            flags.append("left_area")
+        if att.mode == "office" and att.check_out and att.out_distance is not None and att.out_distance > CHECKOUT_TOLERANCE_M:
+            flags.append("checked_out_away")
+        if att.auto_closed:
+            flags.append("auto_closed")
+        if att.mode == "office" and att.in_distance is None and att.source == "web" and not s.enforce_location:
+            flags.append("no_location")
     return {"status": st, "late_minutes": late if st == "late" else 0, "excused": excused, "worked_minutes": worked,
+            "verified_minutes": verified_minutes(att, now.replace(tzinfo=None)) if att else None,
+            "away_minutes": att.away_minutes if att else 0, "mode": mode, "flags": flags,
+            "in_distance": att.in_distance if att else None, "out_distance": att.out_distance if att else None,
+            "outside_since": att.outside_since.strftime("%H:%M") if att and att.outside_since else None,
             "early_leave_minutes": early, "leave_type": lv.leave_type if lv else None,
             "check_in": att.check_in.strftime("%H:%M") if att and att.check_in else None,
             "check_out": att.check_out.strftime("%H:%M") if att and att.check_out else None,
@@ -258,7 +344,7 @@ def _day_status(db: Session, s: HrSettings, p: Optional[HrProfile], user_id: int
 
 
 class RequestIn(BaseModel):
-    kind: Literal["leave", "permission", "ticket"]
+    kind: Literal["leave", "permission", "ticket", "work_location"]
     user_id: Optional[int] = None  # HR filing on behalf of an employee
     reason: Optional[str] = Field(default=None, max_length=2000)
     leave_type: Optional[LeaveType] = None
@@ -268,6 +354,8 @@ class RequestIn(BaseModel):
     permission_type: Optional[PermissionType] = None
     from_time: Optional[time] = None
     to_time: Optional[time] = None
+    location_type: Optional[Literal["remote", "field"]] = None
+    location_note: Optional[str] = Field(default=None, max_length=200)
     ticket_purpose: Optional[TicketPurpose] = None
     leave_request_id: Optional[int] = None
     from_city: Optional[str] = Field(default=None, max_length=80)
@@ -285,6 +373,15 @@ class RequestIn(BaseModel):
                 raise ValueError("Leave needs a type and an end date.")
             if self.end_date < self.start_date:
                 raise ValueError("The end date is before the start date.")
+        elif self.kind == "work_location":
+            if not self.location_type:
+                raise ValueError("Choose remote work or field work.")
+            if self.end_date and self.end_date < self.start_date:
+                raise ValueError("The end date is before the start date.")
+            if (self.from_time is None) != (self.to_time is None) or (self.from_time and self.to_time and self.to_time <= self.from_time):
+                raise ValueError("Give both a start and an end time, with the end after the start.")
+            if self.location_type == "field" and not (self.location_note or "").strip():
+                raise ValueError("Say where the field work is (property, area or client).")
         elif self.kind == "permission":
             if not (self.permission_type and self.from_time and self.to_time):
                 raise ValueError("A permission needs a type and a time range.")
@@ -326,6 +423,8 @@ class ProfileIn(BaseModel):
     ticket_family_members: int = Field(default=0, ge=0, le=12)
     work_start: Optional[time] = None
     work_end: Optional[time] = None
+    work_mode: Literal["office", "hybrid", "remote"] = "office"
+    remote_days: list[int] = Field(default_factory=list)
     emergency_contact: Optional[str] = Field(default=None, max_length=160)
     notes: Optional[str] = Field(default=None, max_length=4000)
 
@@ -347,6 +446,16 @@ class SettingsIn(BaseModel):
     weekend_days: list[int] = Field(default_factory=lambda: [4])
     monthly_permission_minutes: int = Field(default=240, ge=0, le=6000)
     attendance_from: Optional[date] = None
+    office_lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    office_lng: Optional[float] = Field(default=None, ge=-180, le=180)
+    geofence_radius_m: int = Field(default=15, ge=5, le=2000)
+    max_accuracy_m: int = Field(default=100, ge=10, le=2000)
+    enforce_location: bool = True
+    ping_minutes: int = Field(default=5, ge=1, le=60)
+    left_alert_minutes: int = Field(default=15, ge=5, le=240)
+    missing_checkout_minutes: int = Field(default=30, ge=5, le=480)
+    checkin_reminder_minutes: int = Field(default=30, ge=5, le=480)
+    daily_summary: bool = True
 
 
 # ───────────────────────── self-service ─────────────────────────
@@ -370,39 +479,162 @@ def me(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^(ar
         "balance": balance(db, user.id),
         "today": _day_status(db, s, p, user.id, today, att, now_riyadh()),
         "work": {"start": (p.work_start or s.work_start).strftime("%H:%M"), "end": (p.work_end or s.work_end).strftime("%H:%M"),
-                 "grace": s.grace_minutes, "weekend": sorted(_weekend(s))},
+                 "grace": s.grace_minutes, "weekend": sorted(_weekend(s)), "mode": p.work_mode or "office"},
+        "location": {"mode_today": mode_for(db, p, user.id, today)[0], "via": (lambda w: w.number if w else None)(mode_for(db, p, user.id, today)[1]),
+                     "radius": s.geofence_radius_m, "enforce": s.enforce_location, "office_lat": s.office_lat, "office_lng": s.office_lng},
         "approver": ", ".join(_uname(a, locale) for a in appr) or None,
         "requests": [_out(db, r, locale) for r in reqs],
         "colleagues": [{"id": u.id, "name": _uname(u, locale)} for u in _staff(db) if u.id != user.id],
     }
 
 
+class LocIn(BaseModel):
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lng: Optional[float] = Field(default=None, ge=-180, le=180)
+    accuracy: Optional[float] = Field(default=None, ge=0, le=100000)
+    error: Optional[str] = Field(default=None, max_length=60)  # browser geolocation error code, if any
+
+
+def _ping(db: Session, user_id: int, now: datetime, kind: str, loc: LocIn, distance: Optional[float], inside: Optional[bool], note: Optional[str] = None) -> None:
+    db.add(LocationPing(user_id=user_id, day=now.date(), at=now, kind=kind, lat=loc.lat, lng=loc.lng, accuracy=loc.accuracy,
+                        distance=distance, inside=inside, note=note))
+
+
+def _locate(db: Session, s: HrSettings, user: User, now: datetime, loc: LocIn, kind: str) -> tuple[Optional[float], Optional[bool]]:
+    """Validate a location for an office check-in/out. Raises 422/403 with a clear message."""
+    if loc.lat is None or loc.lng is None:
+        if not s.enforce_location:
+            return None, None
+        _ping(db, user.id, now, "refused", loc, None, None, f"no_location:{loc.error or ''}")
+        db.commit()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "Location is required. Allow location access for this site in your browser and try again.")
+    if loc.accuracy is not None and loc.accuracy > s.max_accuracy_m and s.enforce_location:
+        _ping(db, user.id, now, "refused", loc, None, None, "low_accuracy")
+        db.commit()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Your location is too imprecise (±{loc.accuracy:.0f} m). Turn on precise location / GPS and try again.")
+    d, inside = geo_check(s, loc.lat, loc.lng, loc.accuracy)
+    if kind == "check_in" and not inside and s.enforce_location:
+        _ping(db, user.id, now, "refused", loc, d, False, "outside")
+        db.commit()
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            f"You are {d:.0f} m from the office; check-in is allowed within {s.geofence_radius_m} m. "
+                            "Working remotely or on a field visit today? Raise a remote / field work request.")
+    return d, inside
+
+
 @router.post("/me/check-in")
-def check_in(db: DbSession, user: CurrentUser):
+def check_in(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
     _require_staff(user)
-    n = now_riyadh()
+    s = _settings(db)
+    n = local_now()
     att = db.scalar(select(Attendance).where(Attendance.user_id == user.id, Attendance.day == n.date()))
     if att and att.check_in:
         raise HTTPException(status.HTTP_409_CONFLICT, "You have already checked in today.")
+    if _leave_on(db, user.id, n.date()):
+        raise HTTPException(status.HTTP_409_CONFLICT, "You're on approved leave today.")
+    p = _profile(db, user.id)
+    mode, wl = mode_for(db, p, user.id, n.date())
+    if mode == "office":
+        d, inside = _locate(db, s, user, n, loc, "check_in")
+    else:
+        d, inside = (geo_check(s, loc.lat, loc.lng, loc.accuracy) if loc.lat is not None and loc.lng is not None else (None, None))
+        if wl and wl.from_time and n.time() < wl.from_time.replace(second=0) and mode == "field":
+            pass  # early start on a field day is allowed; times are informative
     if att is None:
         att = Attendance(user_id=user.id, day=n.date())
         db.add(att)
-    att.check_in = time(n.hour, n.minute)
-    att.source = "web"
+    att.check_in, att.source, att.mode = time(n.hour, n.minute), "web", mode
+    att.in_lat, att.in_lng, att.in_accuracy, att.in_distance = loc.lat, loc.lng, loc.accuracy, d
+    att.last_ping_at = n
+    att.last_inside_at = n if (mode == "office" and inside is not False) else None
+    att.outside_since = None
+    att.note = (f"{wl.number}" if wl else att.note)
+    _ping(db, user.id, n, "check_in", loc, d, inside, mode)
     db.commit()
-    return {"ok": True, "check_in": att.check_in.strftime("%H:%M")}
+    return {"ok": True, "check_in": att.check_in.strftime("%H:%M"), "mode": mode, "distance": d}
 
 
 @router.post("/me/check-out")
-def check_out(db: DbSession, user: CurrentUser):
+def check_out(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
     _require_staff(user)
-    n = now_riyadh()
+    s = _settings(db)
+    n = local_now()
     att = db.scalar(select(Attendance).where(Attendance.user_id == user.id, Attendance.day == n.date()))
     if att is None or not att.check_in:
         raise HTTPException(status.HTTP_409_CONFLICT, "Check in first.")
+    if att.check_out:
+        raise HTTPException(status.HTTP_409_CONFLICT, "You have already checked out today.")
+    d, inside = (None, None)
+    if loc.lat is not None and loc.lng is not None:
+        d, inside = geo_check(s, loc.lat, loc.lng, loc.accuracy)
+    elif att.mode == "office" and s.enforce_location:
+        _ping(db, user.id, n, "refused", loc, None, None, f"no_location:{loc.error or ''}")
+        db.commit()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "Location is required to check out. Allow location access for this site in your browser and try again.")
+    if att.mode == "office":
+        if inside:
+            att.last_inside_at = n
+            if att.outside_since:
+                att.away_minutes = (att.away_minutes or 0) + int((n - att.outside_since).total_seconds() // 60)
+                att.outside_since = None
+        elif d is not None and d <= CHECKOUT_TOLERANCE_M:
+            att.last_inside_at = n  # car park / building entrance
+            att.outside_since = None
     att.check_out = time(n.hour, n.minute)
+    att.out_lat, att.out_lng, att.out_accuracy, att.out_distance = loc.lat, loc.lng, loc.accuracy, d
+    att.last_ping_at = n
+    _ping(db, user.id, n, "check_out", loc, d, inside)
     db.commit()
-    return {"ok": True, "check_out": att.check_out.strftime("%H:%M")}
+    return {"ok": True, "check_out": att.check_out.strftime("%H:%M"), "verified_minutes": verified_minutes(att, n),
+            "away": bool(att.mode == "office" and d is not None and d > CHECKOUT_TOLERANCE_M)}
+
+
+@router.get("/me/presence")
+def presence(db: DbSession, user: CurrentUser):
+    """Tiny payload for the portal-wide presence tracker."""
+    if user.role in NON_STAFF:
+        return {"tracking": False}
+    s = _settings(db)
+    n = local_now()
+    att = db.scalar(select(Attendance).where(Attendance.user_id == user.id, Attendance.day == n.date()))
+    open_ = bool(att and att.check_in and not att.check_out)
+    return {"tracking": open_ and att.mode == "office" and s.enforce_location, "open": open_, "mode": att.mode if att else None,
+            "ping_minutes": s.ping_minutes, "radius": s.geofence_radius_m,
+            "outside_since": att.outside_since.strftime("%H:%M") if att and att.outside_since else None}
+
+
+@router.post("/me/ping")
+def ping(loc: LocIn, db: DbSession, user: CurrentUser):
+    """Presence while a portal page is open. Tracks when an employee leaves
+    and comes back to the office during an open (not checked-out) day."""
+    _require_staff(user)
+    if loc.lat is None or loc.lng is None:
+        return {"tracking": False}
+    s = _settings(db)
+    n = local_now()
+    att = db.scalar(select(Attendance).where(Attendance.user_id == user.id, Attendance.day == n.date()))
+    if not att or not att.check_in or att.check_out or att.mode != "office":
+        return {"tracking": False}
+    if att.last_ping_at and (n - att.last_ping_at).total_seconds() < 45:
+        return {"tracking": True, "inside": att.outside_since is None, "throttled": True}
+    if loc.accuracy is not None and loc.accuracy > s.max_accuracy_m:
+        return {"tracking": True, "inside": att.outside_since is None, "ignored": "low_accuracy"}
+    d, inside = geo_check(s, loc.lat, loc.lng, loc.accuracy)
+    att.last_ping_at = n
+    if inside:
+        if att.outside_since:
+            att.away_minutes = (att.away_minutes or 0) + int((n - att.outside_since).total_seconds() // 60)
+            att.outside_since = None
+        att.last_inside_at = n
+    elif att.outside_since is None:
+        att.outside_since = n
+    _ping(db, user.id, n, "ping", loc, d, inside)
+    db.commit()
+    return {"tracking": True, "inside": inside, "distance": d, "radius": s.geofence_radius_m,
+            "outside_since": att.outside_since.strftime("%H:%M") if att.outside_since else None}
 
 
 def _month(month: Optional[str]) -> tuple[date, date]:
@@ -468,6 +700,11 @@ def create_request(payload: RequestIn, db: DbSession, user: CurrentUser, locale:
             if r.days > b["remaining"]:
                 raise HTTPException(status.HTTP_409_CONFLICT,
                                     f"Not enough annual leave: {r.days:g} working days requested, {b['remaining']:g} remaining.")
+    elif payload.kind == "work_location":
+        r.location_type, r.location_note = payload.location_type, (payload.location_note or "").strip() or None
+        r.end_date = payload.end_date or payload.start_date
+        r.from_time, r.to_time = payload.from_time, payload.to_time
+        r.days = float((r.end_date - r.start_date).days + 1)
     elif payload.kind == "permission":
         r.permission_type, r.from_time, r.to_time = payload.permission_type, payload.from_time, payload.to_time
         r.minutes = _minutes(payload.from_time, payload.to_time)
@@ -483,7 +720,7 @@ def create_request(payload: RequestIn, db: DbSession, user: CurrentUser, locale:
         r.estimated_cost = payload.estimated_cost
     db.add(r)
     db.flush()
-    prefix = {"leave": "LV", "permission": "PR", "ticket": "TK"}[r.kind]
+    prefix = {"leave": "LV", "permission": "PR", "ticket": "TK", "work_location": "WL"}[r.kind]
     r.number = f"{prefix}-{r.id:05d}"
     actor = _uname(user, "ar")
     _log(db, r, actor, "submitted" if target_id == user.id else "filed_by_hr", "over_monthly_cap" if warn else None)
@@ -617,9 +854,21 @@ def dashboard(db: DbSession, user: Perm("hr", "view"), locale: str = Query("ar",
         b = balance(db, u.id)
         if b["remaining"] < 0 or (b["remaining"] >= 30):
             low.append({"user_id": u.id, "name": _uname(u, locale), "remaining": b["remaining"]})
+    alerts = []
+    for b in board:
+        for f in b.get("flags", []):
+            alerts.append({"user_id": b["user_id"], "name": b["name"], "kind": f, "since": b.get("outside_since"), "day": today.isoformat()})
+    for pg in db.scalars(select(LocationPing).where(LocationPing.day == today, LocationPing.kind == "refused").order_by(LocationPing.id.desc()).limit(50)).all():
+        u = db.get(User, pg.user_id)
+        alerts.append({"user_id": pg.user_id, "name": _uname(u, locale), "kind": "refused", "distance": pg.distance,
+                       "reason": (pg.note or "").split(":")[0], "at": pg.at.strftime("%H:%M"), "day": today.isoformat()})
+    y = today - timedelta(days=1)
+    for a in db.scalars(select(Attendance).where(Attendance.day == y, Attendance.auto_closed.is_(True))).all():
+        alerts.append({"user_id": a.user_id, "name": _uname(db.get(User, a.user_id), locale), "kind": "auto_closed", "day": y.isoformat()})
     db.commit()
     return {
-        "headcount": len(staff), "today": counts, "board": board,
+        "headcount": len(staff), "today": counts, "board": board, "alerts": alerts,
+        "remote_today": sum(1 for b in board if b.get("mode") in ("remote", "field") and b["status"] in ("present", "late", "not_yet", "absent")),
         "pending": [_out(db, r, locale) for r in pending],
         "upcoming_leave": [_out(db, r, locale) for r in upcoming],
         "tickets_to_book": [_out(db, r, locale) for r in to_book],
@@ -649,6 +898,7 @@ def employees(db: DbSession, user: Perm("hr", "view"), locale: str = Query("ar",
             "ticket_entitlement": p.ticket_entitlement, "ticket_destination": p.ticket_destination, "ticket_class": p.ticket_class,
             "ticket_family_members": p.ticket_family_members,
             "work_start": p.work_start.strftime("%H:%M") if p.work_start else None, "work_end": p.work_end.strftime("%H:%M") if p.work_end else None,
+            "work_mode": p.work_mode or "office", "remote_days": [int(x) for x in (p.remote_days or "").split(",") if x.strip().isdigit()],
             "emergency_contact": p.emergency_contact, "notes": p.notes, "balance": balance(db, u.id),
         })
     db.commit()
@@ -661,8 +911,11 @@ def update_employee(user_id: int, payload: ProfileIn, db: DbSession, user: Perm(
     if u is None or u.role in NON_STAFF:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")
     p = _profile(db, user_id)
-    for k, v in payload.model_dump().items():
+    data = payload.model_dump()
+    days = sorted({d for d in data.pop("remote_days") if 0 <= d <= 6})
+    for k, v in data.items():
         setattr(p, k, v)
+    p.remote_days = ",".join(str(d) for d in days) or None
     if payload.job_title:
         u.job_title = payload.job_title
     db.commit()
@@ -691,13 +944,20 @@ def attendance_report(db: DbSession, user: Perm("hr", "view"), month: Optional[s
             HrRequest.user_id == u.id, HrRequest.kind == "permission", HrRequest.status == "approved",
             HrRequest.start_date >= first, HrRequest.start_date <= last)).all())
         worked = sum(d["worked_minutes"] or 0 for d in days)
+        verified = sum(d["verified_minutes"] or 0 for d in days)
+        refused = db.scalar(select(func.count()).select_from(LocationPing).where(
+            LocationPing.user_id == u.id, LocationPing.kind == "refused", LocationPing.day >= first, LocationPing.day <= last)) or 0
         present = sum(1 for d in days if d["status"] in ("present", "late"))
         rows.append({
             "user_id": u.id, "name": _uname(u, locale), "working_days": len(wd), "present": present,
             "late": sum(1 for d in days if d["status"] == "late"), "late_minutes": sum(d["late_minutes"] for d in days),
             "absent": sum(1 for d in days if d["status"] == "absent"), "on_leave": sum(1 for d in days if d["status"] == "on_leave"),
             "early_leave_minutes": sum(d["early_leave_minutes"] for d in days), "permission_minutes": perm,
-            "worked_hours": round(worked / 60, 1),
+            "worked_hours": round(worked / 60, 1), "verified_hours": round(verified / 60, 1),
+            "away_minutes": sum(d["away_minutes"] or 0 for d in days),
+            "remote_days": sum(1 for d in days if d["mode"] == "remote" and d["status"] in ("present", "late")),
+            "field_days": sum(1 for d in days if d["mode"] == "field" and d["status"] in ("present", "late")),
+            "exceptions": sum(len(d["flags"]) for d in days) + refused, "refused_checkins": refused,
             "attendance_pct": round(present / max(1, len([d for d in wd if d["status"] not in ("on_leave", "not_yet")])) * 100, 1),
         })
     return {"month": first.strftime("%Y-%m"), "from": first.isoformat(), "to": last.isoformat(), "rows": rows}
@@ -731,6 +991,10 @@ def get_hr_settings(db: DbSession, user: Perm("hr", "view"), locale: str = Query
         "work_start": s.work_start.strftime("%H:%M"), "work_end": s.work_end.strftime("%H:%M"), "grace_minutes": s.grace_minutes,
         "weekend_days": sorted(_weekend(s)), "monthly_permission_minutes": s.monthly_permission_minutes,
         "attendance_from": s.attendance_from.isoformat(),
+        "office_lat": s.office_lat, "office_lng": s.office_lng, "geofence_radius_m": s.geofence_radius_m,
+        "max_accuracy_m": s.max_accuracy_m, "enforce_location": s.enforce_location, "ping_minutes": s.ping_minutes,
+        "left_alert_minutes": s.left_alert_minutes, "missing_checkout_minutes": s.missing_checkout_minutes,
+        "checkin_reminder_minutes": s.checkin_reminder_minutes, "daily_summary": s.daily_summary,
         "effective_approvers": [_uname(a, locale) for a in _approvers(db)],
         "users": [{"id": u.id, "name": _uname(u, locale), "role": u.role} for u in _staff(db)],
     }
@@ -748,5 +1012,10 @@ def put_hr_settings(payload: SettingsIn, db: DbSession, user: Perm("hr", "approv
     s.monthly_permission_minutes = payload.monthly_permission_minutes
     if payload.attendance_from:
         s.attendance_from = payload.attendance_from
+    if payload.office_lat is not None and payload.office_lng is not None:
+        s.office_lat, s.office_lng = payload.office_lat, payload.office_lng
+    for k in ("geofence_radius_m", "max_accuracy_m", "enforce_location", "ping_minutes", "left_alert_minutes",
+              "missing_checkout_minutes", "checkin_reminder_minutes", "daily_summary"):
+        setattr(s, k, getattr(payload, k))
     db.commit()
     return {"ok": True}

@@ -467,3 +467,31 @@ def ensure_support_ticket_columns(engine) -> None:
     with engine.begin() as conn:
         for stmt in stmts:
             conn.execute(text(stmt))
+
+
+def ensure_hr_location_columns(engine) -> None:
+    """HR attendance geofencing (2026-11-14): columns added after the HR tables went live."""
+    sqlite = engine.dialect.name == "sqlite"
+    ts = "DATETIME" if sqlite else "TIMESTAMP"
+    t, f = ("1", "0") if sqlite else ("true", "false")
+    _add_missing_columns(engine, "hr_profiles", [
+        ("work_mode", "VARCHAR(10) DEFAULT 'office' NOT NULL"), ("remote_days", "VARCHAR(20)"),
+    ])
+    _add_missing_columns(engine, "hr_requests", [("location_type", "VARCHAR(10)"), ("location_note", "VARCHAR(200)")])
+    _add_missing_columns(engine, "hr_attendance", [
+        ("mode", "VARCHAR(10) DEFAULT 'office' NOT NULL"),
+        ("in_lat", "FLOAT"), ("in_lng", "FLOAT"), ("in_accuracy", "FLOAT"), ("in_distance", "FLOAT"),
+        ("out_lat", "FLOAT"), ("out_lng", "FLOAT"), ("out_accuracy", "FLOAT"), ("out_distance", "FLOAT"),
+        ("last_ping_at", ts), ("last_inside_at", ts), ("outside_since", ts),
+        ("away_minutes", "INTEGER DEFAULT 0 NOT NULL"), ("auto_closed", f"BOOLEAN DEFAULT {f} NOT NULL"),
+    ])
+    _add_missing_columns(engine, "hr_settings", [
+        ("office_lat", "FLOAT DEFAULT 24.8138003 NOT NULL"), ("office_lng", "FLOAT DEFAULT 46.7242436 NOT NULL"),
+        ("geofence_radius_m", "INTEGER DEFAULT 15 NOT NULL"), ("max_accuracy_m", "INTEGER DEFAULT 100 NOT NULL"),
+        ("enforce_location", f"BOOLEAN DEFAULT {t} NOT NULL"), ("ping_minutes", "INTEGER DEFAULT 5 NOT NULL"),
+        ("left_alert_minutes", "INTEGER DEFAULT 15 NOT NULL"), ("missing_checkout_minutes", "INTEGER DEFAULT 30 NOT NULL"),
+        ("checkin_reminder_minutes", "INTEGER DEFAULT 30 NOT NULL"), ("daily_summary", f"BOOLEAN DEFAULT {t} NOT NULL"),
+    ])
+    if not sqlite:  # widen the request kind column for 'work_location'
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE hr_requests ALTER COLUMN kind TYPE VARCHAR(14)"))

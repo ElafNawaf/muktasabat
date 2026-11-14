@@ -1,7 +1,7 @@
 // Shared HR labels and types (server + client safe).
 
 export type HrReq = {
-  id: number; number: string; kind: "leave" | "permission" | "ticket"; status: string; user_id: number; employee: string;
+  id: number; number: string; kind: "leave" | "permission" | "ticket" | "work_location"; location_type?: string | null; location_note?: string | null; status: string; user_id: number; employee: string;
   reason?: string | null; leave_type?: string | null; start_date?: string | null; end_date?: string | null; days?: number | null;
   delegate?: string | null; permission_type?: string | null; from_time?: string | null; to_time?: string | null; minutes?: number | null;
   ticket_purpose?: string | null; from_city?: string | null; to_city?: string | null; return_date?: string | null; round_trip?: boolean;
@@ -16,11 +16,20 @@ export type DayStatus = {
   day?: string; status: "present" | "late" | "absent" | "on_leave" | "weekend" | "not_yet" | "untracked";
   late_minutes: number; excused: boolean; worked_minutes: number | null; early_leave_minutes: number; leave_type?: string | null;
   check_in?: string | null; check_out?: string | null; source?: string | null; note?: string | null;
+  verified_minutes?: number | null; away_minutes?: number; mode?: "office" | "remote" | "field"; flags?: string[];
+  in_distance?: number | null; out_distance?: number | null; outside_since?: string | null;
 };
 
 type Pair = readonly [string, string];
 export const HR = {
-  kind: { leave: ["إجازة", "Leave"], permission: ["استئذان", "Permission"], ticket: ["تذكرة سفر", "Travel ticket"] } as Record<string, Pair>,
+  kind: { leave: ["إجازة", "Leave"], permission: ["استئذان", "Permission"], ticket: ["تذكرة سفر", "Travel ticket"], work_location: ["عن بُعد / ميداني", "Remote / field"] } as Record<string, Pair>,
+  loc: { remote: ["عمل عن بُعد", "Remote work"], field: ["عمل ميداني (خارج المكتب)", "Field work (away from the office)"] } as Record<string, Pair>,
+  mode: { office: ["من المكتب", "Office"], remote: ["عن بُعد", "Remote"], field: ["ميداني", "Field"], hybrid: ["مرن (أيام عن بُعد)", "Hybrid (remote days)"] } as Record<string, Pair>,
+  flag: {
+    left_area: ["غادر المكتب دون انصراف", "Left without checking out"], checked_out_away: ["سجّل الانصراف بعيدًا عن المكتب", "Checked out away from the office"],
+    auto_closed: ["أُغلق اليوم تلقائيًا", "Day closed automatically"], no_location: ["بدون موقع", "No location"],
+    refused: ["محاولة حضور مرفوضة", "Check-in refused"],
+  } as Record<string, Pair>,
   status: { pending: ["بانتظار الاعتماد", "Pending"], approved: ["معتمد", "Approved"], rejected: ["مرفوض", "Rejected"], cancelled: ["ملغى", "Cancelled"], booked: ["تم الحجز", "Booked"] } as Record<string, Pair>,
   leave: {
     annual: ["سنوية", "Annual"], sick: ["مرضية", "Sick"], emergency: ["اضطرارية", "Emergency"], unpaid: ["بدون راتب", "Unpaid"], hajj: ["حج", "Hajj"],

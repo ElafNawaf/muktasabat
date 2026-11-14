@@ -38,6 +38,9 @@ class HrProfile(Base):
     ticket_family_members: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     work_start: Mapped[Optional[time]] = mapped_column(Time)  # overrides HR settings
     work_end: Mapped[Optional[time]] = mapped_column(Time)
+    # office: must check in at HQ · remote: anywhere, every day · hybrid: anywhere on remote_days
+    work_mode: Mapped[str] = mapped_column(String(10), default="office", nullable=False)
+    remote_days: Mapped[Optional[str]] = mapped_column(String(20))  # Python weekday() list, e.g. "0,2"
     emergency_contact: Mapped[Optional[str]] = mapped_column(String(160))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -48,7 +51,7 @@ class HrRequest(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
-    kind: Mapped[str] = mapped_column(String(12), nullable=False, index=True)  # leave|permission|ticket
+    kind: Mapped[str] = mapped_column(String(14), nullable=False, index=True)  # leave|permission|ticket|work_location
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(12), default="pending", nullable=False, index=True)
     reason: Mapped[Optional[str]] = mapped_column(Text)
@@ -64,6 +67,9 @@ class HrRequest(Base):
     to_time: Mapped[Optional[time]] = mapped_column(Time)
     minutes: Mapped[Optional[int]] = mapped_column(Integer)
     # ticket
+    # work_location (remote day / field visit away from HQ)
+    location_type: Mapped[Optional[str]] = mapped_column(String(10))  # remote|field
+    location_note: Mapped[Optional[str]] = mapped_column(String(200))
     ticket_purpose: Mapped[Optional[str]] = mapped_column(String(20))  # annual_leave|business|exit_reentry|other
     leave_request_id: Mapped[Optional[int]] = mapped_column(ForeignKey("hr_requests.id", ondelete="SET NULL"))
     from_city: Mapped[Optional[str]] = mapped_column(String(80))
@@ -104,8 +110,22 @@ class Attendance(Base):
     day: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     check_in: Mapped[Optional[time]] = mapped_column(Time)
     check_out: Mapped[Optional[time]] = mapped_column(Time)
-    source: Mapped[str] = mapped_column(String(12), default="web", nullable=False)  # web|manual
+    source: Mapped[str] = mapped_column(String(12), default="web", nullable=False)  # web|manual|auto
     note: Mapped[Optional[str]] = mapped_column(String(300))
+    mode: Mapped[str] = mapped_column(String(10), default="office", nullable=False)  # office|remote|field
+    in_lat: Mapped[Optional[float]] = mapped_column(Float)
+    in_lng: Mapped[Optional[float]] = mapped_column(Float)
+    in_accuracy: Mapped[Optional[float]] = mapped_column(Float)
+    in_distance: Mapped[Optional[float]] = mapped_column(Float)
+    out_lat: Mapped[Optional[float]] = mapped_column(Float)
+    out_lng: Mapped[Optional[float]] = mapped_column(Float)
+    out_accuracy: Mapped[Optional[float]] = mapped_column(Float)
+    out_distance: Mapped[Optional[float]] = mapped_column(Float)
+    last_ping_at: Mapped[Optional[datetime]] = mapped_column(DateTime)  # Riyadh local, naive
+    last_inside_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    outside_since: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    away_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    auto_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     edited_by: Mapped[Optional[str]] = mapped_column(String(160))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -122,5 +142,45 @@ class HrSettings(Base):
     grace_minutes: Mapped[int] = mapped_column(Integer, default=15, nullable=False)
     weekend_days: Mapped[str] = mapped_column(String(20), default="4", nullable=False)  # Python weekday(): Fri=4, Sat=5
     monthly_permission_minutes: Mapped[int] = mapped_column(Integer, default=240, nullable=False)
+    office_lat: Mapped[float] = mapped_column(Float, default=24.8138003, nullable=False)  # HQ (Google Maps pin)
+    office_lng: Mapped[float] = mapped_column(Float, default=46.7242436, nullable=False)
+    geofence_radius_m: Mapped[int] = mapped_column(Integer, default=15, nullable=False)
+    max_accuracy_m: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+    enforce_location: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    ping_minutes: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    left_alert_minutes: Mapped[int] = mapped_column(Integer, default=15, nullable=False)
+    missing_checkout_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
+    checkin_reminder_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
+    daily_summary: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     attendance_from: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)  # days before → not tracked
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class LocationPing(Base):
+    """Every location the portal reported for an employee during a work day
+    (check-in, check-out, presence pings while a portal page is open, refused check-ins)."""
+    __tablename__ = "hr_location_pings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    day: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    at: Mapped[datetime] = mapped_column(DateTime, nullable=False)  # Riyadh local, naive
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)  # check_in|check_out|ping|refused
+    lat: Mapped[Optional[float]] = mapped_column(Float)
+    lng: Mapped[Optional[float]] = mapped_column(Float)
+    accuracy: Mapped[Optional[float]] = mapped_column(Float)
+    distance: Mapped[Optional[float]] = mapped_column(Float)
+    inside: Mapped[Optional[bool]] = mapped_column(Boolean)
+    note: Mapped[Optional[str]] = mapped_column(String(200))
+
+
+class HrAlertLog(Base):
+    """One row per alert actually sent — makes the monitor idempotent."""
+    __tablename__ = "hr_alert_log"
+    __table_args__ = (UniqueConstraint("user_id", "day", "kind", name="uq_hr_alert"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)  # 0 = company-wide (daily summary)
+    day: Mapped[date] = mapped_column(Date, nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)  # no_checkin|left_area|no_checkout|auto_closed|summary
+    at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

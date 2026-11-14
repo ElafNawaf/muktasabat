@@ -27,8 +27,11 @@ async function call<T>(fn: () => Promise<T>, revalidate = true): Promise<HrResul
 }
 
 const B = "/api/v1/hr";
-export async function hrCheckIn() { return call(() => api.post(`${B}/me/check-in`, {})); }
-export async function hrCheckOut() { return call(() => api.post(`${B}/me/check-out`, {})); }
+export type Loc = { lat?: number; lng?: number; accuracy?: number; error?: string };
+export async function hrCheckIn(loc: Loc = {}) { return call(() => api.post(`${B}/me/check-in`, loc)); }
+export async function hrCheckOut(loc: Loc = {}) { return call(() => api.post(`${B}/me/check-out`, loc)); }
+export async function hrPresence() { return call(() => api.get(`${B}/me/presence`), false); }
+export async function hrPing(loc: Loc) { return call(() => api.post(`${B}/me/ping`, loc), false); }
 export async function hrMyAttendance(month: string) { return call(() => api.get(`${B}/me/attendance?month=${month}`), false); }
 export async function hrCreate(body: Record<string, unknown>, locale: string) { return call(() => api.post(`${B}/requests?locale=${locale}`, body)); }
 export async function hrGet(id: number, locale: string) { return call(() => api.get(`${B}/requests/${id}?locale=${locale}`), false); }
