@@ -61,6 +61,7 @@ INFO_PREFIX = "~"
 NUMBER_FORMATS = {
     "date": "yyyy-mm-dd",
     "datetime": "yyyy-mm-dd hh:mm",
+    "time": "hh:mm",
     "int": "0",
     "float": "#,##0.00",
     "str": "@",
@@ -118,6 +119,8 @@ def _hint(f: F) -> str:
         parts.append(f"Allowed: {values}\n(see sheet 'Lookups' / انظر ورقة القوائم)")
     if f.kind == "date":
         parts.append("Date: YYYY-MM-DD")
+    if f.kind == "time":
+        parts.append("Time: HH:MM (24-hour)")
     if f.max_len:
         parts.append(f"Max {f.max_len} characters")
     if f.kind in ("int", "float"):

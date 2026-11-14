@@ -31,12 +31,25 @@ MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
+def _group(key: str) -> str:
+    if key.startswith("hr_"):
+        return "hr"
+    if key in ("work_orders", "lease_renewals"):
+        return "operations"
+    if key in ("payments", "payment_splits", "expenses"):
+        return "finance"
+    if key in ("users", "agents", "employees", "management_companies"):
+        return "organisation"
+    return "property"
+
+
 @router.get("/summary")
 def summary(db: DbSession, _admin: Perm("data", "view")):
     return {
         "sheets": [
             {
                 "sheet": s.key,
+                "group": _group(s.key),
                 "title": s.title,
                 "title_en": s.en,
                 "title_ar": s.ar,

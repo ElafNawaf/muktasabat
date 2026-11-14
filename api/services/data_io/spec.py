@@ -22,6 +22,10 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from api import models as m
+from api.hr_models import Attendance, HrProfile, HrRequest
+from api.hr_people_models import HrAsset, HrCompany, HrContract, HrDepartment, HrFamilyMember, HrPersonal
+from api.maintenance_models import WorkOrder
+from api.renewal_models import LeaseRenewal
 
 FORMAT_VERSION = "muktasabat-data-v1"
 
@@ -131,6 +135,98 @@ LOOKUPS: dict[str, Lookup] = {
             ("tenant", "Tenant", "المستأجر")),
         _lk("boolean", "Yes / No", "نعم / لا",
             (True, "Yes", "نعم"), (False, "No", "لا")),
+        # ── HR / group ERP ──
+        _lk("employment_status", "Employment status", "الحالة الوظيفية",
+            ("active", "Active", "على رأس العمل"), ("probation", "Probation", "فترة تجربة"),
+            ("resigned", "Resigned", "مستقيل"), ("terminated", "Terminated", "منتهية خدمته"),
+            ("excluded", "Excluded from HR", "مستبعد من الموارد البشرية")),
+        _lk("employment_kind", "Employment type", "نوع التوظيف",
+            ("full_time", "Full time", "دوام كامل"), ("part_time", "Part time", "دوام جزئي"),
+            ("contractor", "Contractor", "متعاقد")),
+        _lk("work_mode", "Work mode", "نمط العمل",
+            ("office", "Office", "مكتبي"), ("hybrid", "Hybrid", "مرن"), ("remote", "Remote", "عن بُعد")),
+        _lk("ticket_entitlement", "Ticket entitlement", "استحقاق التذاكر",
+            ("none", "None", "لا يوجد"), ("annual", "Annual", "سنوي"), ("biennial", "Every 2 years", "كل سنتين")),
+        _lk("travel_class", "Travel class", "درجة السفر",
+            ("economy", "Economy", "سياحية"), ("business", "Business", "رجال أعمال"), ("first", "First", "أولى")),
+        _lk("gender", "Gender", "الجنس", ("male", "Male", "ذكر"), ("female", "Female", "أنثى")),
+        _lk("marital_status", "Marital status", "الحالة الاجتماعية",
+            ("single", "Single", "أعزب"), ("married", "Married", "متزوج"),
+            ("divorced", "Divorced", "مطلق"), ("widowed", "Widowed", "أرمل")),
+        _lk("staff_id_type", "Staff ID type", "نوع هوية الموظف",
+            ("national_id", "National ID", "هوية وطنية"), ("iqama", "Iqama", "إقامة")),
+        _lk("family_relation", "Family relation", "صلة القرابة",
+            ("spouse", "Spouse", "زوج/زوجة"), ("son", "Son", "ابن"), ("daughter", "Daughter", "ابنة"),
+            ("father", "Father", "أب"), ("mother", "Mother", "أم"), ("brother", "Brother", "أخ"),
+            ("sister", "Sister", "أخت"), ("other", "Other", "أخرى")),
+        _lk("hr_contract_type", "Employment contract type", "نوع عقد العمل",
+            ("fixed", "Fixed term", "محدد المدة"), ("unlimited", "Unlimited", "غير محدد المدة"),
+            ("part_time", "Part time", "دوام جزئي"), ("temporary", "Temporary", "مؤقت")),
+        _lk("hr_contract_status", "Employment contract status", "حالة عقد العمل",
+            ("draft", "Draft", "مسودة"), ("pending_acceptance", "Waiting for the employee", "بانتظار قبول الموظف"),
+            ("accepted", "Accepted (active)", "مقبول (ساري)"), ("terminated", "Terminated", "منتهي")),
+        _lk("asset_kind", "Asset type", "نوع العهدة",
+            ("laptop", "Laptop", "حاسب محمول"), ("desktop", "Desktop", "حاسب مكتبي"), ("phone", "Phone", "جوال"),
+            ("tablet", "Tablet", "جهاز لوحي"), ("car", "Car", "سيارة"), ("sim", "SIM card", "شريحة اتصال"),
+            ("cash", "Cash custody", "عهدة نقدية"), ("card", "Card", "بطاقة"), ("keys", "Keys", "مفاتيح"),
+            ("uniform", "Uniform", "زي رسمي"), ("tools", "Tools", "أدوات"), ("other", "Other", "أخرى")),
+        _lk("asset_status", "Asset status", "حالة العهدة",
+            ("in_stock", "In stock", "في المخزن"), ("assigned", "Assigned", "مسلّمة لموظف"),
+            ("maintenance", "In maintenance", "في الصيانة"), ("lost", "Lost", "مفقودة"), ("retired", "Retired", "مستبعدة")),
+        _lk("asset_condition", "Asset condition", "حالة الجهاز",
+            ("new", "New", "جديد"), ("good", "Good", "جيد"), ("fair", "Fair", "مقبول"), ("damaged", "Damaged", "تالف")),
+        _lk("hr_request_kind", "HR request type", "نوع الطلب",
+            ("leave", "Leave", "إجازة"), ("permission", "Permission", "استئذان"),
+            ("ticket", "Travel ticket", "تذكرة سفر"), ("work_location", "Work location", "موقع عمل")),
+        _lk("hr_request_status", "HR request status", "حالة الطلب",
+            ("pending", "Pending", "بانتظار الاعتماد"), ("approved", "Approved", "معتمد"),
+            ("rejected", "Rejected", "مرفوض"), ("cancelled", "Cancelled", "ملغى"), ("booked", "Booked", "محجوز")),
+        _lk("leave_type", "Leave type", "نوع الإجازة",
+            ("annual", "Annual", "سنوية"), ("sick", "Sick", "مرضية"), ("emergency", "Emergency", "اضطرارية"),
+            ("unpaid", "Unpaid", "بدون راتب"), ("hajj", "Hajj", "حج"), ("marriage", "Marriage", "زواج"),
+            ("bereavement", "Bereavement", "وفاة"), ("maternity", "Maternity", "أمومة"),
+            ("paternity", "Paternity", "أبوة"), ("exam", "Exam", "اختبارات"), ("other", "Other", "أخرى")),
+        _lk("permission_type", "Permission type", "نوع الاستئذان",
+            ("late_arrival", "Late arrival", "تأخر صباحي"), ("early_leave", "Early leave", "خروج مبكر"),
+            ("during_day", "During the day", "أثناء الدوام")),
+        _lk("location_type", "Work location type", "نوع موقع العمل",
+            ("remote", "Remote", "عن بُعد"), ("field", "Field visit", "زيارة ميدانية")),
+        _lk("ticket_purpose", "Ticket purpose", "غرض التذكرة",
+            ("annual_leave", "Annual leave", "إجازة سنوية"), ("business", "Business trip", "مهمة عمل"),
+            ("exit_reentry", "Exit / re-entry", "خروج وعودة"), ("other", "Other", "أخرى")),
+        _lk("attendance_source", "Attendance source", "مصدر التسجيل",
+            ("web", "Portal", "البوابة"), ("manual", "Manual (HR)", "يدوي (الموارد البشرية)"), ("auto", "Automatic", "تلقائي")),
+        _lk("attendance_mode", "Attendance mode", "نوع الحضور",
+            ("office", "Office", "المكتب"), ("remote", "Remote", "عن بُعد"), ("field", "Field", "ميداني")),
+        # ── Operations ──
+        _lk("wo_category", "Work order category", "تصنيف طلب الصيانة",
+            ("plumbing", "Plumbing", "سباكة"), ("electrical", "Electrical", "كهرباء"), ("ac", "Air conditioning", "تكييف"),
+            ("carpentry", "Carpentry", "نجارة"), ("painting", "Painting", "دهان"), ("cleaning", "Cleaning", "نظافة"),
+            ("pest", "Pest control", "مكافحة حشرات"), ("appliances", "Appliances", "أجهزة"),
+            ("structural", "Structural", "إنشائي"), ("elevator", "Elevator", "مصاعد"),
+            ("fire_safety", "Fire safety", "سلامة وحريق"), ("other", "Other", "أخرى")),
+        _lk("wo_priority", "Work order priority", "أولوية الطلب",
+            ("emergency", "Emergency", "طارئ"), ("high", "High", "عالية"), ("normal", "Normal", "عادية"), ("low", "Low", "منخفضة")),
+        _lk("wo_status", "Work order status", "حالة طلب الصيانة",
+            ("new", "New", "جديد"), ("assigned", "Assigned", "مُسند"), ("awaiting_approval", "Awaiting approval", "بانتظار الموافقة"),
+            ("approved", "Approved", "معتمد"), ("rejected", "Rejected", "مرفوض"), ("in_progress", "In progress", "قيد التنفيذ"),
+            ("completed", "Completed", "مكتمل"), ("closed", "Closed", "مغلق"), ("cancelled", "Cancelled", "ملغى")),
+        _lk("charge_to", "Charged to", "على حساب",
+            ("owner", "Owner", "المالك"), ("tenant", "Tenant", "المستأجر"), ("company", "Company", "الشركة")),
+        _lk("reported_by", "Reported by", "مصدر البلاغ",
+            ("staff", "Staff", "الموظفون"), ("tenant", "Tenant", "المستأجر"), ("owner", "Owner", "المالك"),
+            ("inspection", "Inspection", "معاينة")),
+        _lk("renewal_stage", "Renewal stage", "مرحلة التجديد",
+            ("due", "Due", "مستحق"), ("contacted", "Contacted", "تم التواصل"), ("offer_sent", "Offer sent", "أُرسل العرض"),
+            ("awaiting_owner", "Awaiting owner", "بانتظار المالك"), ("agreed", "Agreed", "متفق عليه"),
+            ("renewed", "Renewed", "جُدّد"), ("lost", "Lost", "لم يُجدَّد")),
+        _lk("tenant_intent", "Tenant intent", "نية المستأجر",
+            ("unknown", "Unknown", "غير معروف"), ("renew", "Will renew", "سيجدد"),
+            ("undecided", "Undecided", "متردد"), ("leave", "Leaving", "سيغادر")),
+        _lk("lost_reason", "Reason not renewed", "سبب عدم التجديد",
+            ("price", "Price", "السعر"), ("relocation", "Relocation", "انتقال"), ("bought_home", "Bought a home", "اشترى منزلًا"),
+            ("dissatisfied", "Dissatisfied", "غير راضٍ"), ("owner_ending", "Owner ending lease", "المالك أنهى العقد"),
+            ("other", "Other", "أخرى")),
     ]
 }
 
@@ -488,6 +584,48 @@ def _paid_rule(row: dict, ctx) -> list:
 
 
 # ── Sheets, in import (dependency) order ─────────────────────────────────────
+
+def _hr_profile_rule(row: dict, ctx) -> list:
+    v = row.get("remote_days")
+    if v and not re.fullmatch(r"[0-6](,[0-6])*", v.replace(" ", "")):
+        return [("remote_days", "Remote days must be weekday numbers 0–6 separated by commas (e.g. 0,2)",
+                 "أيام العمل عن بعد أرقام من 0 إلى 6 مفصولة بفواصل (مثل 0,2)")]
+    return []
+
+
+def _asset_rule(row: dict, ctx) -> list:
+    if row.get("status") == "assigned" and row.get("assigned_user_id") is None:
+        return [("assigned_user_id", "An assigned asset needs the employee it is assigned to",
+                 "العهدة المسلّمة تحتاج تحديد الموظف المستلم")]
+    return []
+
+
+def _hr_request_rule(row: dict, ctx) -> list:
+    out = []
+    kind = row.get("kind")
+    s, e = row.get("start_date"), row.get("end_date")
+    if s and e and e < s:
+        out.append(("end_date", "End date is before the start date", "تاريخ النهاية قبل تاريخ البداية"))
+    if kind == "leave":
+        if not row.get("leave_type"):
+            out.append(("leave_type", "Leave type is required for leave requests", "نوع الإجازة مطلوب"))
+        if not s or not e:
+            out.append(("start_date", "Leave needs a start and an end date", "الإجازة تحتاج تاريخ بداية ونهاية"))
+    elif kind == "permission" and not row.get("permission_type"):
+        out.append(("permission_type", "Permission type is required", "نوع الاستئذان مطلوب"))
+    elif kind == "work_location" and not row.get("location_type"):
+        out.append(("location_type", "Work location type is required", "نوع موقع العمل مطلوب"))
+    return out
+
+
+def _attendance_rule(row: dict, ctx) -> list:
+    i, o = row.get("check_in"), row.get("check_out")
+    if o and not i:
+        return [("check_in", "A check-out needs a check-in", "لا يمكن تسجيل انصراف بدون حضور")]
+    if i and o and o <= i:
+        return [("check_out", "Check-out must be after check-in", "وقت الانصراف يجب أن يكون بعد الحضور")]
+    return []
+
 
 SHEETS: list[Sheet] = [
     Sheet(
@@ -860,6 +998,287 @@ SHEETS: list[Sheet] = [
         ],
         display="description",
         rules=[_expense_rule],
+    ),
+    # ══ HR / group ERP (الموارد البشرية — نظام موحد للمجموعة) ══
+    Sheet(
+        "hr_companies", "Group companies", "Group companies (holding & subsidiaries)", "شركات المجموعة", HrCompany,
+        [
+            _id(),
+            F("name_ar", "Name (AR)", "الاسم (عربي)", required=True, max_len=160, width=26),
+            F("name_en", "Name (EN)", "الاسم (إنجليزي)", max_len=160, width=24),
+            F("short_code", "Short code", "الرمز المختصر", max_len=10, width=12),
+            _bool("is_holding", "Holding company", "الشركة القابضة", False),
+            _ref("parent_id", "Parent company", "الشركة الأم", "hr_companies"),
+            F("cr_number", "Commercial registration", "السجل التجاري", max_len=30),
+            F("color", "Colour (#RRGGBB)", "اللون", max_len=9, width=12),
+            F("office_lat", "Office latitude", "خط العرض للمكتب", "float", min=-90, max=90, width=14),
+            F("office_lng", "Office longitude", "خط الطول للمكتب", "float", min=-180, max=180, width=14),
+            F("geofence_radius_m", "Check-in radius (m)", "نطاق التحضير (م)", "int", min=5, max=5000, width=12),
+            _bool("active", "Active", "نشطة", True),
+            _created(),
+        ],
+        display="name_ar",
+    ),
+    Sheet(
+        "hr_departments", "Departments", "Departments", "الإدارات", HrDepartment,
+        [
+            _id(),
+            _ref("company_id", "Company", "الشركة", "hr_companies", required=True),
+            _ref("parent_id", "Parent department", "الإدارة الأم", "hr_departments"),
+            F("name_ar", "Name (AR)", "الاسم (عربي)", required=True, max_len=120, width=24),
+            F("name_en", "Name (EN)", "الاسم (إنجليزي)", max_len=120, width=24),
+            _ref("head_user_id", "Department head (user)", "مدير الإدارة (مستخدم)", "users"),
+            _bool("active", "Active", "نشطة", True),
+        ],
+        display="name_ar",
+    ),
+    Sheet(
+        "hr_profiles", "Employee HR records", "Employee HR records", "السجلات الوظيفية للموظفين", HrProfile,
+        [
+            _id(),
+            _ref("user_id", "Employee (user)", "الموظف (مستخدم)", "users", required=True),
+            F("employee_no", "Employee no.", "الرقم الوظيفي", max_len=30, width=14),
+            _ref("company_id", "Company", "الشركة", "hr_companies"),
+            _ref("department_id", "Department", "الإدارة", "hr_departments"),
+            F("department", "Department (free text)", "الإدارة (نص)", max_len=80),
+            F("job_title", "Job title", "المسمى الوظيفي", max_len=120, width=22),
+            _ref("manager_user_id", "Line manager (user)", "المدير المباشر (مستخدم)", "users"),
+            F("hire_date", "Hire date", "تاريخ التعيين", "date"),
+            F("nationality", "Nationality", "الجنسية", max_len=60),
+            _enum("contract_type", "Employment type", "نوع التوظيف", "employment_kind", required=True, default="full_time"),
+            _enum("employment_status", "Employment status", "الحالة الوظيفية", "employment_status", required=True, default="active"),
+            F("annual_leave_days", "Annual leave days", "أيام الإجازة السنوية", "float", min=0, max=60, default=21, width=12),
+            F("leave_adjustment", "Leave adjustment (+/− days)", "تعديل رصيد الإجازة (± أيام)", "float", min=-365, max=365, default=0, width=12),
+            _enum("ticket_entitlement", "Ticket entitlement", "استحقاق التذاكر", "ticket_entitlement", required=True, default="none"),
+            F("ticket_destination", "Ticket destination", "وجهة التذكرة", max_len=80),
+            _enum("ticket_class", "Ticket class", "درجة التذكرة", "travel_class", required=True, default="economy"),
+            F("ticket_family_members", "Family on ticket", "المرافقون في التذكرة", "int", min=0, max=15, default=0, width=12),
+            F("work_start", "Work start (overrides HR settings)", "بداية الدوام (يتجاوز الإعدادات)", "time", width=12),
+            F("work_end", "Work end", "نهاية الدوام", "time", width=12),
+            _enum("work_mode", "Work mode", "نمط العمل", "work_mode", required=True, default="office"),
+            F("remote_days", "Remote weekdays (0=Mon … 6=Sun, comma separated)", "أيام العمل عن بعد (0=الاثنين … 6=الأحد)", max_len=20, width=14),
+            F("emergency_contact", "Emergency contact", "جهة اتصال للطوارئ", max_len=160),
+            F("notes", "Notes", "ملاحظات", "text", width=30),
+        ],
+        display="employee_no",
+        unique=[("user_id",)],
+        rules=[_hr_profile_rule],
+    ),
+    Sheet(
+        "hr_personal", "Personal files", "Employee personal files", "الملفات الشخصية للموظفين", HrPersonal,
+        [
+            _id(),
+            _ref("user_id", "Employee (user)", "الموظف (مستخدم)", "users", required=True),
+            F("first_name_ar", "First name (AR)", "الاسم الأول", max_len=60),
+            F("father_name_ar", "Father name (AR)", "اسم الأب", max_len=60),
+            F("family_name_ar", "Family name (AR)", "اسم العائلة", max_len=60),
+            F("first_name_en", "First name (EN)", "الاسم الأول (إنجليزي)", max_len=60),
+            F("family_name_en", "Family name (EN)", "اسم العائلة (إنجليزي)", max_len=60),
+            F("date_of_birth", "Date of birth", "تاريخ الميلاد", "date"),
+            _enum("gender", "Gender", "الجنس", "gender"),
+            _enum("marital_status", "Marital status", "الحالة الاجتماعية", "marital_status"),
+            _enum("id_type", "ID type", "نوع الهوية", "staff_id_type"),
+            F("id_number", "ID / Iqama number", "رقم الهوية / الإقامة", max_len=20),
+            F("id_expiry", "ID expiry", "انتهاء الهوية", "date"),
+            F("passport_number", "Passport no.", "رقم الجواز", max_len=20),
+            F("passport_country", "Passport country", "دولة الجواز", max_len=60),
+            F("passport_issue", "Passport issued", "إصدار الجواز", "date"),
+            F("passport_expiry", "Passport expiry", "انتهاء الجواز", "date"),
+            F("personal_email", "Personal e-mail", "البريد الشخصي", max_len=120, width=24),
+            F("personal_phone", "Personal phone", "الجوال الشخصي", max_len=20, numeric_ok=False, width=16),
+            F("address", "Address", "العنوان", max_len=300, width=30),
+            F("city", "City", "المدينة", max_len=60),
+            F("emergency_name", "Emergency contact name", "اسم جهة الطوارئ", max_len=120),
+            F("emergency_relation", "Emergency contact relation", "صلة جهة الطوارئ", max_len=40),
+            F("emergency_phone", "Emergency phone", "جوال الطوارئ", max_len=20, numeric_ok=False, width=16),
+            F("gosi_number", "GOSI no.", "رقم التأمينات", max_len=20),
+            F("bank_name", "Bank", "البنك", max_len=80),
+            F("iban", "IBAN", "الآيبان", max_len=34, fmt="iban", width=28),
+            F("account_holder", "Account holder", "اسم صاحب الحساب", max_len=120),
+        ],
+        display="id_number",
+        unique=[("user_id",)],
+        rules=[_id_number_rule("id_number")],
+    ),
+    Sheet(
+        "hr_family_members", "Family members", "Employee family members", "أفراد أسر الموظفين", HrFamilyMember,
+        [
+            _id(),
+            _ref("user_id", "Employee (user)", "الموظف (مستخدم)", "users", required=True),
+            F("name", "Name", "الاسم", required=True, max_len=120, width=24),
+            _enum("relation", "Relation", "صلة القرابة", "family_relation", required=True),
+            F("date_of_birth", "Date of birth", "تاريخ الميلاد", "date"),
+            F("id_number", "ID / Iqama number", "رقم الهوية / الإقامة", max_len=20),
+            F("passport_number", "Passport no.", "رقم الجواز", max_len=20),
+            _bool("dependent", "Dependent (insurance / tickets)", "تابع (تأمين / تذاكر)", True),
+            F("phone", "Phone", "الجوال", max_len=20, numeric_ok=False, width=16),
+            F("notes", "Notes", "ملاحظات", max_len=200, width=30),
+        ],
+        display="name",
+    ),
+    Sheet(
+        "hr_contracts", "Employment contracts", "Employment contracts", "عقود العمل", HrContract,
+        [
+            _id(),
+            F("number", "Contract no.", "رقم العقد", required=True, max_len=30, width=16),
+            _ref("user_id", "Employee (user)", "الموظف (مستخدم)", "users", required=True),
+            _ref("company_id", "Company", "الشركة", "hr_companies"),
+            _enum("contract_type", "Contract type", "نوع العقد", "hr_contract_type", required=True, default="fixed"),
+            F("job_title", "Job title", "المسمى الوظيفي", max_len=120, width=22),
+            F("start_date", "Start date", "تاريخ البداية", "date", required=True),
+            F("end_date", "End date", "تاريخ النهاية", "date"),
+            F("probation_end", "Probation ends", "نهاية فترة التجربة", "date"),
+            _money("basic_salary", "Basic salary (monthly)", "الراتب الأساسي (شهري)", required=True, default=0),
+            _money("housing_allowance", "Housing allowance", "بدل السكن", default=0),
+            _money("transport_allowance", "Transport allowance", "بدل النقل", default=0),
+            _money("other_allowance", "Other allowance", "بدلات أخرى", default=0),
+            F("other_allowance_label", "Other allowance label", "وصف البدلات الأخرى", max_len=80),
+            F("working_hours_week", "Working hours / week", "ساعات العمل الأسبوعية", "int", min=1, max=72, width=12),
+            F("annual_leave_days", "Annual leave days", "أيام الإجازة السنوية", "int", min=0, max=60, width=12),
+            F("notice_days", "Notice period (days)", "فترة الإشعار (أيام)", "int", min=0, max=365, width=12),
+            F("terms", "Terms", "الشروط", "text", width=40),
+            _enum("status", "Status", "الحالة", "hr_contract_status", required=True, default="draft"),
+            F("terminated_at", "Terminated on", "تاريخ الإنهاء", "date"),
+            F("termination_reason", "Termination reason", "سبب الإنهاء", max_len=300, width=30),
+            F("accepted_at", "Accepted at", "تاريخ القبول", "datetime", readonly=True),
+            _created(),
+        ],
+        display="number",
+        unique=[("number",)],
+        rules=[_dates_rule("start_date", "end_date")],
+    ),
+    Sheet(
+        "hr_assets", "Assets & custody", "Company assets & custody", "الأصول والعُهد", HrAsset,
+        [
+            _id(),
+            F("tag", "Asset tag", "رقم العهدة", required=True, max_len=30, width=14),
+            _ref("company_id", "Company", "الشركة", "hr_companies"),
+            _enum("kind", "Type", "النوع", "asset_kind", required=True),
+            F("name", "Name", "الاسم", required=True, max_len=160, width=24),
+            F("brand_model", "Brand / model", "الماركة / الموديل", max_len=120),
+            F("serial", "Serial / IMEI / plate", "الرقم التسلسلي / اللوحة", max_len=80),
+            _money("value", "Value", "القيمة"),
+            F("purchase_date", "Purchase date", "تاريخ الشراء", "date"),
+            F("warranty_end", "Warranty ends", "نهاية الضمان", "date"),
+            _enum("status", "Status", "الحالة", "asset_status", required=True, default="in_stock"),
+            _ref("assigned_user_id", "Assigned to (user)", "مسلّمة إلى (مستخدم)", "users"),
+            F("assigned_at", "Assigned on", "تاريخ التسليم", "date"),
+            _enum("condition", "Condition", "حالة الجهاز", "asset_condition"),
+            F("notes", "Notes", "ملاحظات", "text", width=30),
+            F("acknowledged_at", "Acknowledged by employee", "إقرار الموظف بالاستلام", "datetime", readonly=True),
+            _created(),
+        ],
+        display="tag",
+        unique=[("tag",)],
+        rules=[_asset_rule],
+    ),
+    Sheet(
+        "hr_requests", "HR requests", "Leave, permissions & tickets", "الإجازات والاستئذانات والتذاكر", HrRequest,
+        [
+            _id(),
+            F("number", "Request no.", "رقم الطلب", required=True, max_len=20, width=14),
+            _enum("kind", "Type", "النوع", "hr_request_kind", required=True),
+            _ref("user_id", "Employee (user)", "الموظف (مستخدم)", "users", required=True),
+            _enum("status", "Status", "الحالة", "hr_request_status", required=True, default="pending"),
+            F("reason", "Reason", "السبب", "text", width=30),
+            _enum("leave_type", "Leave type", "نوع الإجازة", "leave_type"),
+            F("start_date", "Start date", "تاريخ البداية", "date"),
+            F("end_date", "End date", "تاريخ النهاية", "date"),
+            F("days", "Days", "عدد الأيام", "float", min=0, max=365, width=10),
+            _ref("delegate_user_id", "Delegate (user)", "البديل (مستخدم)", "users"),
+            _enum("permission_type", "Permission type", "نوع الاستئذان", "permission_type"),
+            F("from_time", "From", "من الساعة", "time", width=10),
+            F("to_time", "To", "إلى الساعة", "time", width=10),
+            F("minutes", "Minutes", "الدقائق", "int", min=0, max=1440, width=10),
+            _enum("location_type", "Work location type", "نوع موقع العمل", "location_type"),
+            F("location_note", "Location note", "ملاحظة الموقع", max_len=200),
+            _enum("ticket_purpose", "Ticket purpose", "غرض التذكرة", "ticket_purpose"),
+            F("from_city", "From city", "من مدينة", max_len=80),
+            F("to_city", "To city", "إلى مدينة", max_len=80),
+            F("return_date", "Return date", "تاريخ العودة", "date"),
+            _bool("round_trip", "Round trip", "ذهاب وعودة", True),
+            F("travellers", "Travellers", "عدد المسافرين", "int", min=1, max=15, default=1, width=10),
+            _enum("travel_class", "Travel class", "درجة السفر", "travel_class"),
+            _money("estimated_cost", "Estimated cost", "التكلفة التقديرية"),
+            F("booking_ref", "Booking ref", "رقم الحجز", max_len=60),
+            _money("actual_cost", "Actual cost", "التكلفة الفعلية"),
+            F("decision_note", "Decision note", "ملاحظة القرار", "text", width=30),
+            F("decided_at", "Decided at", "تاريخ القرار", "datetime", readonly=True),
+            _created(),
+        ],
+        display="number",
+        unique=[("number",)],
+        rules=[_hr_request_rule],
+    ),
+    Sheet(
+        "hr_attendance", "Attendance", "Attendance (one row per employee per day)", "الحضور والانصراف", Attendance,
+        [
+            _id(),
+            _ref("user_id", "Employee (user)", "الموظف (مستخدم)", "users", required=True),
+            F("day", "Day", "اليوم", "date", required=True),
+            F("check_in", "Check in", "الحضور", "time", width=10),
+            F("check_out", "Check out", "الانصراف", "time", width=10),
+            _enum("mode", "Mode", "نوع الحضور", "attendance_mode", required=True, default="office"),
+            _enum("source", "Source", "المصدر", "attendance_source", required=True, default="manual"),
+            F("note", "Note", "ملاحظة", max_len=300, width=30),
+            F("away_minutes", "Minutes away from office", "دقائق خارج المقر", "int", min=0, max=1440, default=0, width=12),
+        ],
+        display="day",
+        unique=[("user_id", "day")],
+        rules=[_attendance_rule],
+    ),
+    # ══ Operations (التشغيل) ══
+    Sheet(
+        "work_orders", "Work orders", "Maintenance work orders", "طلبات الصيانة", WorkOrder,
+        [
+            _id(),
+            F("number", "Work order no.", "رقم الطلب", required=True, max_len=20, width=14),
+            _ref("building_id", "Property", "العقار", "buildings", required=True),
+            _ref("unit_id", "Unit", "الوحدة", "units"),
+            F("title", "Title", "العنوان", required=True, max_len=200, width=30),
+            F("description", "Description", "الوصف", "text", width=36),
+            _enum("category", "Category", "التصنيف", "wo_category", required=True, default="other"),
+            _enum("priority", "Priority", "الأولوية", "wo_priority", required=True, default="normal"),
+            _enum("status", "Status", "الحالة", "wo_status", required=True, default="new"),
+            _enum("reported_by", "Reported by", "مصدر البلاغ", "reported_by", required=True, default="staff"),
+            F("reporter_name", "Reporter name", "اسم المُبلّغ", max_len=120),
+            F("reporter_phone", "Reporter phone", "جوال المُبلّغ", max_len=30, numeric_ok=False),
+            _ref("assignee_id", "Assignee (user)", "المسؤول (مستخدم)", "users"),
+            F("vendor_name", "Vendor", "المقاول / المورّد", max_len=160),
+            F("vendor_phone", "Vendor phone", "جوال المورّد", max_len=30, numeric_ok=False),
+            _money("estimate_amount", "Estimate", "التكلفة التقديرية"),
+            _money("actual_cost", "Actual cost", "التكلفة الفعلية"),
+            _enum("charge_to", "Charged to", "على حساب", "charge_to", required=True, default="owner"),
+            F("due_at", "Due by", "موعد الاستحقاق", "datetime"),
+            F("scheduled_for", "Scheduled for", "موعد الزيارة", "datetime"),
+            F("completed_at", "Completed at", "تاريخ الإنجاز", "datetime"),
+            F("resolution", "Resolution", "ما تم عمله", "text", width=30),
+            F("rating", "Rating (1–5)", "التقييم (1–5)", "int", min=1, max=5, width=10),
+            _created(),
+        ],
+        display="number",
+        unique=[("number",)],
+    ),
+    Sheet(
+        "lease_renewals", "Lease renewals", "Lease renewals pipeline", "متابعة تجديد العقود", LeaseRenewal,
+        [
+            _id(),
+            _ref("contract_id", "Lease contract", "عقد الإيجار", "contracts", required=True),
+            _ref("building_id", "Property", "العقار", "buildings"),
+            _ref("unit_id", "Unit", "الوحدة", "units"),
+            _ref("assignee_id", "Assignee (user)", "المسؤول (مستخدم)", "users"),
+            _enum("stage", "Stage", "المرحلة", "renewal_stage", required=True, default="due"),
+            _enum("tenant_intent", "Tenant intent", "نية المستأجر", "tenant_intent", required=True, default="unknown"),
+            F("end_date", "Lease ends", "انتهاء العقد", "date", required=True),
+            _money("current_rent", "Current annual rent", "الإيجار السنوي الحالي", required=True, default=0),
+            _money("proposed_rent", "Proposed annual rent", "الإيجار السنوي المقترح"),
+            F("next_follow_up", "Next follow-up", "المتابعة القادمة", "date"),
+            _enum("lost_reason", "Reason not renewed", "سبب عدم التجديد", "lost_reason"),
+            F("new_contract_number", "New contract no.", "رقم العقد الجديد", max_len=50),
+            _created(),
+        ],
+        display="end_date",
+        unique=[("contract_id",)],
     ),
 ]
 

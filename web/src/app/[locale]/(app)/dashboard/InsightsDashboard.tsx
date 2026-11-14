@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Area,
@@ -19,6 +20,8 @@ import {
 } from "recharts";
 
 import { useTheme } from "@/components/ThemeProvider";
+
+import { Card, Kpi, Legend, Seg, useChart, useToggleSet } from "./kit";
 
 export type Insights = {
   as_of: string;
@@ -51,6 +54,11 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
   const axis = dark ? "rgba(255,255,255,.55)" : "rgba(31,35,40,.55)";
   const maroon = dark ? "#E58C80" : C.maroon;
   const k = data.kpis;
+  const router = useRouter();
+  const ch = useChart(locale);
+  const [hidden, toggle] = useToggleSet();
+  const [range, setRange] = useState<6 | 12>(12);
+  const [q, setQ] = useState("");
 
   const nf = useMemo(() => new Intl.NumberFormat(ar ? "ar-SA" : "en-US", { maximumFractionDigits: 0 }), [ar]);
   const cf = useMemo(() => new Intl.NumberFormat(ar ? "ar-SA" : "en-US", { notation: "compact", maximumFractionDigits: 1 }), [ar]);
@@ -84,7 +92,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
   const catName: Record<string, [string, string]> = { maintenance: ["صيانة", "Maintenance"], utilities: ["خدمات ومرافق", "Utilities"], cleaning: ["نظافة", "Cleaning"], security: ["حراسة وأمن", "Security"], other: ["أخرى", "Other"], insurance: ["تأمين", "Insurance"], management: ["إدارة", "Management"] };
 
   const [sortKey, setSortKey] = useState<"collected_ytd" | "occupancy" | "noi_ytd" | "overdue" | "vacancy_loss_month">("collected_ytd");
-  const rows = [...data.buildings].sort((a, b) => (sortKey === "occupancy" ? a.occupancy - b.occupancy : b[sortKey] - a[sortKey]));
+  const rows = [...data.buildings].filter((b) => !q.trim() || b.name.toLowerCase().includes(q.trim().toLowerCase())).sort((a, b) => (sortKey === "occupancy" ? a.occupancy - b.occupancy : b[sortKey] - a[sortKey]));
   const [alertFilter, setAlertFilter] = useState<"all" | "high">("all");
   const alerts = data.alerts.filter((a) => alertFilter === "all" || a.level === "high");
 
@@ -108,7 +116,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
   const alertIcon: Record<string, string> = { overdue: "schedule", expiring: "event_busy", ejar: "gavel", low_occupancy: "domain_disabled", owner_payout: "account_balance", mgmt_expiring: "handshake", expense_spike: "trending_up", wo_approval: "gavel", wo_overdue: "timer_off", rn_no_contact: "phone_missed", rn_owner: "autorenew", broken_promise: "heart_broken" };
 
   return (
-    <div className="bi">
+    <div className="bi dash">
       {/* ── Narrative ── */}
       {story.length > 0 && (
         <section className="bi-story" aria-label={T("أهم ما يجب معرفته اليوم", "What matters today")}>
@@ -125,35 +133,43 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
       )}
 
       {/* ── KPI band ── */}
-      <section className="bi-kpis">
-        <Kpi label={T("المحصّل هذا الشهر", "Collected this month")} value={sar(k.mtd_collected)} sub={T(`من ${sar(k.mtd_expected)} مستحق`, `of ${sar(k.mtd_expected)} due`)} bar={mtdPct} tone="maroon" />
-        <Kpi label={T("نسبة التحصيل", "Collection rate")} value={pf(k.collection_rate)} sub={T("من المستحق حتى اليوم", "of everything due to date")} ring={k.collection_rate} tone={k.collection_rate >= 95 ? "good" : k.collection_rate >= 85 ? "warn" : "bad"} />
-        <Kpi label={T("الإشغال", "Occupancy")} value={pf(k.occupancy)} sub={T(`${nf.format(k.occupied)} من ${nf.format(k.units)} وحدة`, `${nf.format(k.occupied)} of ${nf.format(k.units)} units`)} ring={k.occupancy} tone={k.occupancy >= 90 ? "good" : k.occupancy >= 75 ? "warn" : "bad"} />
-        <Kpi label={T("المتأخرات", "Overdue")} value={sar(k.overdue_amount)} sub={T(`${nf.format(k.overdue_count)} دفعة`, `${nf.format(k.overdue_count)} instalments`)} tone={k.overdue_amount > 0 ? "bad" : "good"} href="payments" locale={locale} />
-        <Kpi label={T("صافي الدخل هذا العام", "Net operating income YTD")} value={sar(k.ytd_noi)} sub={T(`تحصيل ${sar(k.ytd_collected)} − مصروفات ${sar(k.ytd_expenses)}`, `${sar(k.ytd_collected)} collected − ${sar(k.ytd_expenses)} costs`)} tone="good" />
-        <Kpi label={T("إيجار معرّض للخطر (90 يومًا)", "Rent at risk (90 days)")} value={sar(k.rent_at_risk)} sub={T(`${nf.format(k.expiring_90)} عقود تنتهي قريبًا`, `${nf.format(k.expiring_90)} leases ending`)} tone={k.expiring_90 ? "warn" : "good"} href="contracts" locale={locale} />
+      <section className="bi-kpis dash-kpis">
+        <Kpi locale={locale} icon="payments" label={T("المحصّل هذا الشهر", "Collected this month")} value={k.mtd_collected} fmt={sar} sub={T(`من ${sar(k.mtd_expected)} مستحق`, `of ${sar(k.mtd_expected)} due`)} bar={mtdPct} tone="maroon" href="payments" />
+        <Kpi locale={locale} icon="percent" label={T("نسبة التحصيل", "Collection rate")} value={k.collection_rate} fmt={(v) => pf(v)} sub={T("من المستحق حتى اليوم", "of everything due to date")} ring={k.collection_rate} tone={k.collection_rate >= 95 ? "good" : k.collection_rate >= 85 ? "warn" : "bad"} href="collections" />
+        <Kpi locale={locale} icon="door_front" label={T("الإشغال", "Occupancy")} value={k.occupancy} fmt={(v) => pf(v)} sub={T(`${nf.format(k.occupied)} من ${nf.format(k.units)} وحدة`, `${nf.format(k.occupied)} of ${nf.format(k.units)} units`)} ring={k.occupancy} tone={k.occupancy >= 90 ? "good" : k.occupancy >= 75 ? "warn" : "bad"} href="properties" />
+        <Kpi locale={locale} icon="schedule" label={T("المتأخرات", "Overdue")} value={k.overdue_amount} fmt={sar} sub={T(`${nf.format(k.overdue_count)} دفعة`, `${nf.format(k.overdue_count)} instalments`)} tone={k.overdue_amount > 0 ? "bad" : "good"} href="collections" />
+        <Kpi locale={locale} icon="savings" label={T("صافي الدخل هذا العام", "Net operating income YTD")} value={k.ytd_noi} fmt={sar} sub={T(`تحصيل ${sar(k.ytd_collected)} − مصروفات ${sar(k.ytd_expenses)}`, `${sar(k.ytd_collected)} collected − ${sar(k.ytd_expenses)} costs`)} tone="good" href="dashboard/finance" />
+        <Kpi locale={locale} icon="event_busy" label={T("إيجار معرّض للخطر (90 يومًا)", "Rent at risk (90 days)")} value={k.rent_at_risk} fmt={sar} sub={T(`${nf.format(k.expiring_90)} عقود تنتهي قريبًا`, `${nf.format(k.expiring_90)} leases ending`)} tone={k.expiring_90 ? "warn" : "good"} href="renewals" />
       </section>
 
       {/* ── Cash flow + alerts ── */}
       <section className="bi-row bi-row--main">
-        <Card title={T("التدفق النقدي — آخر 12 شهرًا", "Cash flow — last 12 months")} sub={T("المحصّل مقابل المستحق، والمصروفات، وصافي الدخل", "Collected vs due, expenses and net income")}>
-          <div className="bi-legend">
-            <span><i style={{ background: maroon }} />{T("المحصّل", "Collected")}</span>
-            <span><i style={{ background: C.sand }} />{T("المستحق", "Due")}</span>
-            <span><i style={{ background: C.grey }} />{T("المصروفات", "Expenses")}</span>
-            <span><i className="line" style={{ background: C.palm }} />{T("صافي الدخل", "Net income")}</span>
-          </div>
+        <Card
+          title={T(`التدفق النقدي — آخر ${range} شهرًا`, `Cash flow — last ${range} months`)}
+          sub={T("اضغط على عناصر المفتاح لإظهار أو إخفاء كل سلسلة", "Tap the legend to show or hide each series")}
+          action={<Seg value={range} onChange={setRange} options={[[6, T("6 أشهر", "6 mo")], [12, T("12 شهرًا", "12 mo")]] as const} />}
+        >
+          <Legend
+            hidden={hidden}
+            onToggle={toggle}
+            items={[
+              { key: "collected", label: T("المحصّل", "Collected"), color: maroon },
+              { key: "expected", label: T("المستحق", "Due"), color: C.sand },
+              { key: "expenses", label: T("المصروفات", "Expenses"), color: C.grey },
+              { key: "noi", label: T("صافي الدخل", "Net income"), color: C.palm, line: true },
+            ]}
+          />
           <div className="bi-chart bi-chart--tall">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={cash} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} barGap={2}>
+              <ComposedChart data={cash.slice(-range)} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} barGap={2}>
                 <CartesianGrid stroke={grid} vertical={false} />
                 <XAxis dataKey="label" tick={{ fill: axis, fontSize: 11.5 }} axisLine={false} tickLine={false} reversed={ar} />
                 <YAxis tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => cf.format(v)} width={44} orientation={ar ? "right" : "left"} />
                 <Tooltip {...tip} />
-                <Area type="monotone" dataKey="expenses" name={T("المصروفات", "Expenses")} fill={C.grey} fillOpacity={0.15} stroke={C.grey} strokeWidth={1} />
-                <Bar dataKey="expected" name={T("المستحق", "Due")} fill={C.sand} radius={[4, 4, 0, 0]} maxBarSize={18} />
-                <Bar dataKey="collected" name={T("المحصّل", "Collected")} fill={maroon} radius={[4, 4, 0, 0]} maxBarSize={18} />
-                <Line type="monotone" dataKey="noi" name={T("صافي الدخل", "Net income")} stroke={C.palm} strokeWidth={2.5} dot={false} />
+                <Area {...ch.anim} hide={hidden.has("expenses")} type="monotone" dataKey="expenses" name={T("المصروفات", "Expenses")} fill={C.grey} fillOpacity={0.15} stroke={C.grey} strokeWidth={1} />
+                <Bar {...ch.anim} hide={hidden.has("expected")} dataKey="expected" name={T("المستحق", "Due")} fill={C.sand} radius={[4, 4, 0, 0]} maxBarSize={18} />
+                <Bar {...ch.anim} animationBegin={150} hide={hidden.has("collected")} dataKey="collected" name={T("المحصّل", "Collected")} fill={maroon} radius={[4, 4, 0, 0]} maxBarSize={18} />
+                <Line {...ch.anim} animationBegin={300} hide={hidden.has("noi")} type="monotone" dataKey="noi" name={T("صافي الدخل", "Net income")} stroke={C.palm} strokeWidth={2.5} dot={{ r: 0 }} activeDot={{ r: 5 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -186,7 +202,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
 
       {/* ── Receivables, payment behaviour, forecast ── */}
       <section className="bi-row bi-row--3">
-        <Card title={T("أعمار الديون", "Receivables aging")} sub={T("المبالغ المتأخرة حسب مدة التأخير", "Overdue amounts by days late")}>
+        <Card title={T("أعمار الديون", "Receivables aging")} sub={T("المبالغ المتأخرة حسب مدة التأخير — اضغط لفتح التحصيل", "Overdue amounts by days late — tap to open collections")}>
           <div className="bi-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.aging} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -194,7 +210,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
                 <XAxis dataKey="bucket" tick={{ fill: axis, fontSize: 11.5 }} axisLine={false} tickLine={false} tickFormatter={(b) => `${b} ${T("يوم", "d")}`} reversed={ar} />
                 <YAxis tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => cf.format(v)} width={44} orientation={ar ? "right" : "left"} />
                 <Tooltip {...tip} />
-                <Bar dataKey="amount" name={T("المبلغ", "Amount")} radius={[6, 6, 0, 0]} maxBarSize={44}>
+                <Bar {...ch.anim} dataKey="amount" name={T("المبلغ", "Amount")} radius={[6, 6, 0, 0]} maxBarSize={44} cursor="pointer" onClick={() => router.push(`/${locale}/collections`)}>
                   {data.aging.map((_, i) => <Cell key={i} fill={agingColors[i]} />)}
                 </Bar>
               </BarChart>
@@ -207,7 +223,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
             <div className="bi-chart bi-chart--donut">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={[{ v: k.on_time_pct ?? 0 }, { v: 100 - (k.on_time_pct ?? 0) }]} dataKey="v" innerRadius="68%" outerRadius="92%" startAngle={90} endAngle={-270} stroke="none">
+                  <Pie {...ch.anim} data={[{ v: k.on_time_pct ?? 0 }, { v: 100 - (k.on_time_pct ?? 0) }]} dataKey="v" innerRadius="68%" outerRadius="92%" startAngle={90} endAngle={-270} stroke="none">
                     <Cell fill={C.palm} />
                     <Cell fill={dark ? "#3A3431" : "#EFE7DA"} />
                   </Pie>
@@ -231,7 +247,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
                 <XAxis dataKey="label" tick={{ fill: axis, fontSize: 11.5 }} axisLine={false} tickLine={false} reversed={ar} />
                 <YAxis tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => cf.format(v)} width={44} orientation={ar ? "right" : "left"} />
                 <Tooltip {...tip} />
-                <Bar dataKey="scheduled" name={T("مجدول", "Scheduled")} fill={C.palm} radius={[6, 6, 0, 0]} maxBarSize={36} />
+                <Bar {...ch.anim} dataKey="scheduled" name={T("مجدول", "Scheduled")} fill={C.palm} radius={[6, 6, 0, 0]} maxBarSize={36} cursor="pointer" onClick={() => router.push(`/${locale}/payments`)} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -240,7 +256,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
 
       {/* ── Lease expiry ladder + owner concentration + expense mix ── */}
       <section className="bi-row bi-row--3">
-        <Card title={T("سلّم انتهاء العقود", "Lease expiry ladder")} sub={T("العقود المنتهية في كل شهر من الأشهر الـ12 القادمة", "Leases ending each month, next 12 months")}>
+        <Card title={T("سلّم انتهاء العقود", "Lease expiry ladder")} sub={T("العقود المنتهية في كل شهر — اضغط لفتح التجديدات", "Leases ending each month — tap to open renewals")}>
           <div className="bi-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={ladder} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
@@ -248,7 +264,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
                 <XAxis dataKey="label" tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} reversed={ar} interval={1} />
                 <YAxis allowDecimals={false} tick={{ fill: axis, fontSize: 11 }} axisLine={false} tickLine={false} width={28} orientation={ar ? "right" : "left"} />
                 <Tooltip {...tip} />
-                <Bar dataKey="count" name={T("عقود", "Leases")} radius={[5, 5, 0, 0]} maxBarSize={22}>
+                <Bar {...ch.anim} dataKey="count" name={T("عقود", "Leases")} radius={[5, 5, 0, 0]} maxBarSize={22} cursor="pointer" onClick={() => router.push(`/${locale}/renewals`)}>
                   {ladder.map((_, i) => <Cell key={i} fill={i < 3 ? C.amber : C.sand} />)}
                 </Bar>
               </BarChart>
@@ -262,7 +278,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
             {data.concentration.map((o) => (
               <li key={o.owner}>
                 <div className="bi-bars__row"><span>{o.owner}</span><strong>{pf(o.share)}</strong></div>
-                <div className="bi-bars__track"><i style={{ width: `${o.share}%`, background: maroon }} /></div>
+                <div className="bi-bars__track"><i className="dash-grow" style={{ width: `${o.share}%`, background: maroon }} /></div>
                 <small>{sar(o.amount)}</small>
               </li>
             ))}
@@ -274,7 +290,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
             <div className="bi-chart bi-chart--donut">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={data.expense_mix} dataKey="amount" nameKey="category" innerRadius="58%" outerRadius="92%" paddingAngle={2} stroke="none">
+                  <Pie {...ch.anim} data={data.expense_mix} dataKey="amount" nameKey="category" innerRadius="58%" outerRadius="92%" paddingAngle={2} stroke="none">
                     {data.expense_mix.map((_, i) => <Cell key={i} fill={expenseColors[i % expenseColors.length]} />)}
                   </Pie>
                   <Tooltip {...tip} />
@@ -294,8 +310,13 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
       {/* ── Building league table ── */}
       <Card
         title={T("أداء المباني", "Building performance")}
-        sub={T("مرتّبة حسب ما تختاره — هذا العام", "Ranked by your choice — this year")}
+        sub={T("مرتّبة حسب ما تختاره — اضغط على المبنى لفتحه", "Ranked by your choice — tap a building to open it")}
         action={
+          <div className="dash-tools">
+          <label className="dash-search">
+            <span className="ms ms-sm" aria-hidden>search</span>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={T("ابحث عن مبنى", "Find a building")} aria-label={T("ابحث عن مبنى", "Find a building")} />
+          </label>
           <div className="bi-seg">
             {([
               ["collected_ytd", T("التحصيل", "Collected")],
@@ -306,6 +327,7 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
             ] as const).map(([key, label]) => (
               <button key={key} className={sortKey === key ? "is-on" : ""} onClick={() => setSortKey(key)}>{label}</button>
             ))}
+          </div>
           </div>
         }
       >
@@ -324,11 +346,11 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
             </thead>
             <tbody>
               {rows.map((b) => (
-                <tr key={b.id}>
+                <tr key={b.id} className="dash-row" tabIndex={0} onClick={() => router.push(`/${locale}/properties/${b.id}`)} onKeyDown={(e) => e.key === "Enter" && router.push(`/${locale}/properties/${b.id}`)}>
                   <td><strong>{b.name}</strong><div className="text-sec" style={{ fontSize: 12 }}>{nf.format(b.occupied)} / {nf.format(b.units)} {T("وحدة", "units")}</div></td>
                   <td>
                     <div className="bi-occ">
-                      <div className="bi-occ__track"><i style={{ width: `${b.occupancy}%`, background: b.occupancy >= 90 ? C.palm : b.occupancy >= 75 ? C.amber : C.red }} /></div>
+                      <div className="bi-occ__track"><i className="dash-grow" style={{ width: `${b.occupancy}%`, background: b.occupancy >= 90 ? C.palm : b.occupancy >= 75 ? C.amber : C.red }} /></div>
                       <span>{pf(b.occupancy)}</span>
                     </div>
                   </td>
@@ -361,44 +383,5 @@ export function InsightsDashboard({ data, locale }: { data: Insights; locale: st
 
       <p className="bi-asof">{T("محسوبة من بيانات النظام بتاريخ", "Computed from system data as of")} {new Intl.DateTimeFormat(ar ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "long" }).format(new Date(data.as_of))}</p>
     </div>
-  );
-}
-
-function Card({ title, sub, action, children }: { title: string; sub?: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="bi-card">
-      <header className="bi-card__h">
-        <div>
-          <h3>{title}</h3>
-          {sub && <p>{sub}</p>}
-        </div>
-        {action}
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function Kpi({ label, value, sub, tone, bar, ring, href, locale }: { label: string; value: string; sub?: string; tone: "good" | "warn" | "bad" | "maroon"; bar?: number; ring?: number; href?: string; locale?: string }) {
-  const body = (
-    <>
-      <div className="bi-kpi__top">
-        <span className="bi-kpi__label">{label}</span>
-        {ring != null && (
-          <svg className="bi-ring" viewBox="0 0 36 36" aria-hidden>
-            <circle cx="18" cy="18" r="15.5" className="bi-ring__bg" />
-            <circle cx="18" cy="18" r="15.5" className="bi-ring__fg" strokeDasharray={`${(Math.max(0, Math.min(100, ring)) * 97.4) / 100} 97.4`} />
-          </svg>
-        )}
-      </div>
-      <div className="bi-kpi__value">{value}</div>
-      {bar != null && <div className="bi-kpi__bar"><i style={{ width: `${bar}%` }} /></div>}
-      {sub && <div className="bi-kpi__sub">{sub}</div>}
-    </>
-  );
-  return href && locale ? (
-    <Link href={`/${locale}/${href}`} className={`bi-kpi is-${tone}`}>{body}</Link>
-  ) : (
-    <div className={`bi-kpi is-${tone}`}>{body}</div>
   );
 }

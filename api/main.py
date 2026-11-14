@@ -37,6 +37,7 @@ from api.routers import (
     account,
     agents,
     analytics,
+    dashboards,
     auth,
     buildings,
     contracts,
@@ -255,6 +256,7 @@ app.include_router(hr_people.router, prefix=API_V1)
 app.include_router(tenant_portal.router, prefix=API_V1)
 app.include_router(owner_portal_detail.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
+app.include_router(dashboards.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)
 # Admin bulk data management — Excel export / validate / import

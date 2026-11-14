@@ -49,6 +49,7 @@ NEW_KEY_RE = re.compile(r"^NEW-[A-Za-z0-9_\-]{1,40}$", re.IGNORECASE)
 INT_RE = re.compile(r"^-?\d+$")
 NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+TIME_RE = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$")
 TRUE_STRINGS, FALSE_STRINGS = {"true"}, {"false"}
 
 
@@ -271,6 +272,18 @@ def parse_cell(f: F, raw: Any) -> Any:
             raise CellError("Date is out of range (1900–2100) — Hijri dates must be converted to Gregorian",
                             "التاريخ خارج النطاق (1900–2100) — يجب تحويل التاريخ الهجري إلى ميلادي")
         return d
+
+    if k == "time":
+        if isinstance(raw, datetime):
+            return raw.time().replace(microsecond=0)
+        if isinstance(raw, time):
+            return raw.replace(microsecond=0)
+        if isinstance(raw, float) and 0 <= raw < 1:  # Excel stores times as a day fraction
+            mins = round(raw * 24 * 60)
+            return time(mins // 60 % 24, mins % 60)
+        if isinstance(raw, str) and (mt := TIME_RE.match(raw.strip())):
+            return time(int(mt.group(1)), int(mt.group(2)))
+        raise CellError("Expected a time in the format HH:MM (24-hour)", "المتوقع وقت بصيغة HH:MM (نظام 24 ساعة)")
 
     if k == "enum":
         lk = LOOKUPS[f.lookup]

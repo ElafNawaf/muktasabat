@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/Modal";
 export type DataSummary = {
   sheets: {
     sheet: string;
+    group?: string;
     title: string;
     title_en: string;
     title_ar: string;
@@ -72,7 +73,26 @@ const SHEET_ICON: Record<string, string> = {
   payments: "payments",
   payment_splits: "call_split",
   expenses: "receipt_long",
+  hr_companies: "corporate_fare",
+  hr_departments: "account_tree",
+  hr_profiles: "badge",
+  hr_personal: "id_card",
+  hr_family_members: "family_restroom",
+  hr_contracts: "contract",
+  hr_assets: "devices",
+  hr_requests: "event_note",
+  hr_attendance: "schedule",
+  work_orders: "construction",
+  lease_renewals: "autorenew",
 };
+
+const GROUPS: { key: string; ar: string; en: string; icon: string }[] = [
+  { key: "organisation", ar: "المنشأة والمستخدمون", en: "Organisation & users", icon: "apartment" },
+  { key: "property", ar: "العقارات والعقود", en: "Properties & leases", icon: "domain" },
+  { key: "finance", ar: "المالية", en: "Finance", icon: "payments" },
+  { key: "operations", ar: "التشغيل", en: "Operations", icon: "construction" },
+  { key: "hr", ar: "الموارد البشرية (نظام المجموعة)", en: "HR (group ERP)", icon: "groups" },
+];
 
 export function DataManagementClient({ summary, locale }: { summary: DataSummary; locale: string }) {
   const t = useTranslations("dataManagement");
@@ -208,8 +228,24 @@ export function DataManagementClient({ summary, locale }: { summary: DataSummary
           <button className="btn btn-ghost btn-sm" type="button" disabled={!picked.size} onClick={() => setPicked(new Set())}>{ar ? "إلغاء التحديد" : "Clear"}</button>
         </div>
 
-        <div className="dm-sheets" role="group" aria-label={ar ? "الأوراق المراد تصديرها" : "Sheets to export"}>
-          {summary.sheets.map((s) => {
+        {GROUPS.filter((g) => summary.sheets.some((s) => (s.group ?? "property") === g.key)).map((g) => {
+          const inGroup = summary.sheets.filter((s) => (s.group ?? "property") === g.key);
+          const pickable = inGroup.filter((s) => !s.reference_only).map((s) => s.sheet);
+          const allOn = pickable.length > 0 && pickable.every((k) => picked.has(k));
+          return (
+        <div key={g.key} className="dm-group">
+        <h4 className="dm-group__h">
+          <span className="ms ms-sm" aria-hidden>{g.icon}</span>
+          {ar ? g.ar : g.en}
+          <span className="text-sec">· {inGroup.reduce((n, s) => n + s.count, 0).toLocaleString(locale)}</span>
+          {pickable.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-sm dm-group__all" onClick={() => setPicked((o) => { const n = new Set(o); pickable.forEach((k) => (allOn ? n.delete(k) : n.add(k))); return n; })}>
+              {allOn ? (ar ? "إلغاء القسم" : "Clear group") : (ar ? "تحديد القسم" : "Select group")}
+            </button>
+          )}
+        </h4>
+        <div className="dm-sheets" role="group" aria-label={ar ? g.ar : g.en}>
+          {inGroup.map((s) => {
             const on = picked.has(s.sheet);
             const isLinked = linked.includes(s.sheet);
             return (
@@ -225,6 +261,9 @@ export function DataManagementClient({ summary, locale }: { summary: DataSummary
             );
           })}
         </div>
+        </div>
+          );
+        })}
 
         <div className="dm-exportbar">
           <div className="text-sec">
