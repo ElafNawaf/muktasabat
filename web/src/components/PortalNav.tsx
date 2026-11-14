@@ -35,7 +35,10 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
   const raw: { label: string; items: (Omit<NavItem, "section"> & { show?: boolean })[] }[] = [
     {
       label: t("overview"),
-      items: [{ id: "dashboard", href: L("dashboard"), icon: "space_dashboard", label: t("dashboard"), show: v("dashboard") }],
+      items: [
+        { id: "dashboard", href: L("dashboard"), icon: "space_dashboard", label: t("dashboard"), show: v("dashboard") },
+        { id: "approvals", href: L("approvals"), icon: "approval", label: t("approvals"), show: isAdmin || can("maintenance", "approve") || can("contracts", "approve") || can("payments", "approve") },
+      ],
     },
     {
       label: t("portfolio"),
@@ -58,6 +61,7 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       label: t("finance"),
       items: [
         { id: "payments", href: L("payments"), icon: "payments", label: t("payments"), show: v("payments") },
+        { id: "collections", href: L("collections"), icon: "savings", label: t("collections"), show: v("payments") },
         { id: "expenses", href: L("expenses"), icon: "receipt_long", label: t("expenses"), show: v("expenses") },
       ],
     },

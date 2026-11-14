@@ -195,7 +195,7 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
             c = c_by_id.get(p.contract_id)
             alerts.append({"level": "high" if days >= 60 else "medium", "kind": "overdue",
                            "ref": c.contract_number if c else f"#{p.contract_id}", "amount": p.amount, "days": days,
-                           "href": "payments"})
+                           "href": "collections"})
     for c in sorted(expiring_90, key=lambda c: c.end_date):
         days = (c.end_date - today).days
         u = u_by_id.get(c.unit_id)
@@ -213,7 +213,7 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
     pending_payout = [p for p in payments if p.paid_date and p.owner_transfer_due_date and not p.owner_transferred_date and p.owner_transfer_due_date <= today]
     if pending_payout:
         alerts.append({"level": "medium", "kind": "owner_payout", "count": len(pending_payout),
-                       "amount": round(sum(p.amount or 0 for p in pending_payout), 2), "href": "payments"})
+                       "amount": round(sum(p.amount or 0 for p in pending_payout), 2), "href": "approvals"})
     for m in mgmt:
         if (m.status or "") == "active" and m.end_date and today <= m.end_date <= today + timedelta(days=60):
             alerts.append({"level": "medium", "kind": "mgmt_expiring", "ref": m.contract_number,
@@ -231,7 +231,7 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
         waiting = [w for w in wos if w.status == "awaiting_approval"]
         if waiting:
             alerts.append({"level": "medium", "kind": "wo_approval", "count": len(waiting),
-                           "amount": round(sum(w.estimate_amount or 0 for w in waiting), 2), "href": "maintenance"})
+                           "amount": round(sum(w.estimate_amount or 0 for w in waiting), 2), "href": "approvals"})
         now = datetime.utcnow()
         late = [w for w in wos if w.due_at and w.due_at < now and w.status != "awaiting_approval"]
         if late:
@@ -248,7 +248,20 @@ def compute_insights(db: Session, locale: str = "ar") -> dict:
                            "kind": "rn_no_contact", "count": len(cold), "href": "renewals"})
         waiting = [r for r in rn if r.stage == "awaiting_owner"]
         if waiting:
-            alerts.append({"level": "medium", "kind": "rn_owner", "count": len(waiting), "href": "renewals"})
+            alerts.append({"level": "medium", "kind": "rn_owner", "count": len(waiting), "href": "approvals"})
+    except Exception:  # never break the dashboard
+        pass
+    try:
+        from api.routers.collections import CollectionAction
+        unpaid_ids = [p.id for p in payments if (p.status or "") in ("pending", "overdue")]
+        if unpaid_ids:
+            last: dict[int, CollectionAction] = {}
+            for x in db.scalars(select(CollectionAction).where(CollectionAction.payment_id.in_(unpaid_ids), CollectionAction.kind == "promise").order_by(CollectionAction.id)).all():
+                last[x.payment_id] = x
+            broken = [x for x in last.values() if x.promise_date and x.promise_date < today]
+            if broken:
+                alerts.append({"level": "high", "kind": "broken_promise", "count": len(broken),
+                               "amount": round(sum(x.promise_amount or 0 for x in broken), 2), "href": "collections"})
     except Exception:  # never break the dashboard
         pass
     alerts.sort(key=lambda a: (order[a["level"]], -(a.get("amount") or 0)))
