@@ -45,7 +45,7 @@ from api.routers import (
     units,
 )
 from api.bootstrap_roles import seed_default_roles
-from api.cms_seed import migrate_cms, seed_cms
+from api.cms_seed import migrate_cms, migrate_cms_v2, migrate_cms_v3, seed_cms
 from api.routers import cms, files, owner_portal
 
 
@@ -85,6 +85,8 @@ async def lifespan(app: FastAPI):
     with SessionLocal() as db:
         seed_cms(db)
         migrate_cms(db)
+        migrate_cms_v2(db)
+        migrate_cms_v3(db)
 
     # Pydantic EmailStr rejects .local; fix legacy bootstrap row so /auth/login can return UserRead.
     with SessionLocal() as db:

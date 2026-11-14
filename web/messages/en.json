@@ -971,12 +971,15 @@
       "menu": "Menu",
       "close": "Close",
       "language": "العربية",
-      "owners": "For owners"
+      "owners": "For owners",
+      "listings": "Properties"
     },
     "hero": {
       "ctaServices": "Explore our services",
       "ctaContact": "Talk to us",
-      "scroll": "Scroll"
+      "scroll": "Scroll",
+      "ctaListings": "Browse properties",
+      "ctaList": "List your property"
     },
     "sections": {
       "aboutEyebrow": "Who we are",
@@ -1071,7 +1074,10 @@
       "success": "Thank you! Your message has been received — we'll contact you shortly.",
       "error": "Something went wrong. Please try again or contact us on WhatsApp.",
       "needContact": "Please enter a phone number or email.",
-      "privacy": "By submitting, you agree that we may contact you about your enquiry. We never share your data."
+      "privacy": "By submitting, you agree that we may contact you about your enquiry. We never share your data.",
+      "buyer": "Looking to buy",
+      "valuation": "I want a rent estimate",
+      "viewing": "Book a viewing"
     },
     "contact": {
       "phone": "Phone",
@@ -1181,6 +1187,103 @@
           "Fees follow your management agreement — usually a percentage of rent collected — and every deduction is itemised on your statement."
         ]
       ]
+    },
+    "trust": {
+      "title": "Why owners and tenants trust us",
+      "verified": "Licensed office with a verified account on Aqar",
+      "licensed": "Property adverts licensed by the Real Estate General Authority (REGA)",
+      "ejar": "Lease contracts registered on Ejar",
+      "reports": "Monthly financial reports for every owner in the owner portal",
+      "aqarCta": "See our profile on Aqar",
+      "coverage": "We serve"
+    },
+    "valuation": {
+      "title": "How much rent should your property earn?",
+      "lead": "Send us the location and size, and we'll come back within one working day with an estimate based on real deals in the district. Free, with no obligation.",
+      "cta": "Get a free estimate"
+    },
+    "map": {
+      "title": "Find us",
+      "directions": "Directions in Google Maps",
+      "open": "Open in Google Maps"
+    },
+    "listings": {
+      "title": "Properties for rent and sale",
+      "lead": "Hand-picked units we market and manage ourselves, with clear prices and licensed adverts.",
+      "latest": "Latest properties",
+      "all": "All properties",
+      "rent": "For rent",
+      "sale": "For sale",
+      "any": "Any",
+      "type": "Property type",
+      "city": "City",
+      "district": "District",
+      "maxPrice": "Max price",
+      "minBeds": "Bedrooms",
+      "sort": "Sort",
+      "sortNew": "Newest",
+      "sortLow": "Lowest price",
+      "sortHigh": "Highest price",
+      "sortArea": "Largest area",
+      "results": "{count, plural, =0 {No results} one {# property} other {# properties}}",
+      "reset": "Clear filters",
+      "empty": "No properties are published right now. Tell us what you're looking for and we'll let you know as soon as something fits.",
+      "noMatch": "Nothing matches these filters. Widen your search, or leave a request and we'll look for you.",
+      "perYear": "/ year",
+      "perMonth": "/ month",
+      "priceOnRequest": "Price on request",
+      "sar": "SAR",
+      "sqm": "m²",
+      "beds": "beds",
+      "baths": "baths",
+      "living": "living rooms",
+      "floor": "Floor",
+      "street": "Street width",
+      "facade": "Facade",
+      "age": "Building age",
+      "years": "yrs",
+      "new": "New",
+      "furnished": "Furnished",
+      "exclusive": "Exclusive",
+      "featured": "Featured",
+      "ref": "Ref.",
+      "adLicence": "Advert licence no.",
+      "features": "Features",
+      "details": "Details",
+      "description": "Description",
+      "location": "Location",
+      "gallery": "Photos",
+      "video": "Video tour",
+      "status_available": "Available",
+      "status_reserved": "Reserved",
+      "status_rented": "Rented",
+      "status_sold": "Sold",
+      "askWhatsapp": "Ask on WhatsApp",
+      "call": "Call now",
+      "bookViewing": "Book a viewing",
+      "bookLead": "Leave your details and we'll arrange a viewing at a time that suits you.",
+      "share": "Share",
+      "copied": "Link copied",
+      "similar": "Similar properties",
+      "waMsg": "Hello, I'm asking about property {ref}: {title}",
+      "viewingMsg": "I'd like to view property {ref}: {title}",
+      "back": "All properties",
+      "north": "North",
+      "south": "South",
+      "east": "East",
+      "west": "West",
+      "corner": "Corner",
+      "multi": "Multiple",
+      "t_apartment": "Apartment",
+      "t_floor": "Floor",
+      "t_villa": "Villa",
+      "t_duplex": "Duplex",
+      "t_land": "Land",
+      "t_building": "Building",
+      "t_office": "Office",
+      "t_shop": "Shop",
+      "t_warehouse": "Warehouse",
+      "t_rest_house": "Rest house"
     }
   }
 }

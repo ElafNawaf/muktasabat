@@ -41,6 +41,9 @@ export type SiteData = {
   working_hours: Bi;
   map_lat?: number | null;
   map_lng?: number | null;
+  maps_url?: string | null;
+  aqar_url?: string | null;
+  coverage?: Bi;
   social: Record<string, string | null>;
   cr_number?: string | null;
   fal_licence?: string | null;
@@ -83,6 +86,47 @@ export type Project = Common & {
   year?: number | null;
   cover_url?: string | null;
   gallery: string[];
+};
+
+export type ListingPurpose = "rent" | "sale";
+export type ListingType = "apartment" | "floor" | "villa" | "duplex" | "land" | "building" | "office" | "shop" | "warehouse" | "rest_house";
+export type ListingStatus = "available" | "reserved" | "rented" | "sold";
+export type Listing = Common & {
+  ref?: string | null;
+  purpose: ListingPurpose;
+  property_type: ListingType;
+  status: ListingStatus;
+  featured: boolean;
+  exclusive: boolean;
+  title_ar: string;
+  title_en: string;
+  summary_ar?: string | null;
+  summary_en?: string | null;
+  body_ar?: string | null;
+  body_en?: string | null;
+  city_ar?: string | null;
+  city_en?: string | null;
+  district_ar?: string | null;
+  district_en?: string | null;
+  price?: number | null;
+  price_period: "year" | "month" | "total";
+  area_sqm?: number | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  living_rooms?: number | null;
+  floor?: string | null;
+  street_width_m?: number | null;
+  facade?: string | null;
+  age_years?: number | null;
+  furnished: boolean;
+  features_ar?: string | null;
+  features_en?: string | null;
+  ad_licence?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  cover_url?: string | null;
+  gallery: string[];
+  video_url?: string | null;
 };
 
 export type Post = Common & {
@@ -129,6 +173,7 @@ export type Partner = Omit<Common, "slug"> & {
 
 export type HomeData = {
   site: SiteData;
+  listings: Listing[];
   services: Service[];
   projects: Project[];
   testimonials: Testimonial[];
@@ -177,6 +222,7 @@ export const cms = {
   home: () =>
     cmsGet<HomeData>("/home", {
       site: EMPTY_SITE,
+      listings: [],
       services: [],
       projects: [],
       testimonials: [],
@@ -186,6 +232,8 @@ export const cms = {
     }),
   services: () => cmsGet<Service[]>("/services", []),
   service: (slug: string) => cmsGet<Service | null>(`/services/${encodeURIComponent(slug)}`, null),
+  listings: () => cmsGet<Listing[]>("/listings?limit=200", []),
+  listing: (slug: string) => cmsGet<Listing | null>(`/listings/${encodeURIComponent(slug)}`, null),
   projects: () => cmsGet<Project[]>("/projects", []),
   project: (slug: string) => cmsGet<Project | null>(`/projects/${encodeURIComponent(slug)}`, null),
   posts: () => cmsGet<Post[]>("/posts", []),
@@ -219,3 +267,32 @@ export function waLink(num?: string | null, text?: string): string | null {
 }
 
 export const SITE_URL = (process.env.SITE_URL ?? process.env.WEB_BASE_URL ?? "https://muktasabat.com").replace(/\/$/, "");
+
+/** Google Maps embed + directions URLs for a place. Accepts whatever the
+ *  editor pasted (share link, place URL or embed URL) and falls back to the
+ *  saved coordinates. Short links (maps.app.goo.gl) can't be embedded, so the
+ *  iframe then uses the coordinates and the button opens the short link. */
+export function mapLinks(site: Pick<SiteData, "maps_url" | "map_lat" | "map_lng">, label = ""): { embed: string | null; open: string | null; directions: string | null } {
+  const url = (site.maps_url || "").trim();
+  const hasLL = site.map_lat != null && site.map_lng != null;
+  const ll = hasLL ? `${site.map_lat},${site.map_lng}` : "";
+  let embed: string | null = null;
+  if (/^https:\/\/(www\.)?google\.[a-z.]+\/maps\/embed/i.test(url)) embed = url;
+  else if (hasLL) embed = `https://maps.google.com/maps?q=${encodeURIComponent(ll)}&z=17&output=embed`;
+  else if (label) embed = `https://maps.google.com/maps?q=${encodeURIComponent(label)}&z=15&output=embed`;
+  const open = url && !/\/maps\/embed/i.test(url) ? url : hasLL ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ll)}` : null;
+  const directions = hasLL ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ll)}` : open;
+  return { embed, open, directions };
+}
+
+export function listingPrice(l: Pick<Listing, "price">, locale: string): string | null {
+  if (l.price == null || l.price <= 0) return null;
+  return new Intl.NumberFormat(locale === "ar" ? "ar-SA" : "en-US", { maximumFractionDigits: 0 }).format(l.price);
+}
+
+/** Placeholder-art palette for a property type (until photos are uploaded). */
+export function artVariant(type: string): string {
+  if (type === "land") return "development";
+  if (type === "office" || type === "shop" || type === "warehouse" || type === "building") return "commercial";
+  return "residential";
+}

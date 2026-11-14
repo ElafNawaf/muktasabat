@@ -28,6 +28,7 @@ from api.cms_models import (
     CmsJob,
     CmsJobApplication,
     CmsLead,
+    CmsListing,
     CmsPartner,
     CmsPost,
     CmsProject,
@@ -48,6 +49,8 @@ from api.schemas.cms import (
     LeadIn,
     LeadOut,
     LeadUpdate,
+    ListingIn,
+    ListingOut,
     MediaOut,
     PartnerIn,
     PartnerOut,
@@ -83,12 +86,13 @@ _CV_TYPES = {
 _KINDS: dict[str, tuple[Any, type[BaseModel], type[BaseModel], bool]] = {
     "services": (CmsService, ServiceIn, ServiceOut, True),
     "projects": (CmsProject, ProjectIn, ProjectOut, True),
+    "listings": (CmsListing, ListingIn, ListingOut, True),
     "posts": (CmsPost, PostIn, PostOut, True),
     "jobs": (CmsJob, JobIn, JobOut, True),
     "testimonials": (CmsTestimonial, TestimonialIn, TestimonialOut, False),
     "partners": (CmsPartner, PartnerIn, PartnerOut, False),
 }
-Kind = Literal["services", "projects", "posts", "jobs", "testimonials", "partners"]
+Kind = Literal["services", "projects", "listings", "posts", "jobs", "testimonials", "partners"]
 
 
 def _spec(kind: str):
@@ -99,6 +103,14 @@ def _spec(kind: str):
 
 
 def _order(model):
+    if model is CmsListing:
+        # Available first, then featured, then manual order, newest first.
+        return (
+            (CmsListing.status != "available"),
+            CmsListing.featured.desc(),
+            CmsListing.sort_order.asc(),
+            CmsListing.id.desc(),
+        )
     if model is CmsPost:
         return (CmsPost.published_on.desc().nulls_last(), CmsPost.id.desc())
     return (model.sort_order.asc(), model.id.asc())
@@ -157,8 +169,10 @@ def public_home(db: DbSession):
             (CmsJob.closes_on.is_(None)) | (CmsJob.closes_on >= date.today()),
         )
     )
+    listings = published(CmsListing, 6, CmsListing.status == "available")
     return {
         "site": _public_site(db),
+        "listings": _dump(ListingOut, listings),
         "services": _dump(ServiceOut, published(CmsService)),
         "projects": _dump(ProjectOut, projects),
         "testimonials": _dump(TestimonialOut, published(CmsTestimonial, 12)),
@@ -177,6 +191,12 @@ def public_list(
 ):
     model, _in, out, _slug = _spec(kind)
     q = select(model).where(model.published.is_(True))
+    if kind == "listings":
+        # Closed deals stay visible for 30 days as social proof, then drop off.
+        from datetime import datetime, timedelta
+
+        recent = datetime.utcnow() - timedelta(days=30)
+        q = q.where((CmsListing.status.in_(("available", "reserved"))) | (CmsListing.updated_at >= recent))
     if kind == "projects" and category:
         q = q.where(CmsProject.category == category)
     if kind == "jobs":
@@ -348,7 +368,10 @@ def get_settings_admin(db: DbSession, _u: Perm("website", "view")):
 def put_settings_admin(payload: SiteSettingsAdmin, db: DbSession, _u: Perm("website", "edit")):
     row = _settings_row(db)
     row.data = payload.data.model_dump(mode="json")
-    row.private = payload.private.model_dump(mode="json")
+    # Keep internal bookkeeping keys (e.g. "_migrations") that aren't part of
+    # the editable schema, so one-off content migrations never re-run.
+    internal = {k: v for k, v in (row.private or {}).items() if k.startswith("_")}
+    row.private = {**payload.private.model_dump(mode="json"), **internal}
     db.commit()
     return payload
 

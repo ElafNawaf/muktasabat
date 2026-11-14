@@ -17,7 +17,7 @@ const APP_STATUS: Record<string, [string, string]> = {
   new: ["New", "جديد"], reviewing: ["Reviewing", "قيد المراجعة"], interview: ["Interview", "مقابلة"], offer: ["Offer", "عرض"], hired: ["Hired", "تم التعيين"], rejected: ["Rejected", "مرفوض"],
 };
 const LEAD_KIND: Record<string, [string, string]> = {
-  owner: ["Owner", "مالك"], investor: ["Investor", "مستثمر"], tenant: ["Tenant", "مستأجر"], partner: ["Partner", "شريك"], general: ["General", "عام"],
+  owner: ["Owner", "مالك"], investor: ["Investor", "مستثمر"], tenant: ["Tenant", "مستأجر"], partner: ["Partner", "شريك"], buyer: ["Buyer", "مشترٍ"], valuation: ["Rent estimate", "تقدير إيجار"], viewing: ["Viewing request", "طلب معاينة"], general: ["General", "عام"],
 };
 
 function fmt(locale: string, iso: string) {

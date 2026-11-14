@@ -152,6 +152,30 @@ export function SettingsForm({ initial, locale, canEdit }: { initial: Settings; 
             <label className="cms-field"><span className="cms-label">{T("Map latitude", "خط العرض")}</span><input type="number" step="any" dir="ltr" value={d.map_lat ?? ""} onChange={(e) => set("map_lat", e.target.value === "" ? null : Number(e.target.value))} /></label>
             <label className="cms-field"><span className="cms-label">{T("Map longitude", "خط الطول")}</span><input type="number" step="any" dir="ltr" value={d.map_lng ?? ""} onChange={(e) => set("map_lng", e.target.value === "" ? null : Number(e.target.value))} /></label>
           </div>
+          <label className="cms-field">
+            <span className="cms-label">{T("Google Maps link (paste the office's place link — the pin is read from it)", "رابط خرائط Google (الصق رابط موقع المكتب، وسيُقرأ الموقع منه تلقائيًا)")}</span>
+            <input
+              dir="ltr"
+              type="url"
+              maxLength={600}
+              placeholder="https://www.google.com/maps/place/..."
+              value={d.maps_url ?? ""}
+              onChange={(e) => {
+                const v = e.target.value.trim();
+                set("maps_url", v || null);
+                const m = v.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) || v.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (m) {
+                  set("map_lat", Number(m[1]));
+                  set("map_lng", Number(m[2]));
+                }
+              }}
+            />
+          </label>
+          <Row label={T("Cities we serve", "المدن التي نخدمها")}><BiObj value={d.coverage ?? {}} onChange={(v) => set("coverage", v)} /></Row>
+          <label className="cms-field">
+            <span className="cms-label">{T("Aqar profile link", "رابط ملف الشركة على عقار")}</span>
+            <input dir="ltr" type="url" maxLength={600} placeholder="https://sa.aqar.fm/user/..." value={d.aqar_url ?? ""} onChange={(e) => set("aqar_url", e.target.value.trim() || null)} />
+          </label>
         </section>
 
         <section className="cms-card">

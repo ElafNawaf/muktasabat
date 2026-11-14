@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
+import { OfficeMap, TrustStrip } from "@/components/site/Company";
 import { FacadeArt } from "@/components/site/FacadeArt";
 import { PageHead } from "@/components/site/PageHead";
 import { StatsRow } from "@/components/site/StatsRow";
@@ -77,6 +78,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
           <h2 className="mk-h3">{t("sections.contactTitle")}</h2>
           <Link href={`/${locale}/contact`} className="mk-btn mk-btn--primary">{t("nav.contact")}</Link>
         </div></div>
+      </section>
+      <TrustStrip locale={locale} site={site} />
+      <section className="mk-section mk-section--tight">
+        <div className="mk-wrap"><OfficeMap locale={locale} site={site} /></div>
       </section>
     </>
   );

@@ -95,6 +95,9 @@ class SiteData(_Base):
     working_hours: Bilingual = Bilingual()
     map_lat: Optional[float] = Field(default=None, ge=-90, le=90)
     map_lng: Optional[float] = Field(default=None, ge=-180, le=180)
+    maps_url: SafeUrl = None
+    aqar_url: SafeUrl = None
+    coverage: Bilingual = Bilingual()
 
     social: dict[str, SafeUrl] = Field(default_factory=dict)
 
@@ -199,6 +202,62 @@ class ProjectOut(ProjectIn):
     updated_at: datetime
 
 
+ListingPurpose = Literal["rent", "sale"]
+ListingType = Literal["apartment", "floor", "villa", "duplex", "land", "building", "office", "shop", "warehouse", "rest_house"]
+ListingStatus = Literal["available", "reserved", "rented", "sold"]
+PricePeriod = Literal["year", "month", "total"]
+Facade = Literal["north", "south", "east", "west", "corner", "multi"]
+
+
+class ListingIn(_PublishFields):
+    slug: Slug
+    ref: Optional[str] = Field(default=None, max_length=30)
+    purpose: ListingPurpose = "rent"
+    property_type: ListingType = "apartment"
+    status: ListingStatus = "available"
+    featured: bool = False
+    exclusive: bool = False
+    title_ar: str = Field(min_length=1, max_length=200)
+    title_en: str = Field(min_length=1, max_length=200)
+    summary_ar: Medium = None
+    summary_en: Medium = None
+    body_ar: Long = None
+    body_en: Long = None
+    city_ar: Short = None
+    city_en: Short = None
+    district_ar: Short = None
+    district_en: Short = None
+    price: Optional[float] = Field(default=None, ge=0, le=10_000_000_000)
+    price_period: PricePeriod = "year"
+    area_sqm: Optional[float] = Field(default=None, ge=0, le=100_000_000)
+    bedrooms: Optional[int] = Field(default=None, ge=0, le=100)
+    bathrooms: Optional[int] = Field(default=None, ge=0, le=100)
+    living_rooms: Optional[int] = Field(default=None, ge=0, le=50)
+    floor: Optional[str] = Field(default=None, max_length=40)
+    street_width_m: Optional[float] = Field(default=None, ge=0, le=500)
+    facade: Optional[Facade] = None
+    age_years: Optional[int] = Field(default=None, ge=0, le=200)
+    furnished: bool = False
+    features_ar: Optional[str] = Field(default=None, max_length=4000)
+    features_en: Optional[str] = Field(default=None, max_length=4000)
+    ad_licence: Optional[str] = Field(default=None, max_length=40)
+    lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    lng: Optional[float] = Field(default=None, ge=-180, le=180)
+    cover_url: SafeUrl = None
+    gallery: list[Annotated[str, AfterValidator(_safe_url)]] = Field(default_factory=list, max_length=40)
+    video_url: SafeUrl = None
+
+    @field_validator("facade", mode="before")
+    @classmethod
+    def _blank_facade(cls, v):
+        return v or None
+
+
+class ListingOut(ListingIn):
+    id: int
+    updated_at: datetime
+
+
 class PostIn(_PublishFields):
     slug: Slug
     title_ar: str = Field(min_length=1, max_length=250)
@@ -268,7 +327,7 @@ class PartnerOut(PartnerIn):
 
 # ───────────────────────── Leads & applications ─────────────────────────
 
-LeadKind = Literal["owner", "investor", "tenant", "partner", "general"]
+LeadKind = Literal["owner", "investor", "tenant", "buyer", "partner", "valuation", "viewing", "general"]
 LeadStatus = Literal["new", "contacted", "qualified", "won", "lost", "spam"]
 
 

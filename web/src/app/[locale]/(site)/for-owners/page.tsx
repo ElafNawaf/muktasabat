@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { ValuationBand } from "@/components/site/Company";
 import { LeadForm } from "@/components/site/LeadForm";
 import { OwnerFaq, OwnerShowcase, ProcessSteps } from "@/components/site/OwnerShowcase";
 
@@ -19,6 +20,7 @@ export default async function OwnersPage({ params }: { params: Promise<{ locale:
     <>
       <OwnerShowcase locale={locale} full />
       <ProcessSteps locale={locale} />
+      <ValuationBand locale={locale} />
       <OwnerFaq locale={locale} />
       <section className="mk-section mk-section--sand" id="proposal">
         <div className="mk-wrap mk-split mk-split--form">
@@ -26,7 +28,7 @@ export default async function OwnersPage({ params }: { params: Promise<{ locale:
             <h2 className="mk-h2">{t("owners.cta")}</h2>
             <p className="mk-lead">{t("sections.contactLead")}</p>
           </div>
-          <LeadForm locale={locale} defaultKind="owner" />
+          <LeadForm locale={locale} defaultKind="owner" kinds={["owner", "valuation", "investor"]} />
         </div>
       </section>
     </>

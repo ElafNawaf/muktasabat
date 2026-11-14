@@ -140,6 +140,54 @@ class CmsPartner(_Timestamps, _Publishable, Base):
     website: Mapped[Optional[str]] = mapped_column(String(300))
 
 
+class CmsListing(_Timestamps, _Publishable, Base):
+    """A unit/land/building offered for rent or sale (Aqar-style catalogue).
+
+    REGA requires every property advert to carry an advertising licence
+    number (`ad_licence`), so the public page shows it when present.
+    """
+
+    __tablename__ = "cms_listings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(160), unique=True, nullable=False, index=True)
+    ref: Mapped[Optional[str]] = mapped_column(String(30), index=True)
+    purpose: Mapped[str] = mapped_column(String(10), default="rent", nullable=False, index=True)
+    property_type: Mapped[str] = mapped_column(String(20), default="apartment", nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(12), default="available", nullable=False, index=True)
+    featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    exclusive: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    title_ar: Mapped[str] = mapped_column(String(200), nullable=False)
+    title_en: Mapped[str] = mapped_column(String(200), nullable=False)
+    summary_ar: Mapped[Optional[str]] = mapped_column(String(600))
+    summary_en: Mapped[Optional[str]] = mapped_column(String(600))
+    body_ar: Mapped[Optional[str]] = mapped_column(Text)
+    body_en: Mapped[Optional[str]] = mapped_column(Text)
+    city_ar: Mapped[Optional[str]] = mapped_column(String(120))
+    city_en: Mapped[Optional[str]] = mapped_column(String(120))
+    district_ar: Mapped[Optional[str]] = mapped_column(String(120))
+    district_en: Mapped[Optional[str]] = mapped_column(String(120))
+    price: Mapped[Optional[float]] = mapped_column(Float)
+    price_period: Mapped[str] = mapped_column(String(10), default="year", nullable=False)
+    area_sqm: Mapped[Optional[float]] = mapped_column(Float)
+    bedrooms: Mapped[Optional[int]] = mapped_column(Integer)
+    bathrooms: Mapped[Optional[int]] = mapped_column(Integer)
+    living_rooms: Mapped[Optional[int]] = mapped_column(Integer)
+    floor: Mapped[Optional[str]] = mapped_column(String(40))
+    street_width_m: Mapped[Optional[float]] = mapped_column(Float)
+    facade: Mapped[Optional[str]] = mapped_column(String(12))
+    age_years: Mapped[Optional[int]] = mapped_column(Integer)
+    furnished: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    features_ar: Mapped[Optional[str]] = mapped_column(Text)
+    features_en: Mapped[Optional[str]] = mapped_column(Text)
+    ad_licence: Mapped[Optional[str]] = mapped_column(String(40))
+    lat: Mapped[Optional[float]] = mapped_column(Float)
+    lng: Mapped[Optional[float]] = mapped_column(Float)
+    cover_url: Mapped[Optional[str]] = mapped_column(String(600))
+    gallery: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    video_url: Mapped[Optional[str]] = mapped_column(String(600))
+
+
 class CmsLead(_Timestamps, Base):
     """Inbound enquiry from the public contact/interest form."""
 

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
+import { OfficeMap, TrustStrip, ValuationBand } from "@/components/site/Company";
 import { LeadForm } from "@/components/site/LeadForm";
+import { ListingCard } from "@/components/site/ListingCard";
 import { OwnerShowcase, ProcessSteps } from "@/components/site/OwnerShowcase";
 import { ProjectCard } from "@/components/site/ProjectCard";
 import { Shurfat } from "@/components/site/Shurfat";
@@ -28,8 +30,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             <h1 className="mk-display">{tr(locale, site.hero_title) || tr(locale, site.brand_name)}</h1>
             {tr(locale, site.hero_subtitle) && <p className="mk-hero__lead">{tr(locale, site.hero_subtitle)}</p>}
             <div className="mk-hero__ctas">
-              <Link href={L("/services")} className="mk-btn mk-btn--light">{t("hero.ctaServices")}</Link>
-              <Link href={L("/contact")} className="mk-btn mk-btn--ghost-light">{t("hero.ctaContact")}</Link>
+              <Link href={L("/listings")} className="mk-btn mk-btn--light">{t("hero.ctaListings")}</Link>
+              <Link href={L("/contact?kind=owner")} className="mk-btn mk-btn--ghost-light">{t("hero.ctaList")}</Link>
             </div>
           </div>
           <div className="mk-hero__media">
@@ -50,6 +52,26 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           stats={site.stats.map((s) => ({ value: s.value, suffix: s.suffix, label: tr(locale, s.label) }))}
         />
       </div>
+
+      {/* ── Latest listings ── */}
+      {home.listings.length > 0 && (
+        <section className="mk-section">
+          <div className="mk-wrap">
+            <header className="mk-sechead mk-sechead--row">
+              <div>
+                <h2 className="mk-h2">{t("listings.latest")}</h2>
+                <p className="mk-lead">{t("listings.lead")}</p>
+              </div>
+              <Link href={L("/listings")} className="mk-link">{t("listings.all")}</Link>
+            </header>
+            <div className="mk-listings">
+              {home.listings.map((l) => (
+                <ListingCard key={l.id} listing={l} locale={locale} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── About ── */}
       {tr(locale, site.about_body) && (
@@ -116,6 +138,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </div>
         </section>
       )}
+
+      <TrustStrip locale={locale} site={site} />
+      <ValuationBand locale={locale} />
 
       {/* ── Owner portal (value proposition for owners under management) ── */}
       <OwnerShowcase locale={locale} />
@@ -223,6 +248,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                 <li><span className="ms" aria-hidden="true">mail</span><a href={`mailto:${site.email}`}>{site.email}</a></li>
               )}
             </ul>
+            <OfficeMap locale={locale} site={site} />
           </div>
           <LeadForm locale={locale} />
         </div>

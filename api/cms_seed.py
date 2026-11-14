@@ -9,7 +9,7 @@ No testimonials or partners are seeded — those must be real.
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from api.cms_models import CmsProject, CmsService, SiteSettings
+from api.cms_models import CmsListing, CmsProject, CmsService, SiteSettings
 
 
 def _b(ar: str, en: str) -> dict:
@@ -193,3 +193,229 @@ def migrate_cms(db: Session) -> None:
     if changed:
         row.data = data
         db.commit()
+
+
+# ── v2 (Nov 2026): reposition around what the company actually does ──
+# Public footprint (verified office on Aqar, "شركة مكتسبات العقارية للتسويق
+# وإدارة الأملاك") shows exclusive marketing, brokerage, leasing and property
+# management in Riyadh and Makkah. Copy is only replaced while it still holds
+# the original draft text, so anything an editor has written is never touched.
+
+_OLD_HERO_SUB_AR = SITE["hero_subtitle"]["ar"]
+_OLD_ABOUT_AR = SITE["about_body"]["ar"]
+_OLD_MISSION_AR = SITE["mission"]["ar"]
+_OLD_SEO_DESC_AR = SITE["seo_description"]["ar"]
+
+V2_COPY = {
+    "hero_title": (
+        {SITE["hero_title"]["ar"]},
+        _b("عقارك في أيدٍ تعرف قيمته.", "Your property, in hands that know its worth."),
+    ),
+    "hero_subtitle": (
+        {_OLD_HERO_SUB_AR},
+        _b(
+            "تسويق عقاري حصري، وساطة موثوقة، وإدارة أملاك بتقارير مالية شهرية — في الرياض ومكة المكرمة.",
+            "Exclusive property marketing, trusted brokerage and property management with monthly financial reports — in Riyadh and Makkah.",
+        ),
+    ),
+    "about_body": (
+        {_OLD_ABOUT_AR},
+        _b(
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك مكتب عقاري نظامي وموثّق. نسوّق ونؤجر ونبيع الشقق والأدوار والفلل والأراضي والعقارات التجارية في الرياض ومكة المكرمة، وندير الأملاك نيابةً عن ملاكها: إعلانات مرخّصة، وفرز للمستأجرين، وتوثيق العقود عبر منصة إيجار، وتحصيل منتظم، وصيانة، وتقارير مالية يطّلع عليها المالك في أي وقت عبر بوابة الملاك.",
+            "Muktasabat Real Estate Company for Marketing and Property Management is a licensed, verified real estate office. We market, lease and sell apartments, floors, villas, land and commercial property in Riyadh and Makkah, and manage properties on behalf of their owners: licensed adverts, tenant screening, Ejar-registered contracts, steady collection, maintenance, and financial reports owners can open any time in the owner portal.",
+        ),
+    ),
+    "mission": (
+        {_OLD_MISSION_AR},
+        _b(
+            "أن نحقق لكل مالك أعلى عائد ممكن بأقل شغور، بشفافية كاملة في كل ريال يُحصَّل أو يُصرف.",
+            "To earn every owner the best possible return with the least vacancy, with full transparency on every riyal collected or spent.",
+        ),
+    ),
+    "seo_description": (
+        {_OLD_SEO_DESC_AR},
+        _b(
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك: عقارات للإيجار والبيع في الرياض ومكة المكرمة، تسويق عقاري حصري، وساطة، وإدارة أملاك مع بوابة ملاك وتقارير مالية.",
+            "Muktasabat Real Estate: property for rent and sale in Riyadh and Makkah, exclusive marketing, brokerage and property management with an owner portal and financial reports.",
+        ),
+    ),
+    "seo_title": (
+        {SITE["seo_title"]["ar"], "شركة مكتسبات العقارية | تطوير وإدارة أملاك"},
+        _b("شركة مكتسبات العقارية | تسويق وإدارة أملاك", "Muktasabat Real Estate | Marketing & Property Management"),
+    ),
+}
+
+V2_SERVICES = [
+    {
+        "slug": "exclusive-marketing",
+        "icon": "campaign",
+        "title_ar": "التسويق العقاري الحصري",
+        "title_en": "Exclusive Property Marketing",
+        "summary_ar": "خطة تسويق لكل عقار: تصوير احترافي، إعلانات مرخّصة على عقار والمنصات الكبرى، وجولات معاينة منظّمة حتى إتمام الصفقة.",
+        "summary_en": "A marketing plan per property: professional photos, licensed adverts on Aqar and the major platforms, and organised viewings through to closing.",
+        "sort_order": -3,
+    },
+    {
+        "slug": "brokerage",
+        "icon": "real_estate_agent",
+        "title_ar": "الوساطة العقارية",
+        "title_en": "Real Estate Brokerage",
+        "summary_ar": "بيع وشراء وتأجير الوحدات السكنية والتجارية والأراضي بعقود وساطة نظامية وفق أنظمة الهيئة العامة للعقار.",
+        "summary_en": "Buying, selling and leasing homes, commercial units and land under formal brokerage agreements, in line with REGA rules.",
+        "sort_order": -2,
+    },
+    {
+        "slug": "rental-valuation",
+        "icon": "price_check",
+        "title_ar": "تقدير القيمة الإيجارية",
+        "title_en": "Rental Valuation",
+        "summary_ar": "نقدّر لك الإيجار العادل لعقارك بناءً على صفقات الحي الفعلية، مجانًا ودون التزام.",
+        "summary_en": "We estimate a fair rent for your property from actual deals in the district, free and without obligation.",
+        "sort_order": -1,
+    },
+]
+
+# Real adverts from the company's Aqar profile. Seeded UNPUBLISHED: an editor
+# must add photos and the REGA advert licence number, confirm price and
+# availability, then publish.
+V2_LISTINGS = [
+    {
+        "slug": "qurtubah-darco-duplex",
+        "ref": "MK-1001",
+        "purpose": "rent",
+        "property_type": "duplex",
+        "exclusive": True,
+        "featured": True,
+        "title_ar": "شقة دورين جديدة في مشروع داركو – حي قرطبة",
+        "title_en": "New duplex apartment in Darco project – Qurtubah",
+        "summary_ar": "تصميم عصري ومساحات مريحة للعائلة، قريبة من الخدمات والطرق الرئيسية، مع سطح خاص.",
+        "summary_en": "Modern design and comfortable family spaces close to services and main roads, with a private roof.",
+        "body_ar": "**الدور الأول:** مجلس واسع، صالة مفتوحة على المجلس، مطبخ عملي، غرفة خادمة، دورة مياه.\n\n**الدور الثاني:** ثلاث غرف نوم منها غرفة ماستر مع غرفة ملابس، وصالة عائلية.\n\n**الملحق:** سطح خاص للجلسات الخارجية.",
+        "body_en": "**First floor:** spacious majlis, lounge open to the majlis, practical kitchen, maid's room, bathroom.\n\n**Second floor:** three bedrooms including a master with walk-in closet, family lounge.\n\n**Annex:** private roof for outdoor gatherings.",
+        "city_ar": "الرياض", "city_en": "Riyadh",
+        "district_ar": "قرطبة", "district_en": "Qurtubah",
+        "price": 100000, "price_period": "year", "area_sqm": 188, "bedrooms": 3,
+        "features_ar": "غرفة ماستر بغرفة ملابس\nسطح خاص\nغرفة خادمة\nتشطيب حديث",
+        "features_en": "Master bedroom with walk-in closet\nPrivate roof\nMaid's room\nModern finishes",
+    },
+    {
+        "slug": "qurtubah-apartment-166",
+        "ref": "MK-1002",
+        "purpose": "rent",
+        "property_type": "apartment",
+        "title_ar": "شقة واسعة للإيجار في حي قرطبة",
+        "title_en": "Spacious apartment for rent in Qurtubah",
+        "summary_ar": "دور أول، تشطيب جيد وتوزيع مريح للمساحات، مكيفة وجاهزة للسكن.",
+        "summary_en": "First floor, good finishing and comfortable layout, air-conditioned and ready to move in.",
+        "city_ar": "الرياض", "city_en": "Riyadh",
+        "district_ar": "قرطبة", "district_en": "Qurtubah",
+        "price": 75000, "price_period": "year", "area_sqm": 166, "bedrooms": 3, "bathrooms": 4,
+        "floor": "1",
+        "features_ar": "مجلس مستقل\nمقلط\nغرفة خادمة\nمكيفات مركبة",
+        "features_en": "Separate majlis\nDining room\nMaid's room\nAC units installed",
+    },
+    {
+        "slug": "munsiyah-first-floor",
+        "ref": "MK-1003",
+        "purpose": "rent",
+        "property_type": "floor",
+        "title_ar": "دور أول واسع للإيجار في حي المونسية",
+        "title_en": "Spacious first floor for rent in Al Munsiyah",
+        "summary_ar": "مساحات واسعة وتصميم عملي يناسب العائلات.",
+        "summary_en": "Generous spaces and a practical layout suited to families.",
+        "city_ar": "الرياض", "city_en": "Riyadh",
+        "district_ar": "المونسية", "district_en": "Al Munsiyah",
+        "price": 65000, "price_period": "year", "area_sqm": 525, "bedrooms": 3,
+        "floor": "1",
+        "features_ar": "مجلس واسع\nمقلط\nصالة عائلية",
+        "features_en": "Large majlis\nDining room\nFamily lounge",
+    },
+    {
+        "slug": "al-falah-land-1200",
+        "ref": "MK-1004",
+        "purpose": "sale",
+        "property_type": "land",
+        "exclusive": True,
+        "title_ar": "أرض للبيع في حي الفلاح – واجهة شرقية",
+        "title_en": "Land for sale in Al Falah – east-facing",
+        "summary_ar": "موقع مميز على شارع عرض 20 م، مناسبة للاستثمار أو التطوير.",
+        "summary_en": "Prime plot on a 20 m street, suited to investment or development.",
+        "city_ar": "الرياض", "city_en": "Riyadh",
+        "district_ar": "الفلاح", "district_en": "Al Falah",
+        "price_period": "total", "area_sqm": 1200, "street_width_m": 20, "facade": "east",
+    },
+    {
+        "slug": "makkah-buhayrat-plots",
+        "ref": "MK-1005",
+        "purpose": "sale",
+        "property_type": "land",
+        "exclusive": True,
+        "title_ar": "قطعتا أرض للبيع في حي البحيرات – مكة المكرمة",
+        "title_en": "Two plots for sale in Al Buhayrat – Makkah",
+        "summary_ar": "واجهات ممتازة وموقع مميز، فرصة استثمارية في قلب مكة المكرمة. السعر للقطعتين معًا.",
+        "summary_en": "Excellent frontages in a prime location, an investment opportunity in the heart of Makkah. Price is for both plots together.",
+        "city_ar": "مكة المكرمة", "city_en": "Makkah",
+        "district_ar": "البحيرات", "district_en": "Al Buhayrat",
+        "price": 8000000, "price_period": "total",
+    },
+]
+
+
+def _done(row: SiteSettings, key: str) -> bool:
+    return key in ((row.private or {}).get("_migrations") or [])
+
+
+def _mark(row: SiteSettings, key: str) -> None:
+    private = dict(row.private or {})
+    private["_migrations"] = sorted(set((private.get("_migrations") or []) + [key]))
+    row.private = private
+
+
+def migrate_cms_v2(db: Session) -> None:
+    row = db.get(SiteSettings, 1)
+    if row is None or _done(row, "v2-positioning"):
+        return
+    data = dict(row.data or {})
+    for key, (old_ar_values, new) in V2_COPY.items():
+        cur = dict(data.get(key) or {})
+        if not (cur.get("ar") or "").strip() or (cur.get("ar") or "").strip() in old_ar_values:
+            data[key] = new
+    if not data.get("aqar_url"):
+        data["aqar_url"] = "https://sa.aqar.fm/user/410728"
+    if not (data.get("coverage") or {}).get("ar"):
+        data["coverage"] = _b("الرياض ومكة المكرمة", "Riyadh and Makkah")
+    row.data = data
+
+    existing = set(db.scalars(select(CmsService.slug)).all())
+    for s in V2_SERVICES:
+        if s["slug"] not in existing:
+            db.add(CmsService(**s, published=True))
+    have_listings = set(db.scalars(select(CmsListing.slug)).all())
+    for i, item in enumerate(V2_LISTINGS):
+        if item["slug"] not in have_listings:
+            db.add(CmsListing(**item, sort_order=i, published=False))
+    _mark(row, "v2-positioning")
+    db.commit()
+
+
+# ── v3: real office location from the company's Google Maps place ──
+OFFICE_MAPS_URL = (
+    "https://www.google.com/maps/place/Muktasabat+Real+Estate+Company/@24.8138198,46.7241149,17z/"
+    "data=!4m6!3m5!1s0x3e2efc46bb9634d1:0x5a4621f8509aa4f3!8m2!3d24.8138003!4d46.7242436!16s%2Fg%2F1yg6nps7d"
+)
+OFFICE_LAT, OFFICE_LNG = 24.8138003, 46.7242436
+
+
+def migrate_cms_v3(db: Session) -> None:
+    row = db.get(SiteSettings, 1)
+    if row is None or _done(row, "v3-office-map"):
+        return
+    data = dict(row.data or {})
+    # Only replace the draft city-centre pin, never coordinates an editor set.
+    if data.get("map_lat") in (None, SITE["map_lat"]) and data.get("map_lng") in (None, SITE["map_lng"]):
+        data["map_lat"], data["map_lng"] = OFFICE_LAT, OFFICE_LNG
+    if not data.get("maps_url"):
+        data["maps_url"] = OFFICE_MAPS_URL
+    row.data = data
+    _mark(row, "v3-office-map")
+    db.commit()

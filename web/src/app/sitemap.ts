@@ -5,9 +5,10 @@ import { cms, SITE_URL } from "@/lib/cms";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [services, projects, posts, jobs] = await Promise.all([cms.services(), cms.projects(), cms.posts(), cms.jobs()]);
+  const [services, projects, posts, jobs, listings] = await Promise.all([cms.services(), cms.projects(), cms.posts(), cms.jobs(), cms.listings()]);
   const paths: { p: string; lm?: string; pr: number }[] = [
     { p: "", pr: 1 },
+    { p: "/listings", pr: 1 },
     { p: "/about", pr: 0.7 },
     { p: "/for-owners", pr: 0.9 },
     { p: "/services", pr: 0.9 },
@@ -15,6 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { p: "/news", pr: 0.6 },
     { p: "/careers", pr: 0.5 },
     { p: "/contact", pr: 0.8 },
+    ...listings.map((s) => ({ p: `/listings/${s.slug}`, lm: s.updated_at, pr: 0.9 })),
     ...services.map((s) => ({ p: `/services/${s.slug}`, lm: s.updated_at, pr: 0.8 })),
     ...projects.map((s) => ({ p: `/projects/${s.slug}`, lm: s.updated_at, pr: 0.7 })),
     ...posts.map((s) => ({ p: `/news/${s.slug}`, lm: s.updated_at, pr: 0.6 })),

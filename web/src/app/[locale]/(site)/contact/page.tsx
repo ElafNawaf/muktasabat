@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { LeadForm } from "@/components/site/LeadForm";
 import { PageHead } from "@/components/site/PageHead";
-import { ProjectMap } from "@/components/site/ProjectMap";
+import { OfficeMap } from "@/components/site/Company";
 import { cms, tr, waLink } from "@/lib/cms";
 
 export const revalidate = 300;
@@ -31,11 +31,9 @@ export default async function ContactPage({ params }: { params: Promise<{ locale
               {tr(locale, site.address) && (<div><dt>{t("contact.address")}</dt><dd>{tr(locale, site.address)}</dd></div>)}
               {tr(locale, site.working_hours) && (<div><dt>{t("contact.hours")}</dt><dd>{tr(locale, site.working_hours)}</dd></div>)}
             </dl>
-            {site.map_lat != null && site.map_lng != null && (
-              <div className="mk-mt"><ProjectMap lat={site.map_lat} lng={site.map_lng} label={tr(locale, site.brand_name)} /></div>
-            )}
+            <div className="mk-mt"><OfficeMap locale={locale} site={site} /></div>
           </div>
-          <LeadForm locale={locale} />
+          <LeadForm locale={locale} kinds={["owner", "valuation", "tenant", "buyer", "investor", "partner", "general"]} />
         </div>
       </section>
     </>

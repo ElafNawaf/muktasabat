@@ -1,17 +1,40 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Turnstile } from "./Turnstile";
 
-const KINDS = ["owner", "investor", "tenant", "partner", "general"] as const;
+const ALL_KINDS = ["owner", "tenant", "buyer", "investor", "valuation", "viewing", "partner", "general"] as const;
+type Kind = (typeof ALL_KINDS)[number];
+const DEFAULT_KINDS: Kind[] = ["owner", "tenant", "buyer", "valuation", "investor", "general"];
 
-export function LeadForm({ locale, defaultKind = "owner", sourcePage }: { locale: string; defaultKind?: (typeof KINDS)[number]; sourcePage?: string }) {
+export function LeadForm({
+  locale,
+  defaultKind = "owner",
+  sourcePage,
+  kinds = DEFAULT_KINDS,
+  defaultMessage,
+  hideKinds = false,
+}: {
+  locale: string;
+  defaultKind?: Kind;
+  sourcePage?: string;
+  kinds?: Kind[];
+  defaultMessage?: string;
+  hideKinds?: boolean;
+}) {
   const t = useTranslations("site.form");
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const tokenRef = useRef<string | null>(null);
+  const [kind, setKind] = useState<Kind>(defaultKind);
+
+  // Deep links such as /contact?kind=valuation preselect the enquiry type.
+  useEffect(() => {
+    const k = new URLSearchParams(window.location.search).get("kind") as Kind | null;
+    if (k && (kinds as string[]).includes(k)) setKind(k);
+  }, [kinds]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -58,15 +81,19 @@ export function LeadForm({ locale, defaultKind = "owner", sourcePage }: { locale
 
   return (
     <form className="mk-form" onSubmit={onSubmit} noValidate={false}>
+      {hideKinds ? (
+        <input type="hidden" name="kind" value={defaultKind} />
+      ) : (
       <fieldset className="mk-chips">
         <legend>{t("iAm")}</legend>
-        {KINDS.map((k) => (
+        {kinds.map((k) => (
           <label key={k} className="mk-chip">
-            <input type="radio" name="kind" value={k} defaultChecked={k === defaultKind} />
+            <input type="radio" name="kind" value={k} checked={k === kind} onChange={() => setKind(k)} />
             <span>{t(k)}</span>
           </label>
         ))}
       </fieldset>
+      )}
 
       <div className="mk-form__row">
         <label className="mk-field">
@@ -90,7 +117,7 @@ export function LeadForm({ locale, defaultKind = "owner", sourcePage }: { locale
       </div>
       <label className="mk-field">
         <span>{t("message")}</span>
-        <textarea name="message" rows={4} maxLength={4000} />
+        <textarea name="message" rows={4} maxLength={4000} defaultValue={defaultMessage} />
       </label>
 
       {/* Honeypot: hidden from people, irresistible to bots. */}

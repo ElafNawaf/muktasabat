@@ -45,6 +45,7 @@ export async function SiteFooter({ locale, site }: { locale: string; site: SiteD
         <nav aria-label={t("footer.quickLinks")}>
           <p className="mk-footer__h">{t("footer.quickLinks")}</p>
           <ul>
+            <li><Link href={L("/listings")}>{t("nav.listings")}</Link></li>
             <li><Link href={L("/about")}>{t("nav.about")}</Link></li>
             <li><Link href={L("/services")}>{t("nav.services")}</Link></li>
             <li><Link href={L("/for-owners")}>{t("nav.owners")}</Link></li>

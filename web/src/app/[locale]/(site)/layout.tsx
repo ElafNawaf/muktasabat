@@ -68,12 +68,11 @@ export default async function SiteLayout({
         brand={tr(locale, site.brand_name)}
         logoUrl={site.logo_url}
         links={[
+          { href: L("/listings"), label: t("nav.listings") },
           { href: L("/about"), label: t("nav.about") },
           { href: L("/services"), label: t("nav.services") },
           { href: L("/for-owners"), label: t("nav.owners") },
           { href: L("/projects"), label: t("nav.projects") },
-          { href: L("/news"), label: t("nav.news") },
-          { href: L("/careers"), label: t("nav.careers") },
           { href: L("/contact"), label: t("nav.contact") },
         ]}
         portalLabel={t("nav.portal")}
