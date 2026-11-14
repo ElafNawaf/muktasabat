@@ -7,9 +7,11 @@ import { useEffect, useState, useTransition } from "react";
 import { Modal } from "@/components/Modal";
 import {
   hrAddFamily, hrBankDecision, hrCreateContract, hrDeleteContract, hrDeleteFamily, hrEditContract, hrEditFamily, hrSavePersonal, hrSendContract,
-  hrSetBank, hrTerminateContract, meAckAsset, meAddFamily, meCancelBank, meDeleteFamily, meEditFamily, meRequestBank, meRespondContract, meSavePersonal,
+  hrContractDoc, hrListTemplates, hrPreviewTemplate, hrSetBank, hrTerminateContract, meAckAsset, meAddFamily, meCancelBank, meDeleteFamily, meEditFamily, meRequestBank, meRespondContract, meSavePersonal,
 } from "@/lib/hr-people-actions";
-import { BANKS, HP, lb, type Company, type Contract, type EmpFile, type Family } from "@/lib/hr-people";
+import { BANKS, HP, lb, type Company, type Contract, type ContractTemplate, type EmpFile, type Family } from "@/lib/hr-people";
+
+const addDays = (d: string, n: number) => { if (!d || !n) return ""; const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
 type Tab = "overview" | "personal" | "family" | "bank" | "contracts" | "assets";
 type Res = { ok: boolean; error?: string };
@@ -338,14 +340,25 @@ function Contracts({ data, ar, self, canApprove, companies }: { data: EmpFile; a
                 <span className={`mx-status ${stCls(c.state)}`}>{lb(ar, HP.cstate, c.state)}</span>
               </div>
               <div className="ef-contract__body">
-                <div><span>{T("المدة", "Term")}</span><b>{c.start_date} {c.end_date ? `→ ${c.end_date}` : T("(غير محدد)", "(open-ended)")}</b>{c.state === "active" && c.days_left != null && <small>{T(`متبقٍ ${c.days_left} يوم`, `${c.days_left} days left`)}</small>}</div>
+                <div><span>{T("المدة", "Term")}</span><b>{c.end_date ? <span dir="ltr">{c.start_date} → {c.end_date}</span> : <>{c.start_date} {T("(غير محدد)", "(open-ended)")}</>}</b>{c.state === "active" && c.days_left != null && <small>{T(`متبقٍ ${c.days_left} يوم`, `${c.days_left} days left`)}</small>}</div>
                 <div><span>{T("المسمى", "Title")}</span><b>{c.job_title || "—"}</b></div>
                 {c.total_salary != null && <div><span>{T("الراتب الإجمالي", "Total salary")}</span><b>{money(ar, c.total_salary)}</b><small>{T(`أساسي ${money(ar, c.basic_salary)}`, `basic ${money(ar, c.basic_salary)}`)}</small></div>}
                 <div><span>{T("الموافقة", "Accepted")}</span><b>{c.accepted_at ? `${c.accepted_at.slice(0, 10)}` : "—"}</b>{c.accepted_name && <small>{c.accepted_name}</small>}</div>
               </div>
+              {c.signed_digitally ? (
+                <p className="ct-sig is-verified"><span className="ms ms-sm" aria-hidden>verified</span>{lb(ar, HP.signed, "digital")}</p>
+              ) : (c.needs_signed || c.signed_status) && (
+                <p className={`ct-sig is-${c.signed_status ?? "missing"}`}>
+                  <span className="ms ms-sm" aria-hidden>{c.signed_status === "verified" ? "verified" : c.signed_status === "uploaded" ? "hourglass_top" : "upload_file"}</span>
+                  {lb(ar, HP.signed, c.signed_status ?? "missing")}{c.signed_status === "rejected" && c.signed_note ? ` — ${c.signed_note}` : ""}
+                </p>
+              )}
               {c.declined_note && c.status === "draft" && <p className="ef-note">{T("ملاحظة الموظف: ", "Employee note: ")}{c.declined_note}</p>}
               <div className="ef-actions">
-                <button className="btn btn-secondary btn-sm" onClick={() => setView(c)}>{c.status === "pending_acceptance" && self ? T("مراجعة والموافقة", "Review & respond") : T("عرض البنود", "View terms")}</button>
+                {(c.status !== "draft" || !self) && <Link className={`btn ${(self && (c.status === "pending_acceptance" || c.needs_signed)) ? "btn-primary" : "btn-secondary"} btn-sm`} href={`/${ar ? "ar" : "en"}/my-hr/contracts/${c.id}`}>
+                  {self && c.status === "pending_acceptance" ? T("مراجعة وتوقيع", "Review & sign") : self && c.needs_signed ? T("توقيع العقد", "Sign the contract") : T("فتح العقد", "Open contract")}
+                </Link>}
+                <button className="btn btn-ghost btn-sm" onClick={() => setView(c)}>{T("ملخص", "Summary")}</button>
                 {!self && canApprove && c.status === "draft" && <>
                   <button className="btn btn-ghost btn-sm" onClick={() => setEdit(c)}>{T("تعديل", "Edit")}</button>
                   <ContractAction label={T("إرسال للموظف", "Send to employee")} run={() => hrSendContract(c.id)} ar={ar} primary />
@@ -398,13 +411,8 @@ function ContractView({ ar, c, self, canApprove, name, onClose }: { ar: boolean;
         {c.terms && <div className="ef-terms"><h4>{T("بنود العقد", "Terms")}</h4><div>{c.terms}</div></div>}
         {self && c.status === "pending_acceptance" && (
           <div className="mx-panel ef-sign">
-            <p className="mx-hint">{T("بكتابة اسمك الكامل والموافقة، تُقر بأنك قرأت بنود العقد والراتب ووافقت عليها. يُسجَّل التاريخ والوقت.", "By typing your full name and accepting, you confirm you've read and agree to these terms and salary. The date and time are recorded.")}</p>
-            <label className="field"><span>{T("اسمك الكامل", "Your full name")}</span><input className="input" value={typed} placeholder={name} onChange={(e) => setTyped(e.target.value)} /></label>
-            <label className="field"><span>{T("ملاحظة (إن طلبت تعديلًا)", "Note (if asking for changes)")}</span><input className="input" value={note} onChange={(e) => setNote(e.target.value)} /></label>
-            <div className="mx-row">
-              <button className="btn btn-primary btn-sm" disabled={pending || typed.trim().length < 3} onClick={() => run(() => meRespondContract(c.id, { accept: true, full_name: typed }), T("تمت الموافقة على العقد.", "Contract accepted."), onClose)}>{T("أوافق على العقد", "I accept this contract")}</button>
-              <button className="btn btn-secondary btn-sm" disabled={pending || typed.trim().length < 3 || !note.trim()} onClick={() => run(() => meRespondContract(c.id, { accept: false, full_name: typed, note }), T("أُرسل طلب التعديل.", "Change request sent."), onClose)}>{T("طلب تعديل", "Ask for changes")}</button>
-            </div>
+            <p className="mx-hint">{T("اقرأ العقد كاملًا ووقّعه إلكترونيًا من صفحة العقد.", "Read the full contract and sign it on its page.")}</p>
+            <Link className="btn btn-primary btn-sm" href={`/${ar ? "ar" : "en"}/my-hr/contracts/${c.id}`}>{T("فتح العقد والتوقيع", "Open and sign")}</Link>
           </div>
         )}
         {!self && canApprove && c.status === "accepted" && (
@@ -428,6 +436,32 @@ function ContractModal({ ar, c, userId, companyId, companies, onClose }: { ar: b
     end_date: c?.end_date ?? "", probation_end: c?.probation_end ?? "", basic_salary: String(c?.basic_salary ?? ""), housing_allowance: String(c?.housing_allowance ?? 0),
     transport_allowance: String(c?.transport_allowance ?? 0), other_allowance: String(c?.other_allowance ?? 0), other_allowance_label: c?.other_allowance_label ?? "",
     working_hours_week: String(c?.working_hours_week ?? 48), annual_leave_days: String(c?.annual_leave_days ?? 21), notice_days: String(c?.notice_days ?? 60), terms: c?.terms ?? "",
+    template_id: c?.template_id ? String(c.template_id) : "", body: "",
+  });
+  const [custom, setCustom] = useState(!!c?.body_custom);
+  const [tpls, setTpls] = useState<ContractTemplate[]>([]);
+  useEffect(() => {
+    let live = true;
+    if (c?.body_custom) hrContractDoc(c.id).then((r) => { if (live && r.ok) setF((o) => ({ ...o, body: (r.data as { body?: string | null }).body ?? "" })); });
+    hrListTemplates().then((r) => {
+      if (!live || !r.ok) return;
+      const list = (r.data as { templates: ContractTemplate[] }).templates.filter((t) => t.active);
+      setTpls(list);
+      if (!c) {
+        const comp = Number(f.company_id) || null;
+        const pick = list.find((t) => t.company_id === comp && t.contract_type === f.contract_type && t.is_default) ?? list.find((t) => t.company_id === comp && t.is_default) ?? list.find((t) => t.company_id == null && t.is_default);
+        if (pick) setF((o) => ({ ...o, template_id: String(pick.id), probation_end: o.probation_end || addDays(o.start_date, pick.probation_days), working_hours_week: String(pick.working_hours_week), annual_leave_days: String(pick.annual_leave_days), notice_days: String(pick.notice_days) }));
+      }
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const [pv, startPv] = useTransition();
+  const loadText = () => startPv(async () => {
+    const t = tpls.find((x) => String(x.id) === f.template_id);
+    if (!t) return;
+    const r = await hrPreviewTemplate({ body_ar: t.body_ar, body_en: t.body_en, user_id: userId, company_id: f.company_id ? Number(f.company_id) : null, contract: { ...f, number: c?.number ?? "" } });
+    if (r.ok) setF((o) => ({ ...o, body: (r.data as { text: string }).text }));
   });
   const set = (k: string, v: string) => setF((o) => ({ ...o, [k]: v }));
   const { err, pending, run } = useRun();
@@ -437,6 +471,7 @@ function ContractModal({ ar, c, userId, companyId, companies, onClose }: { ar: b
     end_date: f.end_date || null, probation_end: f.probation_end || null, basic_salary: Number(f.basic_salary || 0), housing_allowance: Number(f.housing_allowance || 0),
     transport_allowance: Number(f.transport_allowance || 0), other_allowance: Number(f.other_allowance || 0), other_allowance_label: f.other_allowance_label || null,
     working_hours_week: Number(f.working_hours_week || 48), annual_leave_days: Number(f.annual_leave_days || 21), notice_days: Number(f.notice_days || 60), terms: f.terms || null,
+    template_id: f.template_id ? Number(f.template_id) : null, body: custom && f.body.trim() ? f.body : null,
   });
   const n = (k: string, l: string) => <label className="field"><span>{l}</span><input className="input" type="number" min={0} dir="ltr" value={f[k]} onChange={(e) => set(k, e.target.value)} /></label>;
   return (
@@ -466,7 +501,13 @@ function ContractModal({ ar, c, userId, companyId, companies, onClose }: { ar: b
           {n("annual_leave_days", T("أيام الإجازة السنوية", "Annual leave days"))}
           {n("notice_days", T("فترة الإشعار (يوم)", "Notice period (days)"))}
         </div>
-        <label className="field"><span>{T("بنود العقد", "Contract terms")}</span><textarea className="textarea" rows={8} value={f.terms} onChange={(e) => set("terms", e.target.value)} placeholder={T("المهام، مكان العمل، المزايا، السرية، عدم المنافسة…", "Duties, place of work, benefits, confidentiality, non-compete…")} /></label>
+        <h4 className="mx-h">{T("نص العقد", "Contract text")}</h4>
+        <label className="field"><span>{T("القالب", "Template")}</span><select className="select" value={f.template_id} onChange={(e) => set("template_id", e.target.value)}>
+          <option value="">{T("بدون قالب", "No template")}</option>{tpls.map((t) => <option key={t.id} value={t.id}>{t.name}{t.company ? ` — ${t.company}` : ""}</option>)}</select>
+          <small className="text-sec">{T("يُملأ النص تلقائيًا من القالب وبيانات الموظف وأرقام هذا العقد.", "The text is filled from the template, the employee's file and these figures.")}</small></label>
+        {f.template_id && <label className="ct-check"><input type="checkbox" checked={custom} onChange={(e) => { setCustom(e.target.checked); if (e.target.checked && !f.body) loadText(); }} />{T("تعديل النص لهذا الموظف فقط", "Edit the text for this employee only")}</label>}
+        {f.template_id && custom && <textarea className="textarea ct-body" rows={12} dir="auto" value={f.body} disabled={pv} onChange={(e) => set("body", e.target.value)} placeholder={T("جارٍ تحميل النص…", "Loading text…")} />}
+        <label className="field"><span>{T("ملاحظات وبنود إضافية", "Notes and extra terms")}</span><textarea className="textarea" rows={4} value={f.terms} onChange={(e) => set("terms", e.target.value)} placeholder={T("المهام، مكان العمل، المزايا، السرية، عدم المنافسة…", "Duties, place of work, benefits, confidentiality, non-compete…")} /></label>
         {err && <p className="mx-err">{err}</p>}
       </div>
     </Modal>

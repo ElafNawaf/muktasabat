@@ -23,7 +23,8 @@ from typing import Any, Callable, Optional
 
 from api import models as m
 from api.hr_models import Attendance, HrProfile, HrRequest
-from api.hr_people_models import HrAsset, HrCompany, HrContract, HrDepartment, HrFamilyMember, HrPersonal
+from api.hr_people_models import HrAsset, HrCompany, HrContract, HrContractTemplate, HrDepartment, HrFamilyMember, HrPersonal
+from api.routers.collections import CollectionAction
 from api.maintenance_models import WorkOrder
 from api.renewal_models import LeaseRenewal
 
@@ -162,6 +163,12 @@ LOOKUPS: dict[str, Lookup] = {
         _lk("hr_contract_type", "Employment contract type", "نوع عقد العمل",
             ("fixed", "Fixed term", "محدد المدة"), ("unlimited", "Unlimited", "غير محدد المدة"),
             ("part_time", "Part time", "دوام جزئي"), ("temporary", "Temporary", "مؤقت")),
+        _lk("collection_action", "Collection follow-up", "إجراء التحصيل",
+            ("call", "Call", "اتصال"), ("no_answer", "No answer", "لم يرد"), ("whatsapp", "WhatsApp", "واتساب"),
+            ("visit", "Visit", "زيارة"), ("promise", "Promise to pay", "وعد بالسداد"), ("dispute", "Dispute", "اعتراض"),
+            ("escalate", "Escalated", "تصعيد"), ("note", "Note", "ملاحظة")),
+        _lk("hr_signed_status", "Signed copy", "النسخة الموقعة",
+            ("uploaded", "Uploaded, to verify", "مرفوعة بانتظار التحقق"), ("verified", "Verified", "معتمدة"), ("rejected", "Sent back", "أُعيدت")),
         _lk("hr_contract_status", "Employment contract status", "حالة عقد العمل",
             ("draft", "Draft", "مسودة"), ("pending_acceptance", "Waiting for the employee", "بانتظار قبول الموظف"),
             ("accepted", "Accepted (active)", "مقبول (ساري)"), ("terminated", "Terminated", "منتهي")),
@@ -1117,6 +1124,26 @@ SHEETS: list[Sheet] = [
         display="name",
     ),
     Sheet(
+        "hr_contract_templates", "Contract templates", "Contract templates", "قوالب عقود العمل", HrContractTemplate,
+        [
+            _id(),
+            F("name", "Template name", "اسم القالب", required=True, max_len=120, width=28),
+            _ref("company_id", "Company (empty = whole group)", "الشركة (فارغ = كل المجموعة)", "hr_companies"),
+            _enum("contract_type", "Contract type", "نوع العقد", "hr_contract_type", required=True, default="fixed"),
+            F("body_ar", "Arabic text ({{placeholders}})", "النص العربي ({{المتغيرات}})", "text", required=True, width=60),
+            F("body_en", "English text", "النص الإنجليزي", "text", width=40),
+            F("probation_days", "Probation days", "مدة التجربة (يوم)", "int", min=0, max=180, default=90, width=12),
+            F("duration_months", "Duration (months)", "مدة العقد (شهر)", "int", min=1, max=120, width=12),
+            F("working_hours_week", "Working hours / week", "ساعات العمل الأسبوعية", "int", min=1, max=80, default=48, width=12),
+            F("annual_leave_days", "Annual leave days", "أيام الإجازة السنوية", "int", min=21, max=60, default=21, width=12),
+            F("notice_days", "Notice period (days)", "فترة الإشعار (أيام)", "int", min=0, max=365, default=60, width=12),
+            _bool("requires_signed_copy", "Signed copy required", "يتطلب نسخة موقعة", True),
+            _bool("is_default", "Default", "افتراضي", False),
+            _bool("active", "Active", "فعّال", True),
+        ],
+        display="name",
+    ),
+    Sheet(
         "hr_contracts", "Employment contracts", "Employment contracts", "عقود العمل", HrContract,
         [
             _id(),
@@ -1141,6 +1168,9 @@ SHEETS: list[Sheet] = [
             F("terminated_at", "Terminated on", "تاريخ الإنهاء", "date"),
             F("termination_reason", "Termination reason", "سبب الإنهاء", max_len=300, width=30),
             F("accepted_at", "Accepted at", "تاريخ القبول", "datetime", readonly=True),
+            _ref("template_id", "Template", "القالب", "hr_contract_templates"),
+            _enum("signed_status", "Signed copy", "النسخة الموقعة", "hr_signed_status", readonly=True),
+            F("signed_uploaded_at", "Signed copy uploaded", "تاريخ رفع النسخة الموقعة", "datetime", readonly=True),
             _created(),
         ],
         display="number",
@@ -1279,6 +1309,21 @@ SHEETS: list[Sheet] = [
         ],
         display="end_date",
         unique=[("contract_id",)],
+    ),
+    Sheet(
+        "collection_actions", "Collection follow-ups", "Collection follow-ups", "متابعات التحصيل", CollectionAction,
+        [
+            _id(),
+            _ref("payment_id", "Instalment (payment)", "الدفعة", "payments", required=True),
+            F("at", "When", "التاريخ والوقت", "datetime", required=True),
+            _enum("kind", "Action", "الإجراء", "collection_action", required=True),
+            F("note", "Note", "ملاحظة", "text", width=40),
+            F("promise_date", "Promised date", "تاريخ الوعد", "date"),
+            _money("promise_amount", "Promised amount", "المبلغ الموعود"),
+            F("actor", "By", "بواسطة", max_len=160, width=18),
+            _ref("user_id", "By (user)", "بواسطة (مستخدم)", "users"),
+        ],
+        display="id",
     ),
 ]
 

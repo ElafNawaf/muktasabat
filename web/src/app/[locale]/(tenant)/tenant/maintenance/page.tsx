@@ -3,6 +3,7 @@ import Link from "next/link";
 import { NewTenantRequest } from "@/components/maintenance/NewTenantRequest";
 import { L, day } from "@/lib/owner";
 import { WO_CATEGORY, WO_STATUS, maintenanceApi } from "@/lib/maintenance-portal";
+import { tenantApi } from "@/lib/tenant";
 
 import { one, type SP } from "../../../(owner)/owner/guard";
 import { load } from "../guard";
@@ -16,6 +17,7 @@ export default async function TenantMaintenance({ params, searchParams }: { para
   const res = await load(locale, () => maintenanceApi.tenantList(locale, as));
   if ("error" in res) return res.error;
   const { units, requests } = res.data;
+  const tm = as ? await tenantApi.me(locale, as).catch(() => null) : null;
   const t = (ar: string, en: string) => L(locale, ar, en);
   const qs = as ? `?as=${as}` : "";
   const open = requests.filter((r) => !["closed", "cancelled"].includes(r.status));
@@ -46,6 +48,12 @@ export default async function TenantMaintenance({ params, searchParams }: { para
       </section>
 
       {!as && <NewTenantRequest units={units} locale={locale} open={sp.new === "1"} />}
+      {as && tm?.staff_can?.maintenance && (
+        <>
+          <p className="ow-note"><span className="ms ms-sm" aria-hidden>info</span>{t("أنت تعاين بوابة المستأجر. الطلب الذي تسجله هنا يظهر له كأنه رفعه، مع ملاحظة أنك سجلته نيابةً عنه.", "You're previewing this tenant's portal. A request you log here appears in their portal, noted as logged by you on their behalf.")}</p>
+          <NewTenantRequest units={units} locale={locale} open={sp.new === "1"} asTenant={as} tenantName={tm.name} />
+        </>
+      )}
 
       <section className="ow-card">
         <h2 className="ow-h2">{t("طلبات مفتوحة", "Open requests")} <span className="ow-muted">({open.length})</span></h2>

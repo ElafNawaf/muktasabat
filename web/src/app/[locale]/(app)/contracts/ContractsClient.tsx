@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { ConfirmDialog, Modal } from "@/components/Modal";
 import {
@@ -35,6 +36,8 @@ import {
   type Tenant,
   type Unit,
 } from "@/lib/types";
+
+import { PreviewButton, RowPreview, type PreviewTarget } from "@/components/previews/RowPreview";
 
 import { ContractFormModal } from "./ContractFormModal";
 
@@ -113,6 +116,8 @@ export function ContractsClient({
   };
 
   const [search, setSearch] = useState("");
+  // Deep link from payments / collections: /contracts?q=<lease number>
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get("q"); if (q) setSearch(q); }, []);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [buildingFilter, setBuildingFilter] = useState("all");
@@ -124,6 +129,7 @@ export function ContractsClient({
   const [endingSoonFilter, setEndingSoonFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
+  const [preview, setPreview] = useState<PreviewTarget>(null);
   const [terminating, setTerminating] = useState<Contract | null>(null);
   const [confirmDel, setConfirmDel] = useState<Contract | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -482,7 +488,7 @@ export function ContractsClient({
                 const tn = tenantOf(c.tenant_id);
                 const b = u ? buildingOf(u.building_id) : null;
                 return (
-                  <tr key={c.id}>
+                  <tr key={c.id} className="pv-row" onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a, input, select")) setPreview({ kind: "contract", id: c.id }); }}>
                     <td className="mono" style={{ fontSize: 12 }}>
                       {c.contract_number}
                     </td>
@@ -529,6 +535,7 @@ export function ContractsClient({
                     </td>
                     <td>
                       <div className="actions" style={{ display: "flex", gap: 4 }}>
+                        <PreviewButton label={locale === "ar" ? "معاينة العقد" : "Preview lease"} onClick={() => setPreview({ kind: "contract", id: c.id })} />
                         <button
                           className="icon-btn"
                           title={t("ejarReadiness")}
@@ -640,6 +647,8 @@ export function ContractsClient({
         destructive
         loading={pending}
       />
+
+      <RowPreview target={preview} locale={locale} onClose={() => setPreview(null)} />
 
       <Modal
         open={Boolean(readiness)}

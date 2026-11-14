@@ -83,12 +83,12 @@ export function AccountClient({
     <div className="page screen-enter">
       <div className="account-hero card">
         <UserAvatar name={displayName} url={profile.avatar_url} size={64} />
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: "1 1 220px", minWidth: 0 }}>
           <h2 className="page-title" style={{ margin: 0 }}>{displayName}</h2>
           <div className="text-sec" style={{ marginTop: 4, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <span className="mono">@{profile.username}</span>
             <span>·</span>
-            <span>{profile.email}</span>
+            <span style={{ overflowWrap: "anywhere" }}>{profile.email}</span>
             <span>·</span>
             <span>{t("memberSince", { date: formatDate(profile.created_at, locale) })}</span>
           </div>

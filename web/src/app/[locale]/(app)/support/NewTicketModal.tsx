@@ -14,11 +14,16 @@ export function NewTicketModal({
   onClose,
   locale,
   base,
+  onBehalfOf,
+  qs = "",
 }: {
   open: boolean;
   onClose: () => void;
   locale: string;
   base?: string;
+  /** Staff filing the ticket under a tenant's account (portal preview). */
+  onBehalfOf?: number;
+  qs?: string;
 }) {
   const t = useTranslations("support");
   const tCommon = useTranslations("common");
@@ -62,6 +67,7 @@ export function NewTicketModal({
       } catch {}
     }
     if (file) fd.append("file", file);
+    if (onBehalfOf) fd.append("on_behalf_of", String(onBehalfOf));
 
     setBusy(true);
     try {
@@ -73,7 +79,7 @@ export function NewTicketModal({
       }
       reset();
       onClose();
-      router.push(`${base ?? `/${locale}`}/support/${data.id}`);
+      router.push(`${base ?? `/${locale}`}/support/${data.id}${qs}`);
       router.refresh();
     } catch {
       setError(t("createFailed"));

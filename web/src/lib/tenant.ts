@@ -80,7 +80,11 @@ export type TenantContractDetail = TenantContract & {
   payments: TenantPayment[];
 };
 
-export type TenantMe = { tenant_id: number; name: string; phone?: string | null; email?: string | null; email_reminders: boolean; preview: boolean };
+export type TenantMe = {
+  tenant_id: number; name: string; phone?: string | null; email?: string | null; email_reminders: boolean; preview: boolean;
+  /** Staff preview: the tenant's portal account and what staff may do for them. */
+  user_id?: number | null; staff_can?: { maintenance: boolean; support: boolean };
+};
 
 export type TenantOverview = {
   as_of: string;

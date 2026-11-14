@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
 import {
@@ -15,15 +16,19 @@ import { usePermissions } from "@/components/PermissionsProvider";
 import { ReceiptLink } from "@/components/ReceiptInput";
 import { deletePayment } from "@/lib/actions";
 import { formatDate, formatSAR } from "@/lib/format";
+import { clearQuery, useQuery } from "@/lib/use-query";
 import {
   localized,
   type Building,
   type Contract,
+  type Owner,
   type Tenant,
   type Unit,
 } from "@/lib/types";
 
 import { OwnerTransferModal } from "./OwnerTransferModal";
+import { PreviewButton, RowPreview, type PreviewTarget } from "@/components/previews/RowPreview";
+
 import { PayModal } from "./PayModal";
 import { TenantReports, type TenantReport } from "./TenantReports";
 
@@ -58,6 +63,7 @@ export function PaymentsClient({
   buildings,
   locale,
   reports = [],
+  owners = [],
 }: {
   payments: PaymentRow[];
   contracts: Contract[];
@@ -66,6 +72,7 @@ export function PaymentsClient({
   buildings: Building[];
   locale: string;
   reports?: TenantReport[];
+  owners?: Owner[];
 }) {
   const t = useTranslations("paymentsPage");
   const tCommon = useTranslations("common");
@@ -76,10 +83,30 @@ export function PaymentsClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [paying, setPaying] = useState<PaymentRow | null>(null);
+  const [preview, setPreview] = useState<PreviewTarget>(null);
   const [transferring, setTransferring] = useState<PaymentRow | null>(null);
   const [confirmDel, setConfirmDel] = useState<PaymentRow | null>(null);
   const [delErr, setDelErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Deep links from other pages: ?contract= ?tenant= ?building= ?owner= ?unit= ?status= ?q= ?open=
+  const qp = useQuery();
+  const [scope, setScope] = useState<{ key: "contract" | "tenant" | "building" | "owner" | "unit"; id: number } | null>(null);
+  const [focusId, setFocusId] = useState<number | null>(null);
+  useEffect(() => {
+    for (const key of ["contract", "tenant", "building", "owner", "unit"] as const) {
+      const id = Number(qp[key]);
+      if (id) { setScope({ key, id }); break; }
+    }
+    if (qp.status && ["pending", "paid", "overdue", "all"].includes(qp.status)) setStatusFilter(qp.status as StatusFilter);
+    if (qp.q) setSearch(qp.q);
+    const open = Number(qp.open);
+    if (open) {
+      setFocusId(open);
+      setTimeout(() => document.getElementById(`pay-${open}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+    }
+  }, [qp]);
+  const ar = locale === "ar";
+  const L = (en: string, a: string) => (ar ? a : en);
 
   const contractOf = (id: number) => contracts.find((c) => c.id === id);
   const unitOf = (id: number) => units.find((u) => u.id === id);
@@ -96,7 +123,31 @@ export function PaymentsClient({
     return p.due_date < today ? "overdue" : "pending";
   };
 
-  const filtered = payments.filter((p) => {
+  const inScope = (p: PaymentRow) => {
+    if (!scope) return true;
+    const c = contractOf(p.contract_id);
+    const u = c ? unitOf(c.unit_id) : null;
+    const b = u ? buildingOf(u.building_id) : null;
+    switch (scope.key) {
+      case "contract": return p.contract_id === scope.id;
+      case "tenant": return c?.tenant_id === scope.id;
+      case "unit": return c?.unit_id === scope.id;
+      case "building": return u?.building_id === scope.id;
+      case "owner": return b?.owner_id === scope.id;
+    }
+  };
+  const scopeLabel = (() => {
+    if (!scope) return "";
+    if (scope.key === "contract") return `${L("Lease", "العقد")} ${contracts.find((c) => c.id === scope.id)?.contract_number ?? scope.id}`;
+    if (scope.key === "tenant") { const tn = tenantOf(scope.id); return `${L("Tenant", "المستأجر")}: ${tn ? localized(tn, "name", locale) : scope.id}`; }
+    if (scope.key === "unit") { const u = unitOf(scope.id); const b = u ? buildingOf(u.building_id) : null; return `${L("Unit", "الوحدة")} ${u?.number ?? scope.id}${b ? ` · ${localized(b, "name", locale)}` : ""}`; }
+    if (scope.key === "building") { const b = buildingOf(scope.id); return `${L("Property", "العقار")}: ${b ? localized(b, "name", locale) : scope.id}`; }
+    const o = owners.find((x) => x.id === scope.id);
+    return `${L("Owner", "المالك")}: ${o ? localized(o, "name", locale) : scope.id}`;
+  })();
+  const scoped = payments.filter(inScope);
+
+  const filtered = scoped.filter((p) => {
     const eff = effectiveStatus(p);
     if (statusFilter !== "all" && eff !== statusFilter) return false;
     if (!search) return true;
@@ -122,24 +173,26 @@ export function PaymentsClient({
   });
 
   const totals = {
-    total: payments.length,
-    pending: payments.filter((p) => effectiveStatus(p) === "pending").length,
-    paid: payments.filter((p) => p.status === "paid").length,
-    overdue: payments.filter((p) => effectiveStatus(p) === "overdue").length,
-    overdueAmt: payments
+    total: scoped.length,
+    pending: scoped.filter((p) => effectiveStatus(p) === "pending").length,
+    paid: scoped.filter((p) => p.status === "paid").length,
+    overdue: scoped.filter((p) => effectiveStatus(p) === "overdue").length,
+    overdueAmt: scoped
       .filter((p) => effectiveStatus(p) === "overdue")
       .reduce((s, p) => s + p.amount, 0),
-    collectedAmt: payments
+    collectedAmt: scoped
       .filter((p) => p.status === "paid")
       .reduce((s, p) => s + p.amount, 0),
   };
 
   const fmtDate = (iso: string) => formatDate(iso, locale);
 
-  const filtersActive = statusFilter !== "all" || search.trim() !== "";
+  const filtersActive = statusFilter !== "all" || search.trim() !== "" || scope != null;
   const clearFilters = () => {
     setSearch("");
     setStatusFilter("all");
+    setScope(null);
+    clearQuery(["contract", "tenant", "building", "owner", "unit", "status", "q", "open"]);
   };
 
   const doDelete = () => {
@@ -163,7 +216,27 @@ export function PaymentsClient({
           <h2 className="page-title">{t("title")}</h2>
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
+        <div className="xl-links">
+          {can("payments", "view") && (
+            <Link className="btn btn-secondary" href={`/${locale}/collections`}>
+              <span className="ms ms-sm">savings</span>{L("Collections follow-up", "متابعة التحصيل")}{totals.overdue > 0 && <b className="xl-n">{totals.overdue}</b>}
+            </Link>
+          )}
+          {can("expenses", "view") && (
+            <Link className="btn btn-secondary" href={`/${locale}/expenses${scope?.key === "building" ? `?building=${scope.id}` : scope?.key === "owner" ? `?owner=${scope.id}` : ""}`}>
+              <span className="ms ms-sm">receipt_long</span>{L("Expenses", "المصروفات")}
+            </Link>
+          )}
+        </div>
       </div>
+
+      {scope && (
+        <div className="xl-scope" role="status">
+          <span className="ms ms-sm" aria-hidden>filter_alt</span>
+          <span>{L("Showing payments for", "تعرض دفعات")} <b>{scopeLabel}</b></span>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setScope(null); clearQuery(["contract", "tenant", "building", "owner", "unit"]); }}>{L("Show all payments", "عرض كل الدفعات")}</button>
+        </div>
+      )}
 
       <TenantReports reports={reports} locale={locale} canEdit={can("payments", "edit")} />
 
@@ -246,17 +319,17 @@ export function PaymentsClient({
                 const b = u ? buildingOf(u.building_id) : null;
                 const eff = effectiveStatus(p);
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id} id={`pay-${p.id}`} className={"pv-row" + (focusId === p.id ? " xl-focus" : "")} onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a, input, select")) setPreview({ kind: "payment", id: p.id }); }}>
                     <td className="mono" style={{ fontSize: 12 }}>
-                      {c?.contract_number ?? "—"}
+                      {c ? <Link className="xl-a" href={`/${locale}/contracts?q=${encodeURIComponent(c.contract_number)}`} title={L("Open the lease", "فتح العقد")}>{c.contract_number}</Link> : "—"}
                     </td>
-                    <td>{tn ? localized(tn, "name", locale) : "—"}</td>
+                    <td>{tn ? <Link className="xl-a" href={`/${locale}/tenants/${tn.id}`}>{localized(tn, "name", locale)}</Link> : "—"}</td>
                     <td>
                       <div style={{ fontSize: 12.5 }}>
                         {u ? `#${u.number}` : "—"}
                       </div>
                       <div className="text-sec" style={{ fontSize: 11 }}>
-                        {b ? localized(b, "name", locale) : ""}
+                        {b ? <Link className="xl-a xl-a--sub" href={`/${locale}/properties/${b.id}`}>{localized(b, "name", locale)}</Link> : ""}
                       </div>
                     </td>
                     <td className="text-sec" style={{ fontSize: 12 }}>
@@ -324,7 +397,8 @@ export function PaymentsClient({
                       )}
                     </td>
                     <td>
-                      <div className="actions" style={{ display: "flex", gap: 4 }}>
+                      <div className="actions" style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        <PreviewButton label={locale === "ar" ? "معاينة الدفعة" : "Preview payment"} onClick={() => setPreview({ kind: "payment", id: p.id })} />
                         {eff !== "paid" && (
                           <button
                             className="btn btn-sm btn-primary"
@@ -333,6 +407,11 @@ export function PaymentsClient({
                             <span className="ms ms-sm">paid</span>
                             {t("markPaid")}
                           </button>
+                        )}
+                        {eff !== "paid" && can("payments", "view") && (eff === "overdue" || p.due_date <= new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)) && (
+                          <Link className="icon-btn" href={`/${locale}/collections?open=${p.id}`} title={L("Collection follow-up: calls, reminders, promises", "متابعة التحصيل: اتصالات وتذكيرات ووعود")} aria-label={L("Collection follow-up", "متابعة التحصيل")}>
+                            <span className="ms ms-sm">support_agent</span>
+                          </Link>
                         )}
                         {eff === "paid" && !p.owner_transferred_date && (
                           <button className="btn btn-sm btn-secondary" onClick={() => setTransferring(p)}>
@@ -365,6 +444,8 @@ export function PaymentsClient({
           </table>
         </div>
       </div>
+
+      <RowPreview target={preview} locale={locale} onClose={() => setPreview(null)} />
 
       {paying && (
         <PayModal

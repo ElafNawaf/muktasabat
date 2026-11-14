@@ -658,3 +658,18 @@ a.ow-feed__row:hover .ow-feed__body > span { color: var(--ow-maroon); }
 .ow-drop small { color: var(--ow-mute); font-size: 12px; }
 .ow-drop.has-file { border-style: solid; border-color: var(--ow-ok); background: var(--ow-ok-bg); }
 .ow-drop.has-file .ms { color: var(--ow-ok); }
+
+/* Tenant bottom tab bar: share the width between however many tabs there are
+   (4 in staff preview, 5 for the tenant) instead of a fixed 5/6-column grid. */
+@media (max-width: 860px) {
+  .ow-root--tenant .ow-tabbar { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+}
+/* The portal's main column must not grow to its widest child (it pushed
+   pages like Account past the screen edge on phones). */
+.ow-main { grid-template-columns: minmax(0, 1fr); }
+.ow-main > * { min-width: 0; }
+.ow-main .route-fade { grid-template-columns: minmax(0, 1fr); }
+.ow-main .route-fade > * { min-width: 0; }
+/* Fee breakdown under an amount: as wide as its rows, never past the cell. */
+.ow-fees[open] { width: max-content; max-width: 100%; }
+.ow-fees dl > div { flex-wrap: wrap; }

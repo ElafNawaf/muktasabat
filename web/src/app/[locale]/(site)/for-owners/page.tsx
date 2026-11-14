@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     path: "/for-owners",
     title: t("title"),
     description: t("lead"),
-    keywords: locale === "ar" ? ["إدارة أملاك", "شركة إدارة أملاك", "بوابة الملاك", "تحصيل الإيجارات"] : ["property management Saudi Arabia", "owner portal", "rent collection"],
+    keywords: locale === "ar" ? ["إدارة أملاك", "شركة إدارة أملاك", "بوابة إدارة الأملاك", "تحصيل الإيجارات"] : ["property management Saudi Arabia", "owner portal", "rent collection"],
   });
 }
 

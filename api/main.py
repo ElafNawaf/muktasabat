@@ -51,9 +51,11 @@ from api.routers import (
     collections,
     hr,
     hr_people,
+    hr_contracts,
     tenant_portal,
     entity_overview,
     people_overview,
+    previews,
     notifications,
     owner_portal_detail,
     management,
@@ -66,7 +68,7 @@ from api.routers import (
     units,
 )
 from api.bootstrap_roles import seed_default_roles
-from api.cms_seed import migrate_cms, migrate_cms_v2, migrate_cms_v3, migrate_cms_v4, migrate_cms_v5, seed_cms
+from api.cms_seed import migrate_cms, migrate_cms_v2, migrate_cms_v3, migrate_cms_v4, migrate_cms_v5, migrate_cms_v6, seed_cms
 from api.routers import cms, files, owner_portal
 
 
@@ -107,8 +109,11 @@ async def lifespan(app: FastAPI):
     ensure_hr_location_columns(engine)
     from api.routers.hr_people import seed_companies
 
+    from api.services.hr_contract_docs import seed_templates
+
     with SessionLocal() as db:
         seed_companies(db)
+        seed_templates(db)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -124,6 +129,7 @@ async def lifespan(app: FastAPI):
 
         fix_rbac_defaults_v1(db)
         migrate_cms_v5(db)
+        migrate_cms_v6(db)
 
     # Pydantic EmailStr rejects .local; fix legacy bootstrap row so /auth/login can return UserRead.
     with SessionLocal() as db:
@@ -227,6 +233,7 @@ API_V1 = "/api/v1"
 # Before buildings/tenants: /buildings/summary must not match /buildings/{id}.
 app.include_router(entity_overview.router, prefix=API_V1)
 app.include_router(people_overview.router, prefix=API_V1)
+app.include_router(previews.router, prefix=API_V1)
 app.include_router(notifications.router, prefix=API_V1)
 app.include_router(auth.router, prefix=API_V1)
 # Self-service profile / credentials / sessions + support tickets
@@ -253,6 +260,7 @@ app.include_router(approvals.router, prefix=API_V1)
 app.include_router(collections.router, prefix=API_V1)
 app.include_router(hr.router, prefix=API_V1)
 app.include_router(hr_people.router, prefix=API_V1)
+app.include_router(hr_contracts.router, prefix=API_V1)
 app.include_router(tenant_portal.router, prefix=API_V1)
 app.include_router(owner_portal_detail.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)

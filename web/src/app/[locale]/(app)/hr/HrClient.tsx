@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { FilterBar, FilterSearch, FilterSelect } from "@/components/EntityFilterBar";
 import { AssetsRegister } from "@/components/hr/AssetsRegister";
+import { ContractsDesk as ContractsTab } from "@/components/hr/ContractsDesk";
 import { RequestDrawer, RequestModal } from "@/components/hr/HrForms";
-import { HP, lb, type Asset, type Company } from "@/lib/hr-people";
+import { HP, lb, type Asset, type Company, type ContractsDesk, type ContractTemplate, type Placeholder } from "@/lib/hr-people";
 import { Modal } from "@/components/Modal";
 import { getPosition, geoErrorText } from "@/lib/geo";
 import { hrAttendanceDay, hrAttendanceReport, hrDecide, hrSaveEmployee, hrSaveSettings, hrSetAttendance } from "@/lib/hr-actions";
@@ -37,12 +38,12 @@ export type HrSettings = {
   office_lat: number; office_lng: number; geofence_radius_m: number; max_accuracy_m: number; enforce_location: boolean; ping_minutes: number;
   left_alert_minutes: number; missing_checkout_minutes: number; checkin_reminder_minutes: number; daily_summary: boolean;
 };
-type Tab = "overview" | "requests" | "attendance" | "employees" | "assets" | "settings";
+type Tab = "overview" | "requests" | "attendance" | "employees" | "contracts" | "assets" | "settings";
 export type Expiring = { user_id: number; name: string; kind: string; date?: string | null; days: number; ref?: string };
 
-export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate, assets, companies, expiring }: {
+export function HrClient({ locale, dash, requests, employees, settings, report, month, canCreate, assets, companies, expiring, desk, templates, placeholders }: {
   locale: string; dash: Dash; requests: HrReq[]; employees: Emp[]; settings: HrSettings; report: Report; month: string; canCreate: boolean;
-  assets: Asset[]; companies: Company[]; expiring: Expiring[];
+  assets: Asset[]; companies: Company[]; expiring: Expiring[]; desk: ContractsDesk; templates: ContractTemplate[]; placeholders: Placeholder[];
 }) {
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
@@ -62,6 +63,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
     ["requests", T("الطلبات", "Requests"), "inbox", dash.pending.length],
     ["attendance", T("الحضور والانصراف", "Attendance"), "badge"],
     ["employees", T("الموظفون", "Employees"), "groups"],
+    ["contracts", T("العقود", "Contracts"), "contract", desk.counts.signed_to_verify + desk.counts.missing_signed || undefined],
     ["assets", T("العُهد", "Assets"), "inventory_2"],
     ["settings", T("الإعدادات", "Settings"), "tune"],
   ];
@@ -95,6 +97,7 @@ export function HrClient({ locale, dash, requests, employees, settings, report, 
       {tab === "requests" && <Requests locale={locale} rows={requests} people={people} onOpen={setOpenId} />}
       {tab === "attendance" && <AttendanceTab locale={locale} board={dash.board} report={report} month={month} canEdit={can.edit} />}
       {tab === "employees" && <Employees locale={locale} rows={employees} canEdit={can.edit} companies={companies} />}
+      {tab === "contracts" && <ContractsTab locale={locale} desk={desk} templates={templates} placeholders={placeholders} companies={companies} people={employees.map((e) => ({ id: e.user_id, name: e.name, company_id: e.company_id }))} canApprove={can.approve} />}
       {tab === "assets" && <AssetsRegister locale={locale} assets={assets} companies={companies} people={people} canEdit={can.edit} />}
       {tab === "settings" && <SettingsTab locale={locale} s={settings} canSave={can.approve} />}
 

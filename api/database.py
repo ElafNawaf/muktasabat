@@ -508,6 +508,18 @@ def ensure_hr_location_columns(engine) -> None:
         ("left_alert_minutes", "INTEGER DEFAULT 15 NOT NULL"), ("missing_checkout_minutes", "INTEGER DEFAULT 30 NOT NULL"),
         ("checkin_reminder_minutes", "INTEGER DEFAULT 30 NOT NULL"), ("daily_summary", f"BOOLEAN DEFAULT {t} NOT NULL"),
     ])
+    _add_missing_columns(engine, "hr_contracts", [
+        ("template_id", "INTEGER"), ("body", "TEXT"), ("body_custom", f"BOOLEAN DEFAULT {f} NOT NULL"),
+        ("signed_key", "VARCHAR(300)"), ("signed_filename", "VARCHAR(200)"), ("signed_status", "VARCHAR(10)"),
+        ("signed_uploaded_at", ts), ("signed_uploaded_by", "VARCHAR(120)"), ("signed_reviewed_at", ts),
+        ("signed_reviewed_by", "VARCHAR(120)"), ("signed_note", "VARCHAR(300)"),
+        ("employee_signature", "TEXT"), ("company_signature", "TEXT"), ("company_signatory", "VARCHAR(250)"),
+        ("company_signed_at", ts), ("doc_hash", "VARCHAR(64)"),
+    ])
+    _add_missing_columns(engine, "hr_companies", [
+        ("logo_url", "VARCHAR(500)"), ("logo_key", "VARCHAR(300)"), ("signatory_name", "VARCHAR(120)"),
+        ("signatory_title", "VARCHAR(120)"), ("signature_data", "TEXT"),
+    ])
     if not sqlite:  # widen the request kind column for 'work_location'
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE hr_requests ALTER COLUMN kind TYPE VARCHAR(14)"))

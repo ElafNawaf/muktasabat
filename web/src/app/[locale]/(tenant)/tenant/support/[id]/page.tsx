@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { TicketThread } from "@/app/[locale]/(app)/support/[id]/TicketThread";
 import { api, ApiError } from "@/lib/api";
@@ -9,6 +9,8 @@ export default async function TenantTicketPage({ params }: { params: Promise<{ l
   const { locale, id } = await params;
   if (!/^\d+$/.test(id)) notFound();
   const me = await requireAuth(locale);
+  // Staff opening a ticket from a tenant preview handle it in the support desk (replies, assignment, status).
+  if (me.role !== "tenant") redirect(`/${locale}/support/${id}`);
   let ticket: TicketDetail;
   try {
     ticket = await api.get<TicketDetail>(`/api/v1/support/tickets/${id}`);

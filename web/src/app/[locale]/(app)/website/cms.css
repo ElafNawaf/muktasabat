@@ -167,3 +167,13 @@
 .tx-field input::placeholder, .tx-field textarea::placeholder { color: var(--color-text-tertiary); }
 .tx-empty { color: var(--color-text-secondary); padding: 30px; text-align: center; }
 @media (max-width: 900px) { .tx-layout { grid-template-columns: 1fr; } .tx-groups { position: static; max-height: none; grid-auto-flow: column; overflow-x: auto; grid-auto-columns: max-content; } .tx-groups .search-input { min-width: 220px; } .tx-fields { grid-template-columns: 1fr; } }
+
+/* Layout fixes (UI pass 2026-11-14):
+   - .cms-root is also the fixed-height .page scroller, so its auto rows could
+     shrink the scrollable tab strip to 1px — size every row to its content.
+   - columns are minmax(0, 1fr) so wide toolbars / lists can't push the panel
+     past the screen edge on tablets and phones. */
+.cms-root { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: start; }
+.cms-panel { grid-template-columns: minmax(0, 1fr); }
+.cms-panel > *, .cms-root > * { min-width: 0; }
+.cms-tabs { flex-shrink: 0; }
