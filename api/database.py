@@ -37,6 +37,43 @@ def ensure_user_password_reset_columns(engine) -> None:
             conn.execute(text(stmt))
 
 
+def ensure_user_profile_columns(engine) -> None:
+    """Add the self-service profile / session columns when the DB predates them."""
+    insp = inspect(engine)
+    if not insp.has_table("users"):
+        return
+    existing = {c["name"] for c in insp.get_columns("users")}
+    sqlite = engine.dialect.name == "sqlite"
+    ts = "DATETIME" if sqlite else "TIMESTAMP"
+    true_ = "1" if sqlite else "true"
+    wanted = {
+        "full_name": "VARCHAR(150)",
+        "full_name_ar": "VARCHAR(150)",
+        "phone": "VARCHAR(20)",
+        "job_title": "VARCHAR(120)",
+        "avatar_key": "VARCHAR(255)",
+        "avatar_url": "VARCHAR(500)",
+        "preferred_locale": "VARCHAR(5) DEFAULT 'ar' NOT NULL",
+        "notify_ticket_updates": f"BOOLEAN DEFAULT {true_} NOT NULL",
+        "token_version": "INTEGER DEFAULT 0 NOT NULL",
+        "password_changed_at": ts,
+        "last_login_at": ts,
+        "pending_email": "VARCHAR(120)",
+        "email_change_token": "VARCHAR(128)",
+        "email_change_expires": ts,
+    }
+    stmts = [
+        f"ALTER TABLE users ADD COLUMN {col} {ddl}"
+        for col, ddl in wanted.items()
+        if col not in existing
+    ]
+    if not stmts:
+        return
+    with engine.begin() as conn:
+        for stmt in stmts:
+            conn.execute(text(stmt))
+
+
 def ensure_user_email_verification_columns(engine) -> None:
     """Add email_verified / email_verification_token / _expires when DB predates them."""
     insp = inspect(engine)

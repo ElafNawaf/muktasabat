@@ -52,6 +52,30 @@ class User(Base):
     email_verification_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     email_verification_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # --- Self-service profile (My account) ---
+    full_name: Mapped[Optional[str]] = mapped_column(String(150))
+    full_name_ar: Mapped[Optional[str]] = mapped_column(String(150))
+    phone: Mapped[Optional[str]] = mapped_column(String(20))
+    job_title: Mapped[Optional[str]] = mapped_column(String(120))
+    avatar_key: Mapped[Optional[str]] = mapped_column(String(255))
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(500))
+    # "ar" | "en" — drives the UI default and the language-first order of emails.
+    preferred_locale: Mapped[str] = mapped_column(String(5), default="ar", nullable=False)
+    # Email me when a support ticket I opened gets a reply / status change.
+    notify_ticket_updates: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Bumped on password change / "sign out everywhere". Every JWT carries the
+    # version it was issued at; a mismatch invalidates the token.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    password_changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    # Email change is two-step: the new address must be confirmed before it
+    # replaces `email`.
+    pending_email: Mapped[Optional[str]] = mapped_column(String(120))
+    email_change_token: Mapped[Optional[str]] = mapped_column(String(128))
+    email_change_expires: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
     employee: Mapped[Optional["Employee"]] = relationship(back_populates="user", uselist=False)
     owner_link: Mapped[Optional["OwnerUser"]] = relationship(back_populates="user", uselist=False)
 
@@ -938,3 +962,60 @@ class ManagementContractAttachment(Base):
     management_contract: Mapped["ManagementContract"] = relationship(
         back_populates="attachments"
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Support tickets (الدعم الفني)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class SupportTicket(Base):
+    """A technical-support request opened by any portal user."""
+
+    __tablename__ = "support_tickets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    subject: Mapped[str] = mapped_column(String(200), nullable=False)
+    # technical | account | data | billing | feature | other
+    category: Mapped[str] = mapped_column(String(20), nullable=False, default="technical")
+    # low | normal | high | urgent
+    priority: Mapped[str] = mapped_column(String(10), nullable=False, default="normal")
+    # open | in_progress | waiting_user | resolved | closed
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open", index=True)
+    assignee_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    # Where the user was when the problem happened + browser, for triage.
+    page_url: Mapped[Optional[str]] = mapped_column(String(500))
+    user_agent: Mapped[Optional[str]] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
+    assignee: Mapped[Optional["User"]] = relationship(foreign_keys=[assignee_id])
+    messages: Mapped[list["SupportTicketMessage"]] = relationship(
+        back_populates="ticket",
+        order_by="SupportTicketMessage.created_at",
+        cascade="all, delete-orphan",
+    )
+
+
+class SupportTicketMessage(Base):
+    __tablename__ = "support_ticket_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(
+        ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    author_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    is_staff: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Staff-only note — never shown to the ticket owner.
+    internal: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    attachment_key: Mapped[Optional[str]] = mapped_column(String(255))
+    attachment_url: Mapped[Optional[str]] = mapped_column(String(500))
+    attachment_name: Mapped[Optional[str]] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    ticket: Mapped["SupportTicket"] = relationship(back_populates="messages")
+    author: Mapped[Optional["User"]] = relationship()

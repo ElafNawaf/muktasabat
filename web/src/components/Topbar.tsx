@@ -10,13 +10,20 @@ import { useLocale } from "next-intl";
 import { BrandLogo } from "./BrandLogo";
 import { useMobileNav } from "./MobileNavProvider";
 import { useTheme } from "./ThemeProvider";
+import { UserAvatar } from "./UserAvatar";
 
 export function Topbar({
   title,
   user,
 }: {
   title: string;
-  user: { username: string; role: string };
+  user: {
+    username: string;
+    role: string;
+    full_name?: string | null;
+    full_name_ar?: string | null;
+    avatar_url?: string | null;
+  };
 }) {
   const t = useTranslations("common");
   const { theme, toggle } = useTheme();
@@ -24,8 +31,11 @@ export function Topbar({
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
 
-  const initials = user.username.slice(0, 2).toUpperCase();
   const locale = useLocale();
+  const tAcc = useTranslations("userMenu");
+  const displayName =
+    (locale === "ar" ? user.full_name_ar || user.full_name : user.full_name || user.full_name_ar) ||
+    user.username;
   const tRoles = useTranslations("roles");
   const roleLabel = (["admin", "manager", "viewer", "owner"] as const).includes(user.role as "admin")
     ? tRoles(user.role as "admin")
@@ -75,6 +85,10 @@ export function Topbar({
         <span className="ms">{theme === "light" ? "dark_mode" : "light_mode"}</span>
       </button>
 
+      <Link className="icon-btn" href={`/${locale}/support`} title={tAcc("support")} aria-label={tAcc("support")}>
+        <span className="ms">help</span>
+      </Link>
+
       <div className="user-menu" ref={menuRef}>
         <button
           className="topbar-avatar"
@@ -82,9 +96,9 @@ export function Topbar({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
         >
-          <div className="avatar">{initials}</div>
+          <UserAvatar name={displayName} url={user.avatar_url} size={28} />
           <span className="topbar-user-text">
-            <span className="name">{user.username}</span>
+            <span className="name">{displayName}</span>
             <span className="role">{roleLabel}</span>
           </span>
           <span className="ms ms-sm topbar-user-caret" aria-hidden>expand_more</span>
@@ -92,9 +106,30 @@ export function Topbar({
         {menuOpen && (
           <div className="user-menu__pop" role="menu">
             <div className="user-menu__who">
-              <strong>{user.username}</strong>
-              <small>{roleLabel}</small>
+              <strong>{displayName}</strong>
+              <small>
+                <span className="mono">@{user.username}</span> · {roleLabel}
+              </small>
             </div>
+            {(
+              [
+                ["account", "account_circle", tAcc("myProfile")],
+                ["account?tab=security", "lock", tAcc("security")],
+                ["account?tab=preferences", "tune", tAcc("preferences")],
+                ["support", "support_agent", tAcc("support")],
+              ] as const
+            ).map(([path, icon, label]) => (
+              <Link
+                key={path}
+                role="menuitem"
+                className="user-menu__item"
+                href={`/${locale}/${path}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="ms ms-sm" aria-hidden>{icon}</span>
+                {label}
+              </Link>
+            ))}
             <button role="menuitem" className="user-menu__item" onClick={logout} disabled={signingOut}>
               <span className="ms ms-sm" aria-hidden>logout</span>
               {t("logout")}

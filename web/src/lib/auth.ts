@@ -3,7 +3,16 @@ import { cache } from "react";
 
 import { api, ApiError } from "./api";
 
-export type Me = { id: number; username: string; email: string; role: string };
+export type Me = {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  full_name?: string | null;
+  full_name_ar?: string | null;
+  avatar_url?: string | null;
+  preferred_locale?: string;
+};
 
 /**
  * Fetch the current user. Cached per-request via React `cache()` so layouts

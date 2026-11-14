@@ -26,7 +26,7 @@ export function ForgotPasswordScreen() {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, locale }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;

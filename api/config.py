@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     ses_configuration_set: str = os.environ.get("SES_CONFIGURATION_SET", "")
     # Public URL of the web app, used to build links in email bodies.
     web_base_url: str = os.environ.get("WEB_BASE_URL", "http://localhost:3000")
+    # Inbox notified about new support tickets. Empty → every active admin.
+    support_email: str = os.environ.get("SUPPORT_EMAIL", "")
 
     # --- Payment alerts (تنبيهات الدفعات) ---
     # E-mails go To: the employee responsible for the property (building

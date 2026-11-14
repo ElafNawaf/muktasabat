@@ -20,6 +20,8 @@ _MODULES = [
     "expenses",
     "users",
     "website",
+    # Support tickets: `edit` = support staff (sees all tickets, triages, replies).
+    "support",
 ]
 _ALL = {m: {"view": 1, "create": 1, "edit": 1, "delete": 1, "approve": 1} for m in _MODULES}
 

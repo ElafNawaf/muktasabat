@@ -26,11 +26,13 @@ from api.database import (
     migrate_tenant_escorts_to_companions,
     ensure_user_email_verification_columns,
     ensure_user_password_reset_columns,
+    ensure_user_profile_columns,
 )
 from api.logging_config import setup_logging
 from api.request_logging import RequestLoggingMiddleware
 from api.storage import local_upload_root, uses_local_storage
 from api.routers import (
+    account,
     agents,
     analytics,
     auth,
@@ -43,6 +45,7 @@ from api.routers import (
     owners,
     payments,
     roles,
+    support,
     tenants,
     translate,
     units,
@@ -67,6 +70,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_user_password_reset_columns(engine)
     ensure_user_email_verification_columns(engine)
+    ensure_user_profile_columns(engine)
     ensure_building_assignee_column(engine)
     ensure_building_location_columns(engine)
     ensure_building_extended_columns(engine)
@@ -188,6 +192,9 @@ def health():
 
 API_V1 = "/api/v1"
 app.include_router(auth.router, prefix=API_V1)
+# Self-service profile / credentials / sessions + support tickets
+app.include_router(account.router, prefix=API_V1)
+app.include_router(support.router, prefix=API_V1)
 app.include_router(owners.router, prefix=API_V1)
 app.include_router(agents.router, prefix=API_V1)
 app.include_router(buildings.router, prefix=API_V1)

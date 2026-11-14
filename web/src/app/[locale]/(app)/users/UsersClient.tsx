@@ -10,6 +10,7 @@ import {
   updateRolePermissions,
   type RolePermissions,
 } from "@/lib/actions";
+import { adminRevokeSessions, adminSendResetLink } from "@/lib/account-actions";
 import { formatDate } from "@/lib/format";
 import {
   MODULE_IDS,
@@ -50,6 +51,7 @@ const MODULE_ICON: Record<ModuleId, string> = {
   expenses: "receipt_long",
   users: "admin_panel_settings",
   website: "language",
+  support: "support",
 };
 
 type Tab = "users" | "roles";
@@ -77,6 +79,7 @@ export function UsersClient({
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [confirmDel, setConfirmDel] = useState<AdminUserRow | null>(null);
+  const [notice, setNotice] = useState<{ text: string; link?: string } | null>(null);
   const [, start] = useTransition();
   const [reinvite, setReinvite] = useState<ReinviteResult | null>(null);
   const [reinviting, setReinviting] = useState(false);
@@ -120,6 +123,33 @@ export function UsersClient({
       );
       setBusyId(null);
       if (!res.ok) setError(res.error);
+    });
+  };
+
+  const onSendReset = (u: AdminUserRow) => {
+    setError(null);
+    setNotice(null);
+    setBusyId(u.id);
+    start(async () => {
+      const res = await adminSendResetLink(u.id);
+      setBusyId(null);
+      if (!res.ok) return setError(res.error);
+      setNotice({
+        text: t("resetSent", { email: u.email }),
+        link: res.data.debug_reset_url ? `/${locale}${res.data.debug_reset_url}` : undefined,
+      });
+    });
+  };
+
+  const onRevokeSessions = (u: AdminUserRow) => {
+    setError(null);
+    setNotice(null);
+    setBusyId(u.id);
+    start(async () => {
+      const res = await adminRevokeSessions(u.id);
+      setBusyId(null);
+      if (!res.ok) return setError(res.error);
+      setNotice({ text: t("sessionsRevoked", { username: u.username }) });
     });
   };
 
@@ -263,6 +293,22 @@ export function UsersClient({
         </div>
       )}
 
+      {notice && (
+        <div
+          className="badge badge-success"
+          role="status"
+          style={{ padding: "8px 12px", fontSize: 12, marginBottom: 12, gap: 6 }}
+        >
+          <span className="ms ms-sm">check_circle</span>
+          {notice.text}
+          {notice.link && (
+            <a className="mono" href={notice.link} style={{ marginInlineStart: 6 }}>
+              {notice.link}
+            </a>
+          )}
+        </div>
+      )}
+
       {tab === "users" && (
         <>
           <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
@@ -397,6 +443,28 @@ export function UsersClient({
                         </span>
                         {u.is_active_user ? t("deactivate") : t("activate")}
                       </button>
+                      {u.is_active_user && !isMe && (
+                        <>
+                          <button
+                            className="icon-btn"
+                            title={t("sendResetLink")}
+                            aria-label={t("sendResetLink")}
+                            onClick={() => onSendReset(u)}
+                            disabled={isBusy}
+                          >
+                            <span className="ms ms-sm">lock_reset</span>
+                          </button>
+                          <button
+                            className="icon-btn"
+                            title={t("signOutEverywhere")}
+                            aria-label={t("signOutEverywhere")}
+                            onClick={() => onRevokeSessions(u)}
+                            disabled={isBusy}
+                          >
+                            <span className="ms ms-sm">devices_off</span>
+                          </button>
+                        </>
+                      )}
                       {canDeleteUser && !isMe && (
                         <button
                           className="icon-btn icon-btn--danger"
