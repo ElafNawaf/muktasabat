@@ -264,7 +264,11 @@ def support_context(db: DbSession, user: CurrentUser):
 
 
 @router.get("/stats", response_model=TicketStats)
-def ticket_stats(db: DbSession, user: CurrentUser):
+def ticket_stats(db: DbSession, user: CurrentUser, requester_id: Optional[int] = Query(default=None, ge=1)):
+    if requester_id is not None and requester_id != user.id:
+        if not _may_act_for(db, user, requester_id):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied")
+        user = db.get(User, requester_id)
     staff = is_staff(db, user)
     base = select(SupportTicket)
     if not staff:
@@ -304,9 +308,15 @@ def list_tickets(
     status_: Optional[str] = Query(default=None, alias="status"),
     scope: str = Query(default="auto", pattern="^(auto|mine|all|assigned|unassigned)$"),
     q: Optional[str] = Query(default=None, max_length=100),
+    requester_id: Optional[int] = Query(default=None, ge=1),
 ):
-    """`status` accepts a single status or `active` (open + in progress + waiting)."""
+    """`status` accepts a single status or `active` (open + in progress + waiting).
+    `requester_id`: staff previewing a tenant/owner portal see that person's tickets."""
     staff = is_staff(db, user)
+    if requester_id is not None and requester_id != user.id:
+        if not _may_act_for(db, user, requester_id):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied")
+        scope, user = "mine", db.get(User, requester_id)
     stmt = select(SupportTicket).options(
         selectinload(SupportTicket.messages),
         selectinload(SupportTicket.user),
@@ -361,7 +371,14 @@ async def create_ticket(
     priority: TicketPriority = Form("normal"),
     page_url: Optional[str] = Form(default=None, max_length=500),
     file: Optional[UploadFile] = File(default=None),
+    on_behalf_of: Optional[int] = Form(default=None, ge=1),
 ):
+    staff_user = None
+    if on_behalf_of is not None and on_behalf_of != user.id:
+        # Staff previewing a tenant's portal file the ticket under the tenant's account (e.g. they phoned in).
+        if not _may_act_for(db, user, on_behalf_of):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Permission denied")
+        staff_user, user = user, db.get(User, on_behalf_of)
     now = utcnow()
     t = SupportTicket(
         user_id=user.id,
@@ -381,8 +398,8 @@ async def create_ticket(
     db.add(
         SupportTicketMessage(
             ticket_id=t.id,
-            author_id=user.id,
-            body=body.strip(),
+            author_id=(staff_user or user).id,
+            body=body.strip() if staff_user is None else f"{body.strip()}\n\n— سُجّلت نيابةً عن العميل بواسطة {_name(staff_user)} | Logged for the customer by {_name(staff_user)}",
             is_staff=False,
             attachment_key=key,
             attachment_url=url,
@@ -390,7 +407,7 @@ async def create_ticket(
             created_at=now,
         )
     )
-    _event(db, t, user, "created", new=priority, at=now)
+    _event(db, t, staff_user or user, "created", new=priority, at=now)
     db.commit()
 
     t = _load(db, t.id)
@@ -403,7 +420,16 @@ async def create_ticket(
         mail.send(t, TicketMail(kind="created_requester", to=user.email,
                                 url=_ticket_url(t, user.preferred_locale, user), for_requester=True,
                                 message=first), utcnow())
-    return _detail(t, user, is_staff(db, user))
+    viewer = staff_user or user
+    return _detail(t, viewer, is_staff(db, viewer))
+
+
+def _may_act_for(db: Session, staff: User, target_id: int) -> bool:
+    """Staff may act for a tenant whose portal they can preview (tenants.view), never for other staff."""
+    target = db.get(User, target_id)
+    if target is None or target.role != "tenant":
+        return False
+    return has_permission(db, staff, "tenants", "view")
 
 
 @router.post("/tickets/{ticket_id}/messages", response_model=TicketDetail)

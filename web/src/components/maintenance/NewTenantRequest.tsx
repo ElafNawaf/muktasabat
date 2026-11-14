@@ -8,7 +8,7 @@ import { WO_CATEGORY, type TenantUnit } from "@/lib/maintenance-labels";
 const CATS = ["plumbing", "electrical", "ac", "appliances", "carpentry", "painting", "pest", "cleaning", "structural", "elevator", "other"];
 
 /** Tenant: raise a maintenance request (unit, type, what's wrong, photos, visit time). */
-export function NewTenantRequest({ units, locale, open: startOpen }: { units: TenantUnit[]; locale: string; open?: boolean }) {
+export function NewTenantRequest({ units, locale, open: startOpen, asTenant, tenantName }: { units: TenantUnit[]; locale: string; open?: boolean; asTenant?: string; tenantName?: string }) {
   const t = (ar: string, en: string) => (locale === "ar" ? ar : en);
   const router = useRouter();
   const [open, setOpen] = useState(!!startOpen);
@@ -25,10 +25,10 @@ export function NewTenantRequest({ units, locale, open: startOpen }: { units: Te
   const fileRef = useRef<HTMLInputElement>(null);
 
   if (units.length === 0) {
-    return <p className="ow-muted">{t("لا يوجد لديك عقد ساري لرفع طلب صيانة. تواصل معنا على 920007039.", "You need a current lease to raise a maintenance request. Call us on 920007039.")}</p>;
+    return <p className="ow-muted">{asTenant ? t("لا يوجد لهذا المستأجر عقد ساري لرفع طلب صيانة.", "This tenant has no current lease to raise a request against.") : t("لا يوجد لديك عقد ساري لرفع طلب صيانة. تواصل معنا على 920007039.", "You need a current lease to raise a maintenance request. Call us on 920007039.")}</p>;
   }
   if (!open) {
-    return <button className="ow-btn" onClick={() => setOpen(true)}><span className="ms ms-sm">add</span>{t("طلب صيانة جديد", "New maintenance request")}</button>;
+    return <button className="ow-btn" onClick={() => setOpen(true)}><span className="ms ms-sm">add</span>{asTenant ? t("تسجيل طلب صيانة للمستأجر", "Log a request for this tenant") : t("طلب صيانة جديد", "New maintenance request")}</button>;
   }
 
   const submit = async () => {
@@ -43,18 +43,18 @@ export function NewTenantRequest({ units, locale, open: startOpen }: { units: Te
     if (time.trim()) fd.set("preferred_time", time.trim());
     fd.set("allow_entry", String(entry));
     files.forEach((f) => fd.append("photos", f));
-    const res = await fetch("/api/tenant/maintenance", { method: "POST", body: fd });
+    const res = await fetch(`/api/tenant/maintenance${asTenant ? `?as_tenant=${encodeURIComponent(asTenant)}` : ""}`, { method: "POST", body: fd });
     const d = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) return setErr(typeof d.detail === "string" ? d.detail : Array.isArray(d.detail) ? String(d.detail[0]?.msg) : t("تعذّر إرسال الطلب", "Couldn't send the request"));
-    router.push(`/${locale}/tenant/maintenance/${d.id}`);
+    router.push(`/${locale}/tenant/maintenance/${d.id}${asTenant ? `?as=${asTenant}` : ""}`);
     router.refresh();
   };
 
   return (
     <section className="ow-card mw-new">
       <header className="mw-new__h">
-        <h2 className="ow-h2">{t("طلب صيانة جديد", "New maintenance request")}</h2>
+        <h2 className="ow-h2">{asTenant ? t(`طلب صيانة نيابةً عن ${tenantName ?? "المستأجر"}`, `Request on behalf of ${tenantName ?? "the tenant"}`) : t("طلب صيانة جديد", "New maintenance request")}</h2>
         <button className="icon-btn" onClick={() => setOpen(false)} aria-label={t("إغلاق", "Close")}><span className="ms">close</span></button>
       </header>
 

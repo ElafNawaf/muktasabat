@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { ConfirmDialog, Modal } from "@/components/Modal";
 import {
@@ -113,6 +114,8 @@ export function ContractsClient({
   };
 
   const [search, setSearch] = useState("");
+  // Deep link from payments / collections: /contracts?q=<lease number>
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get("q"); if (q) setSearch(q); }, []);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [buildingFilter, setBuildingFilter] = useState("all");

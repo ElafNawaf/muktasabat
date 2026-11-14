@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
@@ -12,7 +13,7 @@ import { colActions, colAddAction } from "@/lib/renewal-actions";
 type Bucket = "upcoming" | "d1_30" | "d31_60" | "d61_90" | "d90p";
 export type CRow = {
   payment_id: number; contract_number?: string | null; amount: number; due_date: string; days_overdue: number; bucket: Bucket;
-  tenant?: string | null; tenant_phone?: string | null; building_id?: number | null; building?: string | null; unit?: string | null; owner?: string | null;
+  tenant_id?: number | null; owner_id?: number | null; contract_id?: number | null; tenant?: string | null; tenant_phone?: string | null; building_id?: number | null; building?: string | null; unit?: string | null; owner?: string | null;
   assignee_id?: number | null; assignee?: string | null; actions: number; last_action?: string | null; last_action_at?: string | null;
   promise_date?: string | null; promise_amount?: number | null; promise_state?: "broken" | "today" | "pending" | null;
   escalated: boolean; disputed: boolean;
@@ -67,6 +68,10 @@ export function CollectionsClient({ locale, rows, stats, canEdit }: { locale: st
         <div>
           <h2 className="page-title">{T("التحصيل", "Collections")}</h2>
           <div className="page-subtitle">{T("الدفعات المتأخرة والمستحقة خلال أسبوع، مع سجل المتابعة ووعود السداد. الوعود التي فات موعدها تظهر أولًا.", "Overdue instalments and those due this week, with the follow-up log and promises to pay. Missed promises come first.")}</div>
+        </div>
+        <div className="xl-links">
+          <Link className="btn btn-secondary" href={`/${locale}/payments?status=overdue`}><span className="ms ms-sm">payments</span>{T("كل الدفعات المتأخرة", "All overdue payments")}</Link>
+          <Link className="btn btn-secondary" href={`/${locale}/renewals`}><span className="ms ms-sm">autorenew</span>{T("تجديد العقود", "Renewals")}</Link>
         </div>
       </div>
 
@@ -179,6 +184,13 @@ function Drawer({ r, locale, canEdit, sar, onClose }: { r: CRow; locale: string;
   return (
     <Modal open onClose={onClose} size="lg" title={`${r.tenant || "—"} — ${sar(r.amount)}`} subtitle={`${r.contract_number ?? ""} · ${r.building ?? ""}${r.unit ? ` · ${T("وحدة", "Unit")} ${r.unit}` : ""}${r.owner ? ` · ${T("المالك", "Owner")}: ${r.owner}` : ""}`}>
       <div className="mx-detail">
+        <nav className="xl-related" aria-label={T("روابط ذات صلة", "Related")}>
+          {r.tenant_id && <Link href={`/${locale}/tenants/${r.tenant_id}`}><span className="ms ms-sm" aria-hidden>person</span>{T("ملف المستأجر", "Tenant profile")}</Link>}
+          {r.contract_id && <Link href={`/${locale}/payments?contract=${r.contract_id}&open=${r.payment_id}`}><span className="ms ms-sm" aria-hidden>payments</span>{T("جدول دفعات العقد", "Lease payment schedule")}</Link>}
+          {r.contract_number && <Link href={`/${locale}/contracts?q=${encodeURIComponent(r.contract_number)}`}><span className="ms ms-sm" aria-hidden>description</span>{T("العقد", "Lease")} {r.contract_number}</Link>}
+          {r.building_id && <Link href={`/${locale}/properties/${r.building_id}`}><span className="ms ms-sm" aria-hidden>domain</span>{T("العقار", "Property")}</Link>}
+          {r.owner_id && <Link href={`/${locale}/owners/${r.owner_id}`}><span className="ms ms-sm" aria-hidden>group</span>{T("المالك", "Owner")}</Link>}
+        </nav>
         <div className="mx-chips">
           <span className={`col-age col-age--${r.bucket}`}>{r.days_overdue > 0 ? T(`متأخرة ${r.days_overdue} يوم`, `${r.days_overdue} days overdue`) : T(`تستحق ${r.due_date}`, `Due ${r.due_date}`)}</span>
           {r.promise_date && <span className={`mx-sla ${r.promise_state === "broken" ? "mx-sla--breached" : "mx-sla--on_track"}`}>{T("وعد بالسداد", "Promise")} {r.promise_date}{r.promise_amount ? ` · ${sar(r.promise_amount)}` : ""}</span>}

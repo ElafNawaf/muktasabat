@@ -155,6 +155,16 @@ def _hr_people(db: Session, user: User, n: N, base: str) -> None:
     for c in db.scalars(select(HrContract).where(HrContract.user_id == user.id, HrContract.status == "pending_acceptance")).all():
         n.add(f"hrc:{c.id}:{c.sent_at}", "hr", "contract_edit", "warn", ("عقد عمل بانتظار موافقتك", "An employment contract needs your review"),
               c.number, c.sent_at, f"{base}/my-hr/file?tab=contracts", urgent=True)
+    try:
+        from api.routers.hr_people import needs_signed
+        for c in db.scalars(select(HrContract).where(HrContract.user_id == user.id, HrContract.status == "accepted")).all():
+            if needs_signed(db, c):
+                back = c.signed_status == "rejected"
+                n.add(f"hrs:{c.id}:{c.signed_reviewed_at or c.accepted_at}", "hr", "upload_file", "bad" if back else "warn",
+                      ("أعد رفع العقد الموقّع", "Re-upload your signed contract") if back else ("ارفع نسخة العقد الموقّعة", "Upload your signed contract"),
+                      c.signed_note or c.number, c.signed_reviewed_at or c.accepted_at, f"{base}/my-hr/contracts/{c.id}", urgent=back)
+    except Exception:
+        db.rollback()
     for a in db.scalars(select(HrAsset).where(HrAsset.assigned_user_id == user.id, HrAsset.acknowledged_at.is_(None))).all():
         n.add(f"hra:{a.id}:{a.assigned_at}", "hr", "inventory_2", "warn", ("أكّد استلام عهدة", "Confirm receipt of an asset"),
               f"{a.name} · {a.tag}", a.assigned_at, f"{base}/my-hr/file?tab=assets")
@@ -165,6 +175,10 @@ def _hr_people(db: Session, user: User, n: N, base: str) -> None:
             if dt and dt <= today + timedelta(days=30):
                 n.add(f"hrx:{k}:{dt}", "hr", "badge", "bad" if dt < today else "warn", t, str(dt), dt, f"{base}/my-hr/file?tab=personal", urgent=dt < today)
     if has_permission(db, user, "hr", "approve"):
+        for c in db.scalars(select(HrContract).where(HrContract.signed_status == "uploaded", HrContract.user_id != user.id)).all():
+            emp = db.get(User, c.user_id)
+            n.add(f"hrv:{c.id}:{c.signed_uploaded_at}", "hr", "verified", "warn", ("عقد موقّع بانتظار التحقق", "Signed contract to verify"),
+                  f"{c.number} · {_uname(emp, 'ar' if n.ar else 'en')}", c.signed_uploaded_at, f"{base}/my-hr/contracts/{c.id}", urgent=True)
         for pr in db.scalars(select(HrPersonal).where(HrPersonal.pending_iban.is_not(None), HrPersonal.user_id != user.id)).all():
             emp = db.get(User, pr.user_id)
             n.add(f"hrb:{pr.user_id}:{pr.pending_bank_at}", "hr", "account_balance", "warn", ("طلب تغيير حساب بنكي", "Bank account change to approve"),
