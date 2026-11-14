@@ -12,7 +12,7 @@ export async function OwnerShowcase({ locale, full = false }: { locale: string; 
   return (
     <section className={`mk-owners${full ? " mk-owners--full" : ""}`} aria-labelledby="owners-title">
       <div className="mk-wrap mk-owners__grid">
-        <div className="mk-owners__copy">
+        <div className="mk-owners__copy" data-reveal="right">
           {full ? <h1 id="owners-title" className="mk-display mk-display--md">{t("title")}</h1> : <h2 id="owners-title" className="mk-h2">{t("title")}</h2>}
           <p className="mk-lead">{t("lead")}</p>
           <div className="mk-hero__ctas">
@@ -21,7 +21,7 @@ export async function OwnerShowcase({ locale, full = false }: { locale: string; 
           </div>
         </div>
 
-        <figure className="mk-mock" aria-label={t("illustrative")} data-reveal="zoom">
+        <figure className="mk-mock" aria-label={t("illustrative")} data-reveal="zoom" data-tilt>
           <div className="mk-mock__bar"><span /><span /><span /></div>
           <div className="mk-mock__body" dir={ar ? "rtl" : "ltr"}>
             <div className="mk-mock__kpis">
@@ -41,9 +41,9 @@ export async function OwnerShowcase({ locale, full = false }: { locale: string; 
       </div>
 
       <div className="mk-wrap">
-        <ul className="mk-ofeatures">
+        <ul className="mk-ofeatures" data-stagger>
           {features.map(([icon, title, body]) => (
-            <li key={title}>
+            <li key={title} data-spot>
               <span className="ms" aria-hidden="true">{icon}</span>
               <h3>{title}</h3>
               <p>{body}</p>
@@ -61,8 +61,8 @@ export async function ProcessSteps({ locale }: { locale: string }) {
   return (
     <section className="mk-section mk-section--sand">
       <div className="mk-wrap">
-        <h2 className="mk-h2">{t("processTitle")}</h2>
-        <ol className="mk-steps" data-progress>
+        <h2 className="mk-h2" data-reveal>{t("processTitle")}</h2>
+        <ol className="mk-steps" data-progress data-stagger>
           {steps.map(([title, body]) => (
             <li key={title}>
               <h3>{title}</h3>

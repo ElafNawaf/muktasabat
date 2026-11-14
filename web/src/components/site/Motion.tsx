@@ -115,6 +115,14 @@ export function Motion() {
         spot.style.setProperty("--my", `${e.clientY - r.top}px`);
       }
       if (reduce) return;
+      // Magnetic CTAs: buttons lean a few pixels towards the cursor.
+      const mag = t?.closest<HTMLElement>(".mk-site .mk-btn, .mk-cine__search button[type='submit']");
+      if (mag) {
+        const r = mag.getBoundingClientRect();
+        const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
+        const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
+        mag.style.translate = `${(dx * 8).toFixed(1)}px ${(dy * 6).toFixed(1)}px`;
+      }
       const tilt = t?.closest<HTMLElement>("[data-tilt]");
       if (tilt) {
         const r = tilt.getBoundingClientRect();
@@ -125,6 +133,8 @@ export function Motion() {
       }
     };
     const onLeave = (e: PointerEvent) => {
+      const mag = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(".mk-site .mk-btn, .mk-cine__search button[type='submit']");
+      if (mag && !(e.relatedTarget instanceof Node && mag.contains(e.relatedTarget))) mag.style.translate = "";
       const tilt = (e.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-tilt]");
       if (tilt && !(e.relatedTarget instanceof Node && tilt.contains(e.relatedTarget))) tilt.style.rotate = "";
     };

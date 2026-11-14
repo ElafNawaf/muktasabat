@@ -26,7 +26,7 @@ export function ProjectCard({
   const title = pick(locale, project, "title");
   const city = pick(locale, project, "city");
   return (
-    <Link href={`/${locale}/projects/${project.slug}`} className={`mk-project${large && project.cover_url ? " mk-project--large" : ""}${project.cover_url ? "" : " mk-project--nophoto"}`}>
+    <Link href={`/${locale}/projects/${project.slug}`} className={`mk-project${large && project.cover_url ? " mk-project--large" : ""}${project.cover_url ? "" : " mk-project--nophoto"}`} data-reveal data-tilt data-spot>
       {project.cover_url ? (
         <div className="mk-project__media">
           {/* eslint-disable-next-line @next/next/no-img-element */}

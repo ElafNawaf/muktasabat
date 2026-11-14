@@ -60,6 +60,38 @@ export function HeroCinema(p: HeroCinemaProps) {
   // Photos / video get a dark veil + white type; the default artwork is a calm daylight scene.
   const hasMedia = hasSlides || !!p.video;
 
+  // Pointer-driven depth: the skyline layers, colour light and cursor glow
+  // follow the mouse (mouse only; off under reduced motion).
+  useEffect(() => {
+    const el = root.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--mx", (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3));
+        el.style.setProperty("--my", (((e.clientY - r.top) / r.height) * 2 - 1).toFixed(3));
+        el.style.setProperty("--gx", `${Math.round(e.clientX - r.left)}px`);
+        el.style.setProperty("--gy", `${Math.round(e.clientY - r.top)}px`);
+        el.classList.add("is-pointer");
+      });
+    };
+    const onLeave = () => {
+      el.classList.remove("is-pointer");
+      el.style.setProperty("--mx", "0");
+      el.style.setProperty("--my", "0");
+    };
+    el.addEventListener("pointermove", onMove, { passive: true });
+    el.addEventListener("pointerleave", onLeave);
+    return () => {
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerleave", onLeave);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   // Rotating property-type word.
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -140,6 +172,12 @@ export function HeroCinema(p: HeroCinemaProps) {
     >
       {/* ── Backdrop ── */}
       <div className="mk-cine__bg" aria-hidden="true">
+        <div className="mk-aurora">
+          <span className="mk-aurora__b mk-aurora__b--1" />
+          <span className="mk-aurora__b mk-aurora__b--2" />
+          <span className="mk-aurora__b mk-aurora__b--3" />
+          <span className="mk-aurora__b mk-aurora__b--4" />
+        </div>
         {hasSlides ? (
           p.slides.map((src, i) => (
             // eslint-disable-next-line @next/next/no-img-element
@@ -171,7 +209,20 @@ export function HeroCinema(p: HeroCinemaProps) {
         )}
         <div className="mk-cine__veil" />
         <div className="mk-cine__grain" />
+        <div className="mk-cine__glow" />
       </div>
+
+      <ul className="mk-floaters" aria-hidden="true">
+        {(p.locale === "ar"
+          ? [["contract", "عقود موثّقة في إيجار"], ["monitoring", "تقارير شهرية للملاك"], ["campaign", "تسويق يصل للمستأجر الصحيح"]]
+          : [["contract", "Leases registered on Ejar"], ["monitoring", "Monthly owner reports"], ["campaign", "Marketing that finds tenants"]]
+        ).map(([icon, text], i) => (
+          <li key={icon} className={`mk-floater mk-floater--${i + 1}`}>
+            <span className="ms">{icon}</span>
+            {text}
+          </li>
+        ))}
+      </ul>
 
       <div className="mk-wrap mk-cine__inner">
         <div className="mk-cine__copy">

@@ -66,7 +66,7 @@ export async function TrustStrip({ locale, site }: { locale: string; site: SiteD
             </p>
           )}
         </div>
-        <ul className="mk-trust__list">
+        <ul className="mk-trust__list" data-stagger>
           {items.map((i) => (
             <li key={i.icon}>
               <span className="ms" aria-hidden="true">{i.icon}</span>
@@ -86,7 +86,7 @@ export async function TrustStrip({ locale, site }: { locale: string; site: SiteD
 export async function ValuationBand({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "site.valuation" });
   return (
-    <section className="mk-valuation">
+    <section className="mk-valuation" data-spot>
       <div className="mk-wrap mk-valuation__inner">
         <div>
           <h2 className="mk-h2">{t("title")}</h2>

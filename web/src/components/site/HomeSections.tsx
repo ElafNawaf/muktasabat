@@ -15,10 +15,10 @@ export async function WhySection({ locale }: { locale: string }) {
   return (
     <section className="mk-section mk-why" aria-labelledby="why-h">
       <div className="mk-wrap mk-why__grid">
-        <div className="mk-why__intro">
+        <div className="mk-why__intro" data-reveal="right">
           <h2 id="why-h" className="mk-h2">{t("title")}</h2>
           <p className="mk-lead">{t("lead")}</p>
-          <div className="mk-offer">
+          <div className="mk-offer" data-tilt data-spot>
             <span className="ms mk-offer__icon" aria-hidden="true">real_estate_agent</span>
             <div>
               <h3>{t("ctaTitle")}</h3>
@@ -28,7 +28,7 @@ export async function WhySection({ locale }: { locale: string }) {
             <Shurfat className="mk-offer__motif" teeth={12} />
           </div>
         </div>
-        <ul className="mk-points">
+        <ul className="mk-points" data-stagger>
           {cards.map(([icon, title, body]) => (
             <li key={icon}>
               <span className="ms mk-points__icon" aria-hidden="true">{icon}</span>
@@ -51,11 +51,11 @@ export async function FaqSection({ locale, items: custom, title: customTitle }: 
   return (
     <section className="mk-section mk-faqsec" aria-labelledby="faq-h">
       <div className="mk-wrap mk-faqsec__grid">
-        <header>
+        <header data-reveal="right">
           <h2 id="faq-h" className="mk-h2">{customTitle ?? t("title")}</h2>
           <Shurfat className="mk-faqsec__motif" teeth={6} />
         </header>
-        <div className="mk-faq mk-faq--fancy">
+        <div className="mk-faq mk-faq--fancy" data-stagger>
           {items.map(([q, a], i) => (
             <details key={i} open={i === 0}>
               <summary>{q}</summary>
@@ -66,5 +66,36 @@ export async function FaqSection({ locale, items: custom, title: customTitle }: 
       </div>
       <JsonLd data={faqLd(items.map(([q, a]) => ({ q, a })))} />
     </section>
+  );
+}
+
+/** A slow, endless band of what we do — two rows drifting in opposite
+ *  directions, each item with its own accent colour. Pauses on hover; static
+ *  under reduced motion. Decorative (the same content is in Services). */
+export function Marquee({ locale }: { locale: string }) {
+  const ar = locale === "ar";
+  const a: [string, string][] = ar
+    ? [["apartment", "إدارة الأملاك"], ["key", "تأجير سكني"], ["storefront", "تأجير تجاري"], ["sell", "بيع العقارات"], ["contract", "عقود موثّقة في إيجار"], ["query_stats", "تقييم إيجاري مجاني"]]
+    : [["apartment", "Property management"], ["key", "Residential leasing"], ["storefront", "Commercial leasing"], ["sell", "Property sales"], ["contract", "Ejar-registered leases"], ["query_stats", "Free rent estimate"]];
+  const b: [string, string][] = ar
+    ? [["campaign", "تسويق عقاري احترافي"], ["payments", "تحصيل الإيجارات"], ["handyman", "صيانة وتشغيل"], ["monitoring", "تقارير شهرية للملاك"], ["verified_user", "مكتب مرخّص"], ["support_agent", "متابعة المستأجرين"]]
+    : [["campaign", "Professional marketing"], ["payments", "Rent collection"], ["handyman", "Maintenance"], ["monitoring", "Monthly owner reports"], ["verified_user", "Licensed office"], ["support_agent", "Tenant follow-up"]];
+  const Row = ({ items, reverse }: { items: [string, string][]; reverse?: boolean }) => (
+    <div className={`mk-mq__row${reverse ? " mk-mq__row--rev" : ""}`}>
+      <ul className="mk-mq__track">
+        {[...items, ...items, ...items, ...items].map(([icon, text], i) => (
+          <li key={i} className={`mk-mq__item mk-tone-${(i % 4) + 1}`}>
+            <span className="ms" aria-hidden="true">{icon}</span>
+            {text}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+  return (
+    <div className="mk-mq" aria-hidden="true">
+      <Row items={a} />
+      <Row items={b} reverse />
+    </div>
   );
 }

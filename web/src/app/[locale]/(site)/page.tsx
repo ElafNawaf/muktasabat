@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { Carousel } from "@/components/site/Carousel";
 import { OfficeMap, TrustStrip, ValuationBand } from "@/components/site/Company";
 import { HeroCinema } from "@/components/site/HeroCinema";
-import { FaqSection, WhySection } from "@/components/site/HomeSections";
+import { FaqSection, Marquee, WhySection } from "@/components/site/HomeSections";
 import { LeadForm } from "@/components/site/LeadForm";
 import { ListingCard } from "@/components/site/ListingCard";
 import { OwnerShowcase, ProcessSteps } from "@/components/site/OwnerShowcase";
@@ -80,6 +80,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         }}
       />
 
+      <Marquee locale={locale} />
+
       <div className="mk-wrap">
         <StatsRow
           locale={locale}
@@ -93,7 +95,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {home.listings.length > 0 && (
         <section className="mk-section mk-section--sand mk-latest">
           <div className="mk-wrap">
-            <header className="mk-sechead mk-sechead--row">
+            <header className="mk-sechead mk-sechead--row" data-reveal>
               <div>
                 <h2 className="mk-h2">{t("listings.latest")}</h2>
                 <p className="mk-lead">{t("listings.lead")}</p>
@@ -116,17 +118,17 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {home.services.length > 0 && (
         <section className="mk-section mk-svc" aria-labelledby="svc-h">
           <div className="mk-wrap">
-            <header className="mk-sechead mk-sechead--row">
+            <header className="mk-sechead mk-sechead--row" data-reveal>
               <div>
                 <h2 id="svc-h" className="mk-h2">{t("sections.servicesTitle")}</h2>
                 <p className="mk-lead">{t("sections.servicesLead")}</p>
               </div>
               <Link href={L("/services")} className="mk-link">{t("nav.services")}</Link>
             </header>
-            <ul className="mk-svclist">
+            <ul className="mk-svclist" data-stagger>
               {home.services.map((s) => (
                 <li key={s.id}>
-                  <Link href={L(`/services/${s.slug}`)} className="mk-svcrow">
+                  <Link href={L(`/services/${s.slug}`)} className="mk-svcrow" data-spot>
                     <span className="ms mk-svcrow__icon" aria-hidden="true">{s.icon || "home_work"}</span>
                     <span className="mk-svcrow__text">
                       <span className="mk-svcrow__title">{pick(locale, s, "title")}</span>
@@ -149,7 +151,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {home.projects.length > 0 && (
         <section className="mk-section">
           <div className="mk-wrap">
-            <header className="mk-sechead mk-sechead--row">
+            <header className="mk-sechead mk-sechead--row" data-reveal>
               <div>
                 <h2 className="mk-h2">{t("sections.projectsTitle")}</h2>
               </div>
@@ -178,7 +180,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {home.testimonials.length > 0 && (
         <section className="mk-section mk-section--sand">
           <div className="mk-wrap">
-            <header className="mk-sechead">
+            <header className="mk-sechead" data-reveal>
               <h2 className="mk-h2">{t("sections.testimonialsTitle")}</h2>
             </header>
             <Carousel label={t("sections.testimonialsTitle")} prevLabel={t("cinema.prev")} nextLabel={t("cinema.next")} className="mk-carousel--quotes">
@@ -247,7 +249,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {home.posts.length > 0 && (
         <section className="mk-section mk-section--sand">
           <div className="mk-wrap">
-            <header className="mk-sechead mk-sechead--row">
+            <header className="mk-sechead mk-sechead--row" data-reveal>
               <h2 className="mk-h2">{t("sections.newsTitle")}</h2>
               <Link href={L("/news")} className="mk-link">{t("sections.allNews")}</Link>
             </header>
@@ -287,7 +289,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <div>
             <h2 className="mk-h2">{t("sections.contactTitle")}</h2>
             <p className="mk-lead">{t("sections.contactLead")}</p>
-            <ul className="mk-contactlist">
+            <ul className="mk-contactlist" data-stagger>
               {site.phone && (
                 <li><span className="ms" aria-hidden="true">call</span><a href={`tel:${site.phone.replace(/\s/g, "")}`} dir="ltr">{site.phone}</a></li>
               )}
