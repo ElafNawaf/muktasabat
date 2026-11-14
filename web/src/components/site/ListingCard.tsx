@@ -57,8 +57,6 @@ export function ListingCard({ listing, locale, index = 0 }: { listing: Listing; 
     <Link
       href={`/${locale}/listings/${listing.slug}`}
       className={`mk-listing${closed ? " is-closed" : ""}${photo ? "" : " mk-listing--nophoto"}`}
-      data-reveal
-      data-spot
       style={{ ["--i" as string]: index % 8 }}
     >
       {photo ? (

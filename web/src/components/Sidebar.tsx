@@ -8,9 +8,8 @@ import { useState } from "react";
 import { BrandLogo } from "./BrandLogo";
 import { UserAvatar } from "./UserAvatar";
 import { useMobileNav } from "./MobileNavProvider";
-import { usePermissions } from "./PermissionsProvider";
+import { usePortalNav } from "./PortalNav";
 
-type NavItem = { id: string; href: string; icon: string; label: string; badge?: number };
 
 type AppRole = "admin" | "manager" | "viewer" | "owner";
 
@@ -40,63 +39,9 @@ export function Sidebar({
 
   const roleLabel = useTranslations("roles");
 
-  const { can } = usePermissions();
-  const isAdmin = user?.role === "admin";
   const L = (p: string) => `/${locale}/${p}`;
-
-  // Grouped by what the data is about: portfolio → contracts → money → running the company.
-  // Each item shows only when the user's role can view that module.
-  const v = (m: Parameters<typeof can>[0]) => isAdmin || can(m, "view");
-  type Item = NavItem & { show?: boolean };
-  const raw: { label: string; items: Item[] }[] = [
-    {
-      label: t("overview"),
-      items: [{ id: "dashboard", href: L("dashboard"), icon: "space_dashboard", label: t("dashboard"), show: v("dashboard") }],
-    },
-    {
-      label: t("portfolio"),
-      items: [
-        { id: "properties", href: L("properties"), icon: "domain", label: t("properties"), show: v("properties") },
-        { id: "owners", href: L("owners"), icon: "group", label: t("owners"), show: v("owners") },
-        { id: "tenants", href: L("tenants"), icon: "person", label: t("tenants"), show: v("tenants") },
-        { id: "agents", href: L("agents"), icon: "support_agent", label: t("agents"), show: v("agents") },
-      ],
-    },
-    {
-      label: t("contractsGroup"),
-      items: [
-        { id: "contracts", href: L("contracts"), icon: "description", label: t("leaseContracts"), show: v("contracts") },
-        { id: "management-contracts", href: L("management-contracts"), icon: "handshake", label: t("managementContracts"), show: v("management_contracts") },
-      ],
-    },
-    {
-      label: t("finance"),
-      items: [
-        { id: "payments", href: L("payments"), icon: "payments", label: t("payments"), show: v("payments") },
-        { id: "expenses", href: L("expenses"), icon: "receipt_long", label: t("expenses"), show: v("expenses") },
-      ],
-    },
-    {
-      label: t("management"),
-      items: [
-        { id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users"), show: isAdmin },
-        { id: "owner-access", href: L("owner-access"), icon: "key", label: t("ownerAccess"), show: v("owner_portal") },
-        { id: "website", href: L("website"), icon: "language", label: t("website"), show: v("website") },
-        { id: "data-management", href: L("data-management"), icon: "database", label: t("dataManagement"), show: v("data") },
-        { id: "email-log", href: L("email-log"), icon: "outgoing_mail", label: t("emailLog"), show: !!user?.is_super_admin },
-      ],
-    },
-    {
-      label: t("myAccount"),
-      items: [
-        { id: "account", href: L("account"), icon: "account_circle", label: t("profile") },
-        { id: "support", href: L("support"), icon: "support_agent", label: t("support") },
-      ],
-    },
-  ];
-  const sections: { label: string; items: NavItem[] }[] = raw
-    .map((sec) => ({ ...sec, items: sec.items.filter((it) => it.show !== false) }))
-    .filter((sec) => sec.items.length > 0);
+  // Menu definition is shared with the breadcrumb trail and the ⌘K palette.
+  const { sections, openPalette } = usePortalNav();
 
   const otherLocale = locale === "en" ? "ar" : "en";
   const displayName = user ? user.full_name || user.username : "—";
@@ -119,6 +64,12 @@ export function Sidebar({
           <span className="ms ms-sm">close</span>
         </button>
       </div>
+
+      <button type="button" className="sidebar-search" onClick={() => { closeMobile(); openPalette(); }}>
+        <span className="ms ms-sm" aria-hidden>search</span>
+        {!collapsed && <span className="sidebar-search__label">{locale === "ar" ? "انتقل إلى…" : "Go to…"}</span>}
+        {!collapsed && <kbd className="kbd">{locale === "ar" ? "Ctrl K" : "⌘K"}</kbd>}
+      </button>
 
       <nav className="sidebar-nav">
         {sections.map((s) => (

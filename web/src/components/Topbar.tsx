@@ -9,6 +9,7 @@ import { useLocale } from "next-intl";
 
 import { BrandLogo } from "./BrandLogo";
 import { useMobileNav } from "./MobileNavProvider";
+import { usePortalNav, useGoBack, useTrail } from "./PortalNav";
 import { useTheme } from "./ThemeProvider";
 import { UserAvatar } from "./UserAvatar";
 
@@ -28,6 +29,7 @@ export function Topbar({
   const t = useTranslations("common");
   const { theme, toggle } = useTheme();
   const { toggle: toggleMobileNav } = useMobileNav();
+  const { openPalette } = usePortalNav();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -78,8 +80,13 @@ export function Topbar({
       <Link href={`/${locale}/dashboard`} className="topbar-brand" aria-label="شركة مكتسبات العقارية · Muktasabat Real Estate">
         <span className="brand-mark"><BrandLogo size={24} /></span>
       </Link>
-      <h1>{title}</h1>
-      <div style={{ flex: 1 }} />
+      <NavTrail title={title} />
+
+      <button className="tb-search" onClick={openPalette} aria-label={locale === "ar" ? "الانتقال السريع" : "Quick navigation"}>
+        <span className="ms ms-sm" aria-hidden>search</span>
+        <span className="tb-search__label">{locale === "ar" ? "ابحث أو انتقل إلى صفحة" : "Search or jump to a page"}</span>
+        <kbd className="kbd">{locale === "ar" ? "Ctrl K" : "⌘K"}</kbd>
+      </button>
 
       <button className="icon-btn" onClick={toggle} title="Theme" aria-label="Toggle theme">
         <span className="ms">{theme === "light" ? "dark_mode" : "light_mode"}</span>
@@ -138,5 +145,33 @@ export function Topbar({
         )}
       </div>
     </header>
+  );
+}
+
+/** Back button + breadcrumb trail (desktop) / page title (phone). */
+function NavTrail({ title }: { title: string }) {
+  const locale = useLocale();
+  const ar = locale === "ar";
+  const { crumbs, parent } = useTrail(title);
+  const goBack = useGoBack(parent);
+  const isHome = crumbs.length <= 1;
+  return (
+    <div className="navtrail">
+      {!isHome && (
+        <button type="button" className="navtrail-back" onClick={goBack} aria-label={ar ? "رجوع" : "Back"} title={ar ? "رجوع" : "Back"}>
+          <span className="ms ms-sm flip-rtl" aria-hidden>arrow_back</span>
+        </button>
+      )}
+      <nav aria-label={ar ? "مسار التنقل" : "Breadcrumb"} className="navtrail-crumbs">
+        <ol>
+          {crumbs.map((c, i) => (
+            <li key={i}>
+              {c.href ? <Link href={c.href}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}
+            </li>
+          ))}
+        </ol>
+      </nav>
+      <h1 className="navtrail-title">{title}</h1>
+    </div>
   );
 }

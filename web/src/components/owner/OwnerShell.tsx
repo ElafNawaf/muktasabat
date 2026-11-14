@@ -83,7 +83,25 @@ export function OwnerShell({
           })}
         </nav>
       </header>
-      <main className="ow-wrap ow-main">{children}</main>
+      <main className="ow-wrap ow-main">
+        {(() => {
+          // Detail pages (e.g. a support ticket) get a Back control to their section.
+          const section = NAV.filter((n) => n.href).find((n) => path.startsWith(base + n.href + "/"));
+          if (!section) return null;
+          const to = base + section.href + qs;
+          return (
+            <button
+              type="button"
+              className="ow-backbtn"
+              onClick={() => (window.history.length > 1 ? router.back() : router.push(to))}
+            >
+              <span className="ms ms-sm" style={{ transform: ar ? "scaleX(-1)" : undefined }} aria-hidden>arrow_back</span>
+              {ar ? `رجوع إلى ${section.ar}` : `Back to ${section.en}`}
+            </button>
+          );
+        })()}
+        <div className="route-fade" key={path}>{children}</div>
+      </main>
       <footer className="ow-wrap ow-foot">
         {ar
           ? "الأرقام محدّثة لحظياً من نظام إدارة الأملاك. لأي استفسار تواصل مع مدير حسابك أو على 920007039."

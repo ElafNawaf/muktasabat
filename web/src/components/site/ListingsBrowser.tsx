@@ -166,7 +166,7 @@ export function ListingsBrowser({ listings, locale }: { listings: Listing[]; loc
       {shown.length === 0 ? (
         <p className="mk-empty">{t("noMatch")}</p>
       ) : (
-        <div className="mk-listings" data-stagger>
+        <div className="mk-listings">
           {shown.map((l, i) => (
             <ListingCard key={l.id} listing={l} locale={locale} index={i} />
           ))}
