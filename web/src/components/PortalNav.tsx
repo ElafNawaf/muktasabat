@@ -61,6 +61,7 @@ export function usePortalNavSections(user: PortalUser | null): NavSection[] {
       label: t("finance"),
       items: [
         { id: "payments", href: L("payments"), icon: "payments", label: t("payments"), show: v("payments") },
+        { id: "collections", href: L("collections"), icon: "savings", label: t("collections"), show: v("payments") },
         { id: "expenses", href: L("expenses"), icon: "receipt_long", label: t("expenses"), show: v("expenses") },
       ],
     },

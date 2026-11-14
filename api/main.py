@@ -46,6 +46,7 @@ from api.routers import (
     maintenance,
     renewals,
     approvals,
+    collections,
     management,
     owners,
     payments,
@@ -221,6 +222,7 @@ app.include_router(maintenance.owner_router, prefix=API_V1)
 app.include_router(renewals.router, prefix=API_V1)
 app.include_router(renewals.owner_router, prefix=API_V1)
 app.include_router(approvals.router, prefix=API_V1)
+app.include_router(collections.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)

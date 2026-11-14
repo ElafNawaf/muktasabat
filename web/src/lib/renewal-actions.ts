@@ -31,3 +31,20 @@ export async function rnAction(id: number, action: "assign" | "contact" | "offer
 export async function ownerRnDecision(id: number, approve: boolean, note?: string) {
   return call(() => api.post(`/api/v1/owner-portal/renewals/${id}/decision`, { approve, note }));
 }
+
+export async function colActions(paymentId: number) {
+  return call(() => api.get(`/api/v1/collections/${paymentId}/actions`));
+}
+export async function colAddAction(paymentId: number, body: Record<string, unknown>) {
+  try {
+    const data = await api.post(`/api/v1/collections/${paymentId}/actions`, body);
+    revalidatePath("/[locale]/(app)/collections", "page");
+    return { ok: true as const, data };
+  } catch (e) {
+    if (e instanceof ApiError) {
+      const d = (e.body as { detail?: unknown } | undefined)?.detail;
+      return { ok: false as const, error: typeof d === "string" ? d : `Error ${e.status}` };
+    }
+    return { ok: false as const, error: String(e) };
+  }
+}
