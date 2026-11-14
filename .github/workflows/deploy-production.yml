@@ -109,6 +109,19 @@ jobs:
           fi
           REMOTE
 
+      - name: Support inbox (SUPPORT_EMAIL)
+        # Inbox for new support-ticket alerts. Kept in the repository secret
+        # SUPPORT_EMAIL (not in this public file); set or replaced in the
+        # runtime .env when present. Empty → alerts go to all active admins.
+        env:
+          SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL }}
+        run: |
+          if [ -z "$SUPPORT_EMAIL" ]; then echo "SUPPORT_EMAIL secret not set — leaving .env unchanged"; exit 0; fi
+          case "$SUPPORT_EMAIL" in *[!A-Za-z0-9@._,+-]*) echo "::error::SUPPORT_EMAIL has unexpected characters"; exit 1;; esac
+          $SSH "cd $RUNTIME && cp .env .env.bak-support-\$(date +%Y%m%d%H%M%S) && \
+                (grep -q '^SUPPORT_EMAIL=' .env && sed -i 's|^SUPPORT_EMAIL=.*|SUPPORT_EMAIL=$SUPPORT_EMAIL|' .env || echo 'SUPPORT_EMAIL=$SUPPORT_EMAIL' >> .env) && \
+                grep -c '^SUPPORT_EMAIL=' .env"
+
       - name: Preflight — boot the new API next to the live one
         # Starts the NEW image with the live container's env + network and waits
         # for "Application startup complete". Startup runs the CMS table creation
