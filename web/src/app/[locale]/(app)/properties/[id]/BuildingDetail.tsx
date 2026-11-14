@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ImageGalleryEditor } from "@/components/ImageGalleryEditor";
+import { CustomFieldsCard } from "@/components/forms/CustomFields";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { UNIT_STATUS, buildingTypeIcon, buildingTypeText, residenceText, type UnitStatus } from "@/lib/building-types";
 import { localizedCity, localizedDistrict } from "@/lib/filters";
@@ -310,6 +311,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
 
       {tab === "details" && (
         <section className="bd-panel bd-two" key="details">
+          <CustomFieldsCard entity="building" id={ov.id} locale={locale} className="card" />
           <div className="card">
             <h3 className="bd-h3">{t("الموقع والعنوان الوطني", "Location & national address")}</h3>
             <dl className="bd-dl">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { PortalAccessCard } from "@/components/PortalAccessCard";
+import { CustomFieldsCard } from "@/components/forms/CustomFields";
 import { usePermissions } from "@/components/PermissionsProvider";
 import { buildingTypeText } from "@/lib/building-types";
 import { localizedCity, localizedDistrict } from "@/lib/filters";
@@ -218,6 +219,7 @@ export function OwnerProfile({ ov, owner, agents, locale }: { ov: OwnerOverview;
             {can("management_contracts", "view") && <Link className="bd-link" href={`/${locale}/management-contracts`}>{t("عقود الإدارة", "Management contracts")}</Link>}
           </section>
 
+          <CustomFieldsCard entity="owner" id={ov.id} locale={locale} />
           <section className="card tp2-card">
             <h3 className="bd-h3">{t("الحساب البنكي", "Bank account")}</h3>
             <dl className="bd-dl">

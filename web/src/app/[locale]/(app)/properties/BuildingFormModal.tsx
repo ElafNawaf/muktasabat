@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useCustomFields } from "@/components/forms/CustomFields";
+import { useLocale as useCfLocale } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { BilingualField } from "@/components/BilingualField";
@@ -75,6 +77,8 @@ export function BuildingFormModal({
     notes_ar: building?.notes_ar ?? "",
   }));
   const [error, setError] = useState<string | null>(null);
+  const cfLocale = useCfLocale();
+  const cf = useCustomFields("building", building?.id, cfLocale);
   const [pending, start] = useTransition();
 
   const set = <K extends keyof BuildingInput>(k: K, v: BuildingInput[K]) =>
@@ -137,12 +141,18 @@ export function BuildingFormModal({
       notes_en: notes.en,
       notes_ar: notes.ar,
     };
+    if (cf.missing.length) return setError((cfLocale === "ar" ? "أكمل الحقول المطلوبة: " : "Fill in: ") + cf.missing.map((f) => (cfLocale === "ar" ? f.label_ar : f.label_en || f.label_ar)).join("، "));
     start(async () => {
       const res = isEdit && building
         ? await updateBuilding(building.id, payload)
         : await createBuilding(payload);
       if (!res.ok) {
         setError(res.error);
+        return;
+      }
+      const cfErr = await cf.save(res.data.id);
+      if (cfErr) {
+        setError(cfErr);
         return;
       }
       onClose();
@@ -475,6 +485,7 @@ export function BuildingFormModal({
             onChangeAr={(v) => set("notes_ar", v)}
           />
         </CollapsibleSection>
+        {cf.node}
       </form>
     </Modal>
   );

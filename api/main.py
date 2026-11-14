@@ -52,10 +52,12 @@ from api.routers import (
     hr,
     hr_people,
     hr_contracts,
+    hr_sites,
     tenant_portal,
     entity_overview,
     people_overview,
     previews,
+    forms,
     notifications,
     owner_portal_detail,
     management,
@@ -119,6 +121,9 @@ async def lifespan(app: FastAPI):
     with SessionLocal() as db:
         seed_companies(db)
         seed_templates(db)
+        from api.routers.hr import seed_sites
+
+        seed_sites(db)
 
     with SessionLocal() as db:
         seed_default_roles(db)
@@ -248,6 +253,7 @@ API_V1 = "/api/v1"
 app.include_router(entity_overview.router, prefix=API_V1)
 app.include_router(people_overview.router, prefix=API_V1)
 app.include_router(previews.router, prefix=API_V1)
+app.include_router(forms.router, prefix=API_V1)
 app.include_router(notifications.router, prefix=API_V1)
 app.include_router(auth.router, prefix=API_V1)
 # Self-service profile / credentials / sessions + support tickets
@@ -275,6 +281,7 @@ app.include_router(collections.router, prefix=API_V1)
 app.include_router(hr.router, prefix=API_V1)
 app.include_router(hr_people.router, prefix=API_V1)
 app.include_router(hr_contracts.router, prefix=API_V1)
+app.include_router(hr_sites.router, prefix=API_V1)
 app.include_router(tenant_portal.router, prefix=API_V1)
 app.include_router(owner_portal_detail.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)

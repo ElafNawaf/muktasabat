@@ -1,5 +1,6 @@
 "use client";
 
+import { formApprove, formReject } from "@/lib/forms-actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -7,13 +8,13 @@ import { useState, useTransition } from "react";
 import { markOwnerTransferred } from "@/lib/actions";
 import { decideApproval } from "@/lib/workflow-actions";
 
-type Kind = "work_order" | "renewal" | "payout" | "hr" | "bank" | "expense";
+type Kind = "work_order" | "renewal" | "payout" | "hr" | "bank" | "expense" | "form";
 export type ChainStep = { step: number; label: string; approver: string; status: string; decided_by?: string | null; on_behalf?: boolean; decided_at?: string | null; overdue?: boolean; escalated?: boolean };
 export type Item = {
   kind: Kind; id: number; ref?: string | null; title?: string | null; where: string; owner?: string | null;
   amount?: number | null; limit?: number | null; current?: number | null; gross?: number | null; change_pct?: number | null;
   since?: string | null; due?: string | null; days_late?: number; days_left?: number; priority?: string;
-  waiting_on: "owner" | "company"; urgent: boolean; href: string; hr_kind?: "leave" | "permission" | "ticket" | "work_location"; reason?: string | null;
+  waiting_on: "owner" | "company"; urgent: boolean; href: string; hr_kind?: "leave" | "permission" | "ticket" | "work_location"; reason?: string | null; requested_by?: string | null;
   step?: number; steps?: number; step_label?: string; on_behalf?: boolean; overdue?: boolean; escalated?: boolean; chain?: ChainStep[];
   category?: string; vendor?: string | null;
 };
@@ -31,6 +32,7 @@ const KIND: Record<Kind, { icon: string; ar: string; en: string }> = {
   hr: { icon: "badge", ar: "طلبات الموظفين", en: "Staff requests" },
   bank: { icon: "account_balance_wallet", ar: "تغيير حساب الراتب", en: "Salary account change" },
   expense: { icon: "receipt_long", ar: "اعتماد مصروف", en: "Expense approval" },
+  form: { icon: "dynamic_form", ar: "تعديل نموذج", en: "Form change" },
 };
 const HR_KIND: Record<string, [string, string, string]> = {
   leave: ["beach_access", "طلب إجازة", "Leave request"], permission: ["schedule", "طلب استئذان", "Permission request"], ticket: ["flight", "طلب تذكرة سفر", "Travel ticket request"],
@@ -160,6 +162,9 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
     });
   }
   const decide = (approve: boolean) => {
+    if (i.kind === "form") {
+      return run(() => (approve ? formApprove(i.id, note || undefined, locale) : formReject(i.id, note || (locale === "ar" ? "رُفض من صندوق الموافقات" : "Rejected from the approvals inbox"))), approve ? T("اعتُمد وطُبّق", "Approved & applied") : T("تم الرفض", "Rejected"));
+    }
     setErr(null);
     start(async () => {
       const r = await decideApproval(i.kind, i.id, approve, note || undefined);
@@ -193,7 +198,7 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
           {i.kind === "expense" && <>{T("المبلغ", "Amount")} <strong>{sar(i.amount)}</strong> {i.vendor && <span className="text-sec">· {i.vendor}</span>}</>}
           {i.kind === "payout" && <>{T("صافي المالك ≈", "Owner net ≈")} <strong>{sar(i.amount)}</strong> <span className="text-sec">· {T("من دفعة", "from")} {sar(i.gross)} · {T("الاستحقاق", "due")} {i.due}</span></>}
         </div>
-        {i.kind === "hr" && i.reason && <p className="ap-hint text-sec">{i.reason}</p>}
+        {(i.kind === "hr" || i.kind === "form") && i.reason && <p className="ap-hint text-sec">{i.kind === "form" && i.requested_by ? `${i.requested_by}: ` : ""}{i.reason}</p>}
         {i.chain && i.chain.length > 1 && (
           <ol className="ap-chain" aria-label={T("مسار الاعتماد", "Approval chain")}>
             {i.chain.map((c) => (

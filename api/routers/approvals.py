@@ -78,6 +78,7 @@ def inbox(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^
         "hr": staff,
         "bank": staff,
         "expense": staff,
+        "form": bool(getattr(user, "is_super_admin", False)),
     }
     from api.routers import maintenance as m_r, renewals as r_r, hr as hr_r, expenses as e_r
 
@@ -177,6 +178,19 @@ def inbox(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^
                 "kind": "expense", "id": e.id, "ref": e.receipt_number, "title": desc, "where": where or (e.vendor_name or ""),
                 "owner": owner, "owner_id": owner_id, "amount": e.amount, "category": e.category, "paid_by": e.paid_by,
                 "vendor": e.vendor_name, "since": _iso(e.created_at), "urgent": st["overdue"], "href": f"expenses?open={e.id}", **st,
+            })
+
+    if can["form"]:
+        from api.form_models import FormChangeRequest
+        from api.routers.forms import ENTITIES as _FE
+
+        for r in db.scalars(select(FormChangeRequest).where(FormChangeRequest.status == "pending")).all():
+            e = _FE.get(r.entity, {})
+            items.append({
+                "kind": "form", "id": r.id, "ref": r.number, "title": (e.get("ar") if locale == "ar" else e.get("en")) or r.entity,
+                "where": f"{len(r.changes or [])} " + ("تغيير" if locale == "ar" else "change(s)"), "owner": None, "owner_id": None,
+                "requested_by": r.requested_by, "reason": r.reason, "since": _iso(r.created_at), "waiting_on": "company",
+                "urgent": False, "href": f"forms?entity={r.entity}&request={r.id}",
             })
 
     def sort_key(i: dict):

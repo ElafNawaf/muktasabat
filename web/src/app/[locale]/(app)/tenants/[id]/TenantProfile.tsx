@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { PortalAccessCard } from "@/components/PortalAccessCard";
+import { CustomFieldsCard } from "@/components/forms/CustomFields";
 import { usePermissions } from "@/components/PermissionsProvider";
 import type { Tenant } from "@/lib/types";
 
@@ -142,6 +143,7 @@ export function TenantProfile({ ov, tenant, locale }: { ov: TenantOverview; tena
         <aside className="tp2-side">
           <PortalAccessCard kind="tenant" id={ov.id} name={name} email={ov.email} phone={ov.phone} portal={ov.portal} locale={locale} />
 
+          <CustomFieldsCard entity="tenant" id={ov.id} locale={locale} />
           <section className="card tp2-card">
             <h3 className="bd-h3">{t("البيانات الشخصية", "Identity & contact")}</h3>
             <dl className="bd-dl">
