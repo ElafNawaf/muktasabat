@@ -193,7 +193,7 @@ def inbox(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^
                 "urgent": False, "href": f"forms?entity={r.entity}&request={r.id}",
             })
 
-    if can["hr"]:
+    if has_permission(db, user, "hr", "approve"):
         from api.models import User as _U2
         from api.payroll_models import EmployeeLoan, PayrollRun, Payslip
         from api.routers.hr import _uname as _un
