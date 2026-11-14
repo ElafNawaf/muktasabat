@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-import { reportPayment, setEmailReminders } from "@/lib/tenant-actions";
+import { setEmailReminders } from "@/lib/tenant-actions";
 
 const T = (l: string, ar: string, en: string) => (l === "ar" ? ar : en);
 
@@ -28,22 +28,28 @@ export function ReportPaid({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setError(null);
+    if (!String(f.get("reference") || "").trim()) return setError(T(locale, "أدخل رقم الإيصال أو الحوالة.", "Enter the receipt or transfer number."));
+    if (!file) return setError(T(locale, "أرفق صورة الإيصال أو الحوالة.", "Attach the receipt or transfer slip."));
+    if (file.size > 10 * 1024 * 1024) return setError(T(locale, "حجم المرفق يجب ألا يتجاوز 10 ميجابايت.", "The file must be 10 MB or smaller."));
+    f.delete("receipt");
+    f.set("receipt", file);
     start(async () => {
-      const res = await reportPayment(paymentId, {
-        paid_on: String(f.get("paid_on")),
-        amount: Number(f.get("amount")),
-        method: f.get("method") as "bank_transfer" | "cash" | "cheque",
-        reference: String(f.get("reference") || "") || undefined,
-        note: String(f.get("note") || "") || undefined,
-      });
-      if (!res.ok) return setError(res.error);
+      const res = await fetch(`/api/tenant/payments/${paymentId}/report`, { method: "POST", body: f });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        const msg = typeof d.detail === "string" ? d.detail : Array.isArray(d.detail) && d.detail[0]?.msg ? String(d.detail[0].msg) : T(locale, "تعذّر الإرسال، حاول مرة أخرى.", "Couldn't send — please try again.");
+        return setError(msg);
+      }
       setDone(true);
+      setFile(null);
       router.refresh();
     });
   }
@@ -77,7 +83,7 @@ export function ReportPaid({
         ) : (
           <form className="ow-dialog__body" onSubmit={submit}>
             <h2 id={`rp-${paymentId}`}>{T(locale, "إبلاغ عن سداد دفعة", "Tell us you've paid")}</h2>
-            <p className="ow-muted">{T(locale, "أدخل بيانات التحويل لنطابقها مع كشف الحساب.", "Add the transfer details so we can match it on our statement.")}</p>
+            <p className="ow-muted">{T(locale, "أدخل رقم الإيصال وأرفق صورة الإيصال أو الحوالة لنطابقها مع كشف الحساب.", "Enter the receipt number and attach the receipt or transfer slip so we can match it on our statement.")}</p>
             <div className="ow-fields">
               <label>
                 <span>{T(locale, "المبلغ المدفوع (ر.س)", "Amount paid (SAR)")}</span>
@@ -96,9 +102,20 @@ export function ReportPaid({
                 </select>
               </label>
               <label>
-                <span>{T(locale, "رقم العملية أو المرجع (اختياري)", "Transfer reference (optional)")}</span>
-                <input name="reference" maxLength={80} dir="ltr" autoComplete="off" />
+                <span>{T(locale, "رقم الإيصال / الحوالة", "Receipt / transfer number")} <b className="ow-req">*</b></span>
+                <input name="reference" maxLength={80} dir="ltr" autoComplete="off" required />
               </label>
+              <div className="ow-fields__wide">
+                <span className="ow-flabel">{T(locale, "إرفاق الإيصال أو الحوالة", "Attach the receipt or slip")} <b className="ow-req">*</b></span>
+                <input ref={fileRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                <button type="button" className={`ow-drop${file ? " has-file" : ""}`} onClick={() => fileRef.current?.click()}>
+                  <span className="ms">{file ? (file.type === "application/pdf" ? "picture_as_pdf" : "image") : "upload_file"}</span>
+                  <span>
+                    <strong>{file ? file.name : T(locale, "اختر ملفاً أو التقط صورة", "Choose a file or take a photo")}</strong>
+                    <small>{file ? `${(file.size / 1024 / 1024).toFixed(1)} MB · ${T(locale, "اضغط للتغيير", "tap to change")}` : T(locale, "PDF أو صورة، حتى 10 ميجابايت", "PDF or image, up to 10 MB")}</small>
+                  </span>
+                </button>
+              </div>
               <label className="ow-fields__wide">
                 <span>{T(locale, "ملاحظة (اختياري)", "Note (optional)")}</span>
                 <textarea name="note" rows={2} maxLength={1000} />

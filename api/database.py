@@ -440,6 +440,15 @@ def ensure_payment_owner_transfer_columns(engine) -> None:
     )
 
 
+def ensure_payment_report_receipt_columns(engine) -> None:
+    """Proof-of-payment attachment on tenant payment reports."""
+    _add_missing_columns(
+        engine,
+        "payment_reports",
+        [("receipt_key", "VARCHAR(255)"), ("receipt_url", "VARCHAR(500)"), ("receipt_name", "VARCHAR(255)")],
+    )
+
+
 def get_db():
     db = SessionLocal()
     try:

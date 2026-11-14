@@ -648,3 +648,13 @@ a.ow-feed__row:hover .ow-feed__body > span { color: var(--ow-maroon); }
   .ow-root--tenant .ow-tabbar { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 2px; }
   .ow-tabbar a { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* "I've paid" — required receipt attachment */
+.ow-req { color: #b42318; }
+.ow-flabel { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.ow-drop { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border: 1.5px dashed var(--ow-line); border-radius: 12px; background: #faf8f4; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+.ow-drop .ms { font-size: 28px; color: var(--ow-maroon); }
+.ow-drop strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.ow-drop small { color: var(--ow-mute); font-size: 12px; }
+.ow-drop.has-file { border-style: solid; border-color: var(--ow-ok); background: var(--ow-ok-bg); }
+.ow-drop.has-file .ms { color: var(--ow-ok); }

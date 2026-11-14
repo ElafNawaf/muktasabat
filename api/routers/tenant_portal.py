@@ -16,6 +16,7 @@ or reject it with a reason the tenant sees.
 from __future__ import annotations
 
 import hashlib
+import io
 import logging
 import re
 import secrets
@@ -23,7 +24,7 @@ from datetime import date, datetime, timedelta, timezone
 from html import escape
 from typing import Annotated, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
@@ -166,6 +167,8 @@ def _payment_json(p: Payment, c: Contract, rep: Optional[PaymentReport], today: 
             "reference": rep.reference,
             "sent_at": rep.created_at.isoformat(),
             "review_note": rep.review_note,
+            "receipt_url": rep.receipt_url,
+            "receipt_name": rep.receipt_name,
         },
     }
 
@@ -335,24 +338,67 @@ def _own_payment(db: Session, tenant_id: int, payment_id: int) -> Payment:
     return p
 
 
+RECEIPT_MAX_BYTES = 10 * 1024 * 1024
+RECEIPT_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp"}
+
+
 @router.post("/payments/{payment_id}/report")
-def report_payment(payment_id: int, payload: ReportIn, scope: ScopeDep, db: DbSession, user: CurrentUser, locale: LocaleDep):
+async def report_payment(
+    payment_id: int,
+    scope: ScopeDep,
+    db: DbSession,
+    user: CurrentUser,
+    locale: LocaleDep,
+    paid_on: Annotated[date, Form()],
+    amount: Annotated[float, Form(gt=0, le=10_000_000)],
+    reference: Annotated[str, Form(min_length=1, max_length=80)],
+    receipt: Annotated[UploadFile, File()],
+    method: Annotated[Literal["bank_transfer", "cash", "cheque"], Form()] = "bank_transfer",
+    note: Annotated[Optional[str], Form(max_length=1000)] = None,
+):
+    """Tenant reports an instalment as paid: date, amount, receipt / transfer number and the proof (required)."""
     if scope.preview:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Staff preview is read-only")
+    try:
+        paid_on = ReportIn(paid_on=paid_on, amount=amount).paid_on
+    except Exception:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The payment date can't be in the future")
+    ref = reference.strip()
+    if not ref:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Enter the receipt or transfer number.")
     p = _own_payment(db, scope.tenant.id, payment_id)
     if p.status == "paid":
         raise HTTPException(status.HTTP_409_CONFLICT, "This instalment is already recorded as paid.")
     if db.scalar(select(PaymentReport).where(PaymentReport.payment_id == p.id, PaymentReport.status == "pending")):
         raise HTTPException(status.HTTP_409_CONFLICT, "You've already reported this payment. We're checking it.")
+    if receipt is None or not receipt.filename:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Attach the receipt or transfer slip.")
+    ctype = (receipt.content_type or "").lower()
+    if ctype not in RECEIPT_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The receipt must be a PDF or an image (JPG, PNG, WebP).")
+    content = await receipt.read(RECEIPT_MAX_BYTES + 1)
+    if len(content) > RECEIPT_MAX_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "The receipt must be 10 MB or smaller.")
+    from api.storage import StorageNotConfigured, upload_document
+
+    try:
+        stored = upload_document(io.BytesIO(content), content_type=ctype, prefix=f"payment-reports/{p.id}", original_filename=receipt.filename)
+    except StorageNotConfigured as e:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     rep = PaymentReport(
         payment_id=p.id,
         tenant_id=scope.tenant.id,
         user_id=user.id,
-        paid_on=payload.paid_on,
-        amount=payload.amount,
-        method=payload.method,
-        reference=(payload.reference or "").strip() or None,
-        note=(payload.note or "").strip() or None,
+        paid_on=paid_on,
+        amount=amount,
+        method=method,
+        reference=ref,
+        note=(note or "").strip() or None,
+        receipt_key=stored.object_key,
+        receipt_url=stored.public_url,
+        receipt_name=(receipt.filename or "receipt")[:255],
     )
     db.add(rep)
     db.add(AuditLog(user_id=user.id, username=user.username, action="tenant_payment_report", entity_type="payment", entity_id=str(p.id)))
@@ -717,6 +763,8 @@ def list_reports(
                 "method": r.method,
                 "reference": r.reference,
                 "note": r.note,
+                "receipt_url": r.receipt_url,
+                "receipt_name": r.receipt_name,
                 "sent_at": r.created_at.isoformat(),
                 "review_note": r.review_note,
             }
@@ -744,6 +792,8 @@ def confirm_report(report_id: int, payload: ReviewIn, db: DbSession, user: Curre
         p.paid_date = rep.paid_on
         p.payment_method = rep.method
         p.receipt_number = payload.receipt_number or rep.reference
+        if rep.receipt_url and not p.receipt_url:
+            p.receipt_key, p.receipt_url, p.receipt_name = rep.receipt_key, rep.receipt_url, rep.receipt_name
         p.notes = ((p.notes or "") + f"\n[tenant report #{rep.id}] {rep.note or ''}").strip()
         p.owner_transfer_due_date = p.paid_date + timedelta(days=get_settings().owner_transfer_days)
         _create_payment_splits(db, p)

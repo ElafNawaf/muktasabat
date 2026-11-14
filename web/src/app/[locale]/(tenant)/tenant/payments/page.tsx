@@ -85,7 +85,11 @@ function PaymentRow({ p, locale, preview }: { p: TenantPayment; locale: string; 
             {p.receipt_number ? ` · ${t("إيصال", "Receipt")} ${p.receipt_number}` : ""}
           </small>
         ) : p.state === "reported" && p.report ? (
-          <small>{t("أبلغتنا بالدفع في", "You told us you paid on")} {day(locale, p.report.paid_on)} — {t("نتحقق منه الآن", "we're checking it")}</small>
+          <small>
+            {t("أبلغتنا بالدفع في", "You told us you paid on")} {day(locale, p.report.paid_on)}
+            {p.report.reference ? <> · {t("إيصال", "receipt")} <span dir="ltr">{p.report.reference}</span></> : null} — {t("نتحقق منه الآن", "we're checking it")}
+            {p.report.receipt_url ? <> · <a href={p.report.receipt_url} target="_blank" rel="noopener noreferrer">{t("المرفق", "attachment")}</a></> : null}
+          </small>
         ) : (
           <small className={p.state === "overdue" ? "is-warn" : undefined}>{when(locale, p.days)}</small>
         )}

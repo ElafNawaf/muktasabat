@@ -22,6 +22,7 @@ from api.database import (
     ensure_ejar_property_columns,
     ensure_owner_agent_id_column,
     ensure_payment_owner_transfer_columns,
+    ensure_payment_report_receipt_columns,
     ensure_tenant_extended_columns,
     migrate_tenant_escorts_to_companions,
     ensure_user_email_verification_columns,
@@ -99,6 +100,7 @@ async def lifespan(app: FastAPI):
     ensure_ejar_property_columns(engine)
     ensure_contract_ejar_columns(engine)
     ensure_payment_owner_transfer_columns(engine)
+    ensure_payment_report_receipt_columns(engine)
     from api.database import ensure_hr_location_columns
 
     ensure_hr_location_columns(engine)

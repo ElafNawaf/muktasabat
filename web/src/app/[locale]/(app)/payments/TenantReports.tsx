@@ -21,6 +21,8 @@ export type TenantReport = {
   method: string;
   reference?: string | null;
   note?: string | null;
+  receipt_url?: string | null;
+  receipt_name?: string | null;
   sent_at: string;
 };
 
@@ -75,6 +77,15 @@ export function TenantReports({ reports, locale, canEdit }: { reports: TenantRep
                 <div><dt>{T(locale, "الطريقة / المرجع", "Method / ref")}</dt><dd>{T(locale, ...(METHOD[r.method] ?? [r.method, r.method]))}{r.reference ? <> · <span dir="ltr">{r.reference}</span></> : null}</dd></div>
                 <div><dt>{T(locale, "استحقاق الدفعة", "Instalment due")}</dt><dd>{d(r.due_date)}</dd></div>
               </dl>
+              {r.receipt_url ? (
+                <a className="tr-receipt" href={r.receipt_url} target="_blank" rel="noopener noreferrer">
+                  <span className="ms ms-sm">{/\.pdf$/i.test(r.receipt_name || r.receipt_url) ? "picture_as_pdf" : "image"}</span>
+                  {T(locale, "عرض الإيصال المرفق", "View attached receipt")}
+                  {r.receipt_name ? <small>{r.receipt_name}</small> : null}
+                </a>
+              ) : (
+                <p className="tr-receipt is-missing"><span className="ms ms-sm">attach_file_off</span>{T(locale, "بدون مرفق", "No attachment")}</p>
+              )}
               {r.note && <p className="tr-item__note">“{r.note}”</p>}
               {canEdit && (
                 rejecting === r.id ? (

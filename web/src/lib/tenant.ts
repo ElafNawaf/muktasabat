@@ -29,6 +29,8 @@ export type TenantPayment = {
     reference?: string | null;
     sent_at: string;
     review_note?: string | null;
+    receipt_url?: string | null;
+    receipt_name?: string | null;
   };
 };
 

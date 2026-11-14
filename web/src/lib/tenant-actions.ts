@@ -14,19 +14,6 @@ const fail = (e: unknown): { ok: false; error: string } => {
   return { ok: false, error: e instanceof Error ? e.message : "Error" };
 };
 
-export type ReportInput = { paid_on: string; amount: number; method: "bank_transfer" | "cash" | "cheque"; reference?: string; note?: string };
-
-/** Tenant: "I've paid this instalment". Staff confirm it before it counts. */
-export async function reportPayment(paymentId: number, input: ReportInput): Promise<R<null>> {
-  try {
-    await api.post(`/api/v1/tenant-portal/payments/${paymentId}/report`, input);
-    revalidatePath("/[locale]/tenant", "layout");
-    return { ok: true, data: null };
-  } catch (e) {
-    return fail(e);
-  }
-}
-
 export async function setEmailReminders(on: boolean): Promise<R<null>> {
   try {
     await api.put(`/api/v1/tenant-portal/preferences`, { email_reminders: on });

@@ -43,6 +43,10 @@ class PaymentReport(Base):
     method: Mapped[str] = mapped_column(String(20), default="bank_transfer", nullable=False)
     reference: Mapped[Optional[str]] = mapped_column(String(80))
     note: Mapped[Optional[str]] = mapped_column(Text)
+    # Proof of payment (bank receipt / transfer slip, PDF or image) — required from the portal.
+    receipt_key: Mapped[Optional[str]] = mapped_column(String(255))
+    receipt_url: Mapped[Optional[str]] = mapped_column(String(500))
+    receipt_name: Mapped[Optional[str]] = mapped_column(String(255))
     # pending | confirmed | rejected
     status: Mapped[str] = mapped_column(String(12), default="pending", nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
