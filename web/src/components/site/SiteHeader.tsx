@@ -30,16 +30,18 @@ export function SiteHeader({
   const pathname = usePathname() || `/${locale}`;
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [overHero, setOverHero] = useState(false);
   const other = locale === "ar" ? "en" : "ar";
   const switchHref = pathname.replace(new RegExp(`^/${locale}(?=/|$)`), `/${other}`);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
+    setOverHero(!!document.querySelector("[data-hero-dark]"));
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [pathname]);
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
@@ -51,7 +53,7 @@ export function SiteHeader({
     href === `/${locale}` ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 
   return (
-    <header className={`mk-header${scrolled ? " is-scrolled" : ""}`}>
+    <header className={`mk-header${scrolled ? " is-scrolled" : ""}${overHero && !scrolled && !open ? " is-over" : ""}${open ? " is-menu" : ""}`}>
       <div className="mk-wrap mk-header__bar">
         <Link href={`/${locale}`} className="mk-brand" aria-label={brand}>
           {logoUrl ? (

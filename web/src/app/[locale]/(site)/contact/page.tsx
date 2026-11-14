@@ -5,13 +5,14 @@ import { LeadForm } from "@/components/site/LeadForm";
 import { PageHead } from "@/components/site/PageHead";
 import { OfficeMap } from "@/components/site/Company";
 import { cms, tr, waLink } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "site" });
-  return { title: t("nav.contact"), description: t("sections.contactLead"), alternates: { languages: { ar: "/ar/contact", en: "/en/contact" } } };
+  return pageMeta({ locale, path: "/contact", title: t("nav.contact"), description: t("sections.contactLead") });
 }
 
 export default async function ContactPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -20,7 +21,7 @@ export default async function ContactPage({ params }: { params: Promise<{ locale
   const wa = waLink(site.whatsapp, t("contact.whatsappMsg"));
   return (
     <>
-      <PageHead title={t("sections.contactTitle")} lead={t("sections.contactLead")} />
+      <PageHead locale={locale} crumbs={[{ name: t("nav.contact"), path: "/contact" }]} title={t("sections.contactTitle")} lead={t("sections.contactLead")} />
       <section className="mk-section">
         <div className="mk-wrap mk-split mk-split--form">
           <div>

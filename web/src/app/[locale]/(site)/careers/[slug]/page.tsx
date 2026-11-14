@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { ApplyForm } from "@/components/site/ApplyForm";
 import { Markdown } from "@/components/site/Markdown";
 import { cms, pick, SITE_URL } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
   const j = await cms.job(slug);
   if (!j) return {};
-  return { title: pick(locale, j, "title"), alternates: { languages: { ar: `/ar/careers/${slug}`, en: `/en/careers/${slug}` } } };
+  return pageMeta({ locale, path: `/careers/${slug}`, title: pick(locale, j, "title") });
 }
 
 export default async function JobPage({ params }: P) {
@@ -32,7 +33,7 @@ export default async function JobPage({ params }: P) {
     validThrough: j.closes_on ?? undefined,
     employmentType: j.employment_type.toUpperCase(),
     hiringOrganization: { "@type": "Organization", name: site.brand_name?.en ?? "Muktasabat", sameAs: SITE_URL },
-    jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: j.location_en ?? "Riyadh", addressCountry: "SA" } },
+    jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: j.location_en || undefined, addressCountry: "SA" } },
   };
   return (
     <section className="mk-section">

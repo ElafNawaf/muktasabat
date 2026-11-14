@@ -4,13 +4,14 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHead } from "@/components/site/PageHead";
 import { cms, pick } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "site" });
-  return { title: t("sections.newsTitle"), alternates: { languages: { ar: "/ar/news", en: "/en/news" } } };
+  return pageMeta({ locale, path: "/news", title: t("sections.newsTitle") });
 }
 
 export default async function NewsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -19,7 +20,7 @@ export default async function NewsPage({ params }: { params: Promise<{ locale: s
   const fmt = new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "long" });
   return (
     <>
-      <PageHead title={t("sections.newsTitle")} />
+      <PageHead locale={locale} crumbs={[{ name: t("sections.newsTitle"), path: "/news" }]} title={t("sections.newsTitle")} />
       <section className="mk-section">
         <div className="mk-wrap">
           {posts.length === 0 ? (

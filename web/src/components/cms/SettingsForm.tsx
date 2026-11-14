@@ -81,6 +81,25 @@ export function SettingsForm({ initial, locale, canEdit }: { initial: Settings; 
           <Row label={T("Hero image", "صورة الواجهة")} hint={T("Portrait photo works best (4:5). Leave empty for the brand pattern.", "يفضل صورة طولية (4:5). اتركها فارغة لعرض النقش الافتراضي.")}>
             <ImageField value={d.hero_image_url} onChange={(v) => set("hero_image_url", v)} locale={locale} />
           </Row>
+          <Row label={T("Hero slideshow", "عرض صور الواجهة")} hint={T("Up to 6 wide photos (16:9). They cross-fade behind the headline. Leave empty for the animated skyline.", "حتى 6 صور عريضة (16:9) تتبدّل خلف العنوان. اتركها فارغة لعرض لوحة المدينة المتحركة.")}>
+            <div className="cms-slides">
+              {(d.hero_slides ?? []).map((u, i) => (
+                <div key={i} className="cms-slide">
+                  <ImageField
+                    value={u}
+                    onChange={(v) => set("hero_slides", v ? (d.hero_slides ?? []).map((x, k) => (k === i ? v : x)) : (d.hero_slides ?? []).filter((_, k) => k !== i))}
+                    locale={locale}
+                  />
+                </div>
+              ))}
+              {(d.hero_slides ?? []).length < 6 && (
+                <ImageField value={null} onChange={(v) => v && set("hero_slides", [...(d.hero_slides ?? []), v])} locale={locale} />
+              )}
+            </div>
+          </Row>
+          <Row label={T("Hero video", "فيديو الواجهة")} hint={T("Optional MP4/WebM link (muted, looping, under 8 MB). Plays behind the headline on fast connections; the first slide is its poster.", "رابط فيديو MP4/WebM اختياري (بدون صوت، متكرر، أقل من 8 ميجابايت). يعمل خلف العنوان على الاتصالات السريعة، وأول صورة في العرض تكون غلافه.")}>
+            <input dir="ltr" type="url" maxLength={600} placeholder="https://…/hero.mp4" value={d.hero_video_url ?? ""} onChange={(e) => set("hero_video_url", e.target.value.trim() || null)} />
+          </Row>
         </section>
 
         <section className="cms-card">

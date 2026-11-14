@@ -7,6 +7,7 @@ import { LeadForm } from "@/components/site/LeadForm";
 import { Markdown } from "@/components/site/Markdown";
 import { PageHead } from "@/components/site/PageHead";
 import { cms, pick } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -16,12 +17,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
   const s = await cms.service(slug);
   if (!s) return {};
-  return {
-    title: pick(locale, s, "title"),
-    description: pick(locale, s, "summary"),
-    alternates: { languages: { ar: `/ar/services/${slug}`, en: `/en/services/${slug}` } },
-    openGraph: s.image_url ? { images: [s.image_url] } : undefined,
-  };
+  return pageMeta({ locale, path: `/services/${slug}`, title: pick(locale, s, "title"), description: pick(locale, s, "summary"), image: s.image_url });
 }
 
 export default async function ServiceDetail({ params }: P) {
@@ -31,7 +27,7 @@ export default async function ServiceDetail({ params }: P) {
   const others = all.filter((o) => o.id !== s.id);
   return (
     <>
-      <PageHead title={pick(locale, s, "title")} lead={pick(locale, s, "summary")} />
+      <PageHead locale={locale} crumbs={[{ name: t("nav.services"), path: "/services" }, { name: pick(locale, s, "title"), path: `/services/${s.slug}` }]} title={pick(locale, s, "title")} lead={pick(locale, s, "summary")} />
       <section className="mk-section">
         <div className="mk-wrap mk-article-grid">
           <article>

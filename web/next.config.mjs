@@ -11,6 +11,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
+  // Hero background video (Website → Settings → Hero video) may be hosted on a CDN/S3.
+  "media-src 'self' blob: https:",
   "connect-src 'self' https://challenges.cloudflare.com",
   "frame-src https://challenges.cloudflare.com https://www.google.com https://maps.google.com",
   "frame-ancestors 'none'",

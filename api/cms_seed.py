@@ -431,3 +431,48 @@ def migrate_cms_v4(db: Session) -> None:
     row.data = data
     _mark(row, "v4-hours")
     db.commit()
+
+
+# ── v5 (Nov 2026): the public site names no cities ──
+# Marketing copy no longer mentions Riyadh / Makkah. Only text that still
+# matches what v2 wrote is replaced, and the "coverage" line is cleared only
+# while it holds the seeded value — editor-written copy is never touched.
+V5_COPY = {
+    "hero_subtitle": (
+        V2_COPY["hero_subtitle"][1],
+        _b(
+            "تسويق عقاري حصري، وساطة موثوقة، وإدارة أملاك بتقارير مالية شهرية.",
+            "Exclusive property marketing, trusted brokerage and property management with monthly financial reports.",
+        ),
+    ),
+    "about_body": (
+        V2_COPY["about_body"][1],
+        _b(
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك مكتب عقاري نظامي وموثّق. نسوّق ونؤجر ونبيع الشقق والأدوار والفلل والأراضي والعقارات التجارية، وندير الأملاك نيابةً عن ملاكها: إعلانات مرخّصة، وفرز للمستأجرين، وتوثيق العقود عبر منصة إيجار، وتحصيل منتظم، وصيانة، وتقارير مالية يطّلع عليها المالك في أي وقت عبر بوابة الملاك.",
+            "Muktasabat Real Estate Company for Marketing and Property Management is a licensed, verified real estate office. We market, lease and sell apartments, floors, villas, land and commercial property, and manage properties on behalf of their owners: licensed adverts, tenant screening, Ejar-registered contracts, steady collection, maintenance, and financial reports owners can open any time in the owner portal.",
+        ),
+    ),
+    "seo_description": (
+        V2_COPY["seo_description"][1],
+        _b(
+            "شركة مكتسبات العقارية للتسويق وإدارة الأملاك: عقارات للإيجار والبيع، شقق وفلل وأراضٍ، تسويق عقاري حصري، وساطة، وإدارة أملاك مع بوابة ملاك وتقارير مالية.",
+            "Muktasabat Real Estate: property for rent and sale — apartments, villas and land — exclusive marketing, brokerage and property management with an owner portal and financial reports.",
+        ),
+    ),
+}
+
+
+def migrate_cms_v5(db: Session) -> None:
+    row = db.get(SiteSettings, 1)
+    if row is None or _done(row, "v5-no-cities"):
+        return
+    data = dict(row.data or {})
+    for key, (old, new) in V5_COPY.items():
+        cur = dict(data.get(key) or {})
+        if (cur.get("ar") or "").strip() == (old.get("ar") or "").strip():
+            data[key] = new
+    if ((data.get("coverage") or {}).get("ar") or "").strip() == "الرياض ومكة المكرمة":
+        data["coverage"] = {}
+    row.data = data
+    _mark(row, "v5-no-cities")
+    db.commit()

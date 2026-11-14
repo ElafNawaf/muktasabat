@@ -95,6 +95,7 @@
 .cms-image { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .cms-image img, .cms-image__empty { width: 160px; height: 100px; object-fit: cover; border-radius: var(--radius-md); background: var(--color-bg-deep); border: 1px solid var(--color-border); }
 .cms-image__empty { display: grid; place-items: center; color: var(--color-text-tertiary); }
+.cms-slides { display: grid; gap: 12px; }
 .cms-image__actions { display: flex; gap: 8px; }
 .cms-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
 .cms-gallery__item { position: relative; aspect-ratio: 4 / 3; border-radius: var(--radius-md); overflow: hidden; background: var(--color-bg-deep); }

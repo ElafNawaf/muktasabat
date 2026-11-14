@@ -1,50 +1,86 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
+import { Carousel } from "@/components/site/Carousel";
 import { OfficeMap, TrustStrip, ValuationBand } from "@/components/site/Company";
+import { HeroCinema } from "@/components/site/HeroCinema";
+import { FaqSection, Ticker, WhySection } from "@/components/site/HomeSections";
 import { LeadForm } from "@/components/site/LeadForm";
 import { ListingCard } from "@/components/site/ListingCard";
 import { OwnerShowcase, ProcessSteps } from "@/components/site/OwnerShowcase";
 import { ProjectCard } from "@/components/site/ProjectCard";
-import { Shurfat } from "@/components/site/Shurfat";
 import { StatsRow } from "@/components/site/StatsRow";
-import { FacadeArt } from "@/components/site/FacadeArt";
-import { cms, pick, tr, waLink } from "@/lib/cms";
+import { cms, pick, tr, waLink, type ListingType } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
+
+const TYPES: ListingType[] = ["apartment", "villa", "floor", "duplex", "land", "building", "office", "shop", "warehouse", "rest_house"];
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const site = await cms.site();
+  return pageMeta({
+    locale,
+    path: "",
+    title: tr(locale, site.seo_title) || tr(locale, site.brand_name),
+    description: tr(locale, site.seo_description) || tr(locale, site.tagline),
+    image: site.og_image_url || site.hero_slides?.find(Boolean) || site.hero_image_url,
+    absoluteTitle: true,
+  });
+}
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const [home, t] = await Promise.all([cms.home(), getTranslations({ locale, namespace: "site" })]);
   const { site } = home;
   const L = (p: string) => `/${locale}${p}`;
-  const fmtDate = new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "medium" });
+  const ar = locale === "ar";
+  const fmtDate = new Intl.DateTimeFormat(ar ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "medium" });
   const wa = waLink(site.whatsapp, t("contact.whatsappMsg"));
+  const slides = [...(site.hero_slides ?? []), site.hero_image_url].filter((s): s is string => !!s);
+
+  // City options come only from published listings (no hard-coded cities);
+  // the hero hides the city picker when there are fewer than two.
+  const cities = Array.from(new Set(home.listings.map((l) => pick(locale, l, "city")).filter(Boolean)));
 
   return (
     <>
-      {/* ── Hero ── */}
-      <section className="mk-hero">
-        <div className="mk-wrap mk-hero__grid">
-          <div className="mk-hero__copy">
-            <h1 className="mk-display">{tr(locale, site.hero_title) || tr(locale, site.brand_name)}</h1>
-            {tr(locale, site.hero_subtitle) && <p className="mk-hero__lead">{tr(locale, site.hero_subtitle)}</p>}
-            <div className="mk-hero__ctas">
-              <Link href={L("/listings")} className="mk-btn mk-btn--light">{t("hero.ctaListings")}</Link>
-              <Link href={L("/contact?kind=owner")} className="mk-btn mk-btn--ghost-light">{t("hero.ctaList")}</Link>
-            </div>
-          </div>
-          <div className="mk-hero__media">
-            {site.hero_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={site.hero_image_url} alt="" fetchPriority="high" />
-            ) : (
-              <FacadeArt variant="hero" />
-            )}
-          </div>
-        </div>
-        <Shurfat className="mk-hero__crown" />
-      </section>
+      <HeroCinema
+        locale={locale}
+        kicker={t("cinema.kicker")}
+        title={tr(locale, site.hero_title) || tr(locale, site.brand_name)}
+        subtitle={tr(locale, site.hero_subtitle) || undefined}
+        badge={t("cinema.badge")}
+        rotateLead={t("cinema.rotateLead")}
+        rotate={t.raw("cinema.rotate") as string[]}
+        slides={slides}
+        video={site.hero_video_url}
+        types={TYPES.map((v) => ({ value: v, label: t(`listings.t_${v}`) }))}
+        cities={cities.map((c) => ({ value: c, label: c }))}
+        chips={t.raw("cinema.chips") as [string, string][]}
+        labels={{
+          searchLabel: t("cinema.searchLabel"),
+          tabRent: t("cinema.tabRent"),
+          tabSale: t("cinema.tabSale"),
+          tabOwner: t("cinema.tabOwner"),
+          anyType: t("cinema.anyType"),
+          anyCity: t("cinema.anyCity"),
+          search: t("cinema.search"),
+          ownerCta: t("cinema.ownerCta"),
+          ownerHint: t("cinema.ownerHint"),
+          popular: t("cinema.popular"),
+          scroll: t("cinema.scroll"),
+          prev: t("cinema.prev"),
+          next: t("cinema.next"),
+          pause: t("cinema.pause"),
+          play: t("cinema.play"),
+          slide: t("cinema.slide"),
+        }}
+      />
+
+      <Ticker locale={locale} />
 
       <div className="mk-wrap">
         <StatsRow
@@ -53,60 +89,53 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         />
       </div>
 
+      <WhySection locale={locale} />
+
       {/* ── Latest listings ── */}
       {home.listings.length > 0 && (
-        <section className="mk-section">
+        <section className="mk-section mk-section--sand mk-latest">
           <div className="mk-wrap">
-            <header className="mk-sechead mk-sechead--row">
+            <header className="mk-sechead mk-sechead--row" data-reveal>
               <div>
+                <p className="mk-eyebrow">{t("listings.eyebrow")}</p>
                 <h2 className="mk-h2">{t("listings.latest")}</h2>
                 <p className="mk-lead">{t("listings.lead")}</p>
               </div>
-              <Link href={L("/listings")} className="mk-link">{t("listings.all")}</Link>
+              <Link href={L("/listings")} className="mk-btn mk-btn--outline">
+                {t("listings.all")}
+                <span className="ms mk-flip" aria-hidden="true">arrow_forward</span>
+              </Link>
             </header>
-            <div className="mk-listings">
-              {home.listings.map((l) => (
-                <ListingCard key={l.id} listing={l} locale={locale} />
+            <Carousel label={t("listings.latest")} prevLabel={t("cinema.prev")} nextLabel={t("cinema.next")}>
+              {home.listings.map((l, i) => (
+                <ListingCard key={l.id} listing={l} locale={locale} index={i} />
               ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── About ── */}
-      {tr(locale, site.about_body) && (
-        <section className="mk-section mk-about">
-          <div className="mk-wrap mk-split">
-            <div>
-              <h2 className="mk-h2">{tr(locale, site.about_title)}</h2>
-              <p className="mk-lead">{tr(locale, site.about_body)}</p>
-              <Link href={L("/about")} className="mk-link">{t("sections.readMore")}</Link>
-            </div>
-            <dl className="mk-vm">
-              {tr(locale, site.vision) && (<div><dt>{t("sections.vision")}</dt><dd>{tr(locale, site.vision)}</dd></div>)}
-              {tr(locale, site.mission) && (<div><dt>{t("sections.mission")}</dt><dd>{tr(locale, site.mission)}</dd></div>)}
-            </dl>
+            </Carousel>
           </div>
         </section>
       )}
 
       {/* ── Services ── */}
       {home.services.length > 0 && (
-        <section className="mk-section mk-section--sand">
+        <section className="mk-section mk-svc" aria-labelledby="svc-h">
           <div className="mk-wrap">
-            <header className="mk-sechead">
-              <h2 className="mk-h2">{t("sections.servicesTitle")}</h2>
-              <p className="mk-lead">{t("sections.servicesLead")}</p>
+            <header className="mk-sechead mk-sechead--row" data-reveal>
+              <div>
+                <p className="mk-eyebrow">{t("sections.servicesEyebrow")}</p>
+                <h2 id="svc-h" className="mk-h2">{t("sections.servicesTitle")}</h2>
+                <p className="mk-lead">{t("sections.servicesLead")}</p>
+              </div>
+              <Link href={L("/services")} className="mk-link">{t("nav.services")}</Link>
             </header>
-            <ul className="mk-services">
-              {home.services.map((s) => (
+            <ul className="mk-svcgrid" data-stagger>
+              {home.services.map((s, i) => (
                 <li key={s.id}>
-                  <Link href={L(`/services/${s.slug}`)} className="mk-service">
-                    <span className="ms mk-service__icon" aria-hidden="true">{s.icon || "home_work"}</span>
-                    <span className="mk-service__text">
-                      <span className="mk-service__title">{pick(locale, s, "title")}</span>
-                      {pick(locale, s, "summary") && <span className="mk-service__summary">{pick(locale, s, "summary")}</span>}
-                    </span>
+                  <Link href={L(`/services/${s.slug}`)} className="mk-svccard" data-spot>
+                    <span className="mk-svccard__num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="ms mk-svccard__icon" aria-hidden="true">{s.icon || "home_work"}</span>
+                    <span className="mk-svccard__title">{pick(locale, s, "title")}</span>
+                    {pick(locale, s, "summary") && <span className="mk-svccard__summary">{pick(locale, s, "summary")}</span>}
+                    <span className="mk-svccard__go" aria-hidden="true"><span className="ms mk-flip">arrow_forward</span></span>
                   </Link>
                 </li>
               ))}
@@ -115,15 +144,22 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </section>
       )}
 
+      {/* ── Owner portal (value proposition for owners under management) ── */}
+      <OwnerShowcase locale={locale} />
+      <ProcessSteps locale={locale} />
+
       {/* ── Projects ── */}
       {home.projects.length > 0 && (
         <section className="mk-section">
           <div className="mk-wrap">
-            <header className="mk-sechead mk-sechead--row">
-              <h2 className="mk-h2">{t("sections.projectsTitle")}</h2>
+            <header className="mk-sechead mk-sechead--row" data-reveal>
+              <div>
+                <p className="mk-eyebrow">{t("sections.projectsEyebrow")}</p>
+                <h2 className="mk-h2">{t("sections.projectsTitle")}</h2>
+              </div>
               <Link href={L("/projects")} className="mk-link">{t("sections.allProjects")}</Link>
             </header>
-            <div className="mk-projects">
+            <div className="mk-projects" data-stagger>
               {home.projects.map((p, i) => (
                 <ProjectCard
                   key={p.id}
@@ -139,26 +175,33 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
         </section>
       )}
 
-      <TrustStrip locale={locale} site={site} />
       <ValuationBand locale={locale} />
-
-      {/* ── Owner portal (value proposition for owners under management) ── */}
-      <OwnerShowcase locale={locale} />
-      <ProcessSteps locale={locale} />
+      <TrustStrip locale={locale} site={site} />
 
       {/* ── Testimonials ── */}
       {home.testimonials.length > 0 && (
-        <section className="mk-section">
+        <section className="mk-section mk-section--sand">
           <div className="mk-wrap">
-            <h2 className="mk-h2">{t("sections.testimonialsTitle")}</h2>
-            <div className="mk-quotes">
+            <header className="mk-sechead" data-reveal>
+              <p className="mk-eyebrow">{t("sections.testimonialsEyebrow")}</p>
+              <h2 className="mk-h2">{t("sections.testimonialsTitle")}</h2>
+            </header>
+            <Carousel label={t("sections.testimonialsTitle")} prevLabel={t("cinema.prev")} nextLabel={t("cinema.next")} className="mk-carousel--quotes">
               {home.testimonials.map((q) => (
-                <figure key={q.id} className="mk-quote">
+                <figure key={q.id} className="mk-quote mk-quote--card" data-spot>
+                  {q.rating > 0 && (
+                    <p className="mk-stars" aria-label={`${q.rating}/5`}>
+                      {"★★★★★".slice(0, Math.round(q.rating))}
+                      <span>{"★★★★★".slice(Math.round(q.rating))}</span>
+                    </p>
+                  )}
                   <blockquote>{pick(locale, q, "quote")}</blockquote>
                   <figcaption>
-                    {q.avatar_url && (
+                    {q.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={q.avatar_url} alt="" loading="lazy" />
+                    ) : (
+                      <span className="mk-quote__ini" aria-hidden="true">{pick(locale, q, "name").slice(0, 1)}</span>
                     )}
                     <span>
                       <strong>{pick(locale, q, "name")}</strong>
@@ -167,47 +210,59 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
                   </figcaption>
                 </figure>
               ))}
+            </Carousel>
+          </div>
+        </section>
+      )}
+
+      {/* ── Partners (marquee) ── */}
+      {home.partners.length > 0 && (
+        <section className="mk-section mk-section--tight">
+          <div className="mk-wrap">
+            <h2 className="mk-h3 mk-center">{t("sections.partnersTitle")}</h2>
+          </div>
+          <div className="mk-logos">
+            <div className="mk-logos__track">
+              {[0, 1].map((dup) => (
+                <ul key={dup} aria-hidden={dup === 1 || undefined}>
+                  {home.partners.map((p) => {
+                    const name = pick(locale, p, "name");
+                    const inner = p.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.logo_url} alt={dup ? "" : name} loading="lazy" />
+                    ) : (
+                      <span>{name}</span>
+                    );
+                    return (
+                      <li key={p.id}>
+                        {p.website && !dup ? <a href={p.website} target="_blank" rel="noopener noreferrer">{inner}</a> : inner}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* ── Partners ── */}
-      {home.partners.length > 0 && (
-        <section className="mk-section mk-section--tight">
-          <div className="mk-wrap">
-            <h2 className="mk-h3 mk-center">{t("sections.partnersTitle")}</h2>
-            <ul className="mk-partners">
-              {home.partners.map((p) => {
-                const name = pick(locale, p, "name");
-                const inner = p.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.logo_url} alt={name} loading="lazy" />
-                ) : (
-                  <span>{name}</span>
-                );
-                return (
-                  <li key={p.id}>
-                    {p.website ? <a href={p.website} target="_blank" rel="noopener noreferrer">{inner}</a> : inner}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </section>
-      )}
+      <FaqSection locale={locale} />
 
       {/* ── News ── */}
       {home.posts.length > 0 && (
         <section className="mk-section mk-section--sand">
           <div className="mk-wrap">
-            <header className="mk-sechead mk-sechead--row">
+            <header className="mk-sechead mk-sechead--row" data-reveal>
               <h2 className="mk-h2">{t("sections.newsTitle")}</h2>
               <Link href={L("/news")} className="mk-link">{t("sections.allNews")}</Link>
             </header>
-            <div className="mk-posts">
+            <div className="mk-posts" data-stagger>
               {home.posts.map((p) => (
                 <Link key={p.id} href={L(`/news/${p.slug}`)} className="mk-post">
+                  {p.cover_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.cover_url} alt="" loading="lazy" />
+                  )}
                   {p.published_on && <time dateTime={p.published_on}>{fmtDate.format(new Date(p.published_on))}</time>}
                   <h3>{pick(locale, p, "title")}</h3>
                   {pick(locale, p, "excerpt") && <p>{pick(locale, p, "excerpt")}</p>}
@@ -221,7 +276,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {/* ── Careers strip ── */}
       {home.open_jobs > 0 && (
         <section className="mk-section mk-section--tight">
-          <div className="mk-wrap"><div className="mk-careers-strip">
+          <div className="mk-wrap"><div className="mk-careers-strip" data-reveal>
             <div>
               <h2 className="mk-h3">{t("sections.careersTitle")}</h2>
               <p>{t("sections.openRoles", { count: home.open_jobs })}</p>
@@ -234,7 +289,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {/* ── Contact ── */}
       <section className="mk-section mk-contact" id="contact">
         <div className="mk-wrap mk-split mk-split--form">
-          <div>
+          <div data-reveal="right">
+            <p className="mk-eyebrow">{t("nav.contact")}</p>
             <h2 className="mk-h2">{t("sections.contactTitle")}</h2>
             <p className="mk-lead">{t("sections.contactLead")}</p>
             <ul className="mk-contactlist">
@@ -247,10 +303,15 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               {site.email && (
                 <li><span className="ms" aria-hidden="true">mail</span><a href={`mailto:${site.email}`}>{site.email}</a></li>
               )}
+              {tr(locale, site.working_hours) && (
+                <li><span className="ms" aria-hidden="true">schedule</span>{tr(locale, site.working_hours)}</li>
+              )}
             </ul>
             <OfficeMap locale={locale} site={site} />
           </div>
-          <LeadForm locale={locale} />
+          <div data-reveal="left">
+            <LeadForm locale={locale} />
+          </div>
         </div>
       </section>
     </>

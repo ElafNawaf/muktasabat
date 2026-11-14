@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 import { Markdown } from "@/components/site/Markdown";
 import { cms, pick } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -14,12 +15,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const { locale, slug } = await params;
   const p = await cms.post(slug);
   if (!p) return {};
-  return {
-    title: pick(locale, p, "title"),
-    description: pick(locale, p, "excerpt"),
-    alternates: { languages: { ar: `/ar/news/${slug}`, en: `/en/news/${slug}` } },
-    openGraph: { type: "article", publishedTime: p.published_on ?? undefined, images: p.cover_url ? [p.cover_url] : undefined },
-  };
+  const m = pageMeta({ locale, path: `/news/${slug}`, title: pick(locale, p, "title"), description: pick(locale, p, "excerpt"), image: p.cover_url, type: "article" });
+  return { ...m, openGraph: { ...m.openGraph, type: "article", publishedTime: p.published_on ?? undefined } };
 }
 
 export default async function PostPage({ params }: P) {

@@ -27,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}/${l}${p}`,
       lastModified: lm ? new Date(lm) : undefined,
       priority: pr,
-      alternates: { languages: { ar: `${SITE_URL}/ar${p}`, en: `${SITE_URL}/en${p}` } },
+      alternates: { languages: { ar: `${SITE_URL}/ar${p}`, en: `${SITE_URL}/en${p}`, "x-default": `${SITE_URL}/ar${p}` } },
     })),
   );
 }

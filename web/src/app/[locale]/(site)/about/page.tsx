@@ -7,17 +7,20 @@ import { FacadeArt } from "@/components/site/FacadeArt";
 import { PageHead } from "@/components/site/PageHead";
 import { StatsRow } from "@/components/site/StatsRow";
 import { cms, tr } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const site = await cms.site();
-  return {
+  return pageMeta({
+    locale,
+    path: "/about",
     title: tr(locale, site.about_title),
     description: tr(locale, site.about_body).slice(0, 160),
-    alternates: { languages: { ar: "/ar/about", en: "/en/about" } },
-  };
+    image: site.about_image_url,
+  });
 }
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -25,7 +28,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   const [site, t] = await Promise.all([cms.site(), getTranslations({ locale, namespace: "site" })]);
   return (
     <>
-      <PageHead title={tr(locale, site.about_title) || t("nav.about")} />
+      <PageHead locale={locale} crumbs={[{ name: t("nav.about"), path: "/about" }]} title={tr(locale, site.about_title) || t("nav.about")} />
       <section className="mk-section">
         <div className="mk-wrap mk-split">
           <div>

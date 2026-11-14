@@ -1289,7 +1289,138 @@
       "t_office": "Office",
       "t_shop": "Shop",
       "t_warehouse": "Warehouse",
-      "t_rest_house": "Rest house"
+      "t_rest_house": "Rest house",
+      "search": "Search",
+      "searchPh": "Search by district, city, type or reference",
+      "eyebrow": "Hand-picked properties"
+    },
+    "cinema": {
+      "kicker": "Muktasabat Real Estate · Property for rent & sale, property marketing and property management",
+      "badge": "Licensed real estate office",
+      "rotateLead": "We market, lease and sell",
+      "rotate": [
+        "apartments",
+        "villas",
+        "floors",
+        "land",
+        "offices",
+        "shops"
+      ],
+      "searchLabel": "Find a property",
+      "tabRent": "Rent",
+      "tabSale": "Buy",
+      "tabOwner": "I own a property",
+      "anyType": "All types",
+      "anyCity": "All cities",
+      "search": "Search",
+      "ownerCta": "Get a free rent estimate",
+      "ownerHint": "Tell us about your property and we'll reply with an estimate within one business day.",
+      "popular": "Popular searches",
+      "chips": [
+        [
+          "Apartments for rent",
+          "/listings?purpose=rent&type=apartment"
+        ],
+        [
+          "Villas for sale",
+          "/listings?purpose=sale&type=villa"
+        ],
+        [
+          "Land for sale",
+          "/listings?purpose=sale&type=land"
+        ],
+        [
+          "Offices & shops",
+          "/listings?type=office"
+        ],
+        [
+          "Property management",
+          "/for-owners"
+        ]
+      ],
+      "scroll": "Discover more",
+      "prev": "Previous",
+      "next": "Next",
+      "pause": "Pause",
+      "play": "Play",
+      "slide": "Slide"
+    },
+    "ticker": [
+      "Exclusive property marketing",
+      "Full-service property management",
+      "Ejar-documented leases",
+      "Monthly financial reports",
+      "REGA-licensed adverts",
+      "Free rent estimate",
+      "Trusted brokerage",
+      "Private owner portal"
+    ],
+    "why": {
+      "eyebrow": "Why Muktasabat",
+      "title": "One property partner, from the first advert to the last riyal on your statement",
+      "lead": "We serve property owners, tenants and buyers: licensed adverts, careful tenant selection, leases documented on Ejar, rent collection, and a clear financial report for every owner, every month.",
+      "cards": [
+        [
+          "campaign",
+          "Marketing that finds the right tenant",
+          "Professional photos and copy, licensed adverts on the leading property platforms, and serious screening of every enquiry."
+        ],
+        [
+          "contract",
+          "Leases documented on Ejar",
+          "Every lease we sign is documented on the Ejar platform, protecting both owner and tenant."
+        ],
+        [
+          "monitoring",
+          "Live numbers for owners",
+          "A private portal with revenue, collections, occupancy and statements — any time."
+        ],
+        [
+          "handshake",
+          "Registered and transparent",
+          "A registered office with a verified Aqar account and REGA-licensed adverts."
+        ]
+      ],
+      "ctaTitle": "What rent could your property earn?",
+      "ctaBody": "Send us the location and size and we'll reply within one business day with a free estimate based on real deals in the district.",
+      "ctaLink": "Get a free estimate"
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Everything you want to know before you start",
+      "items": [
+        [
+          "What is Muktasabat Real Estate?",
+          "Muktasabat Real Estate (شركة مكتسبات العقارية) is a licensed real estate office in Saudi Arabia specialising in exclusive property marketing, brokerage and property management."
+        ],
+        [
+          "How do I find an apartment or villa for rent?",
+          "Browse the listings page and filter by property type, city, district and price — or leave a request and we'll send you matching properties on WhatsApp as soon as they're available."
+        ],
+        [
+          "What does your property management service include?",
+          "Marketing vacant units, tenant selection, lease documentation on Ejar, rent collection and arrears follow-up, maintenance, and monthly financial reports available to the owner in the owner portal."
+        ],
+        [
+          "Are leases documented on Ejar?",
+          "Yes. Every lease we sign is documented on the Ejar platform, and owners can follow the documentation status from their portal."
+        ],
+        [
+          "How can I find out my property's rental value?",
+          "Send us the location and size of your property from the contact page and we'll reply within one business day with a free estimate based on real transactions in the district — no obligation."
+        ],
+        [
+          "Do you work with owners and investors?",
+          "Yes. We market and manage properties for owners and investors, with Ejar-documented leases and monthly financial reports in the owner portal."
+        ],
+        [
+          "What are your office hours and how do I reach you?",
+          "Saturday to Thursday, 9 AM to 9 PM. Call 920007039, message us on WhatsApp, or use the contact form on this site."
+        ]
+      ]
+    },
+    "footerSeo": {
+      "cities": "Browse property"
     }
   }
 }

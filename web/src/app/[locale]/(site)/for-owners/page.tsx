@@ -4,13 +4,20 @@ import { getTranslations } from "next-intl/server";
 import { ValuationBand } from "@/components/site/Company";
 import { LeadForm } from "@/components/site/LeadForm";
 import { OwnerFaq, OwnerShowcase, ProcessSteps } from "@/components/site/OwnerShowcase";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "site.owners" });
-  return { title: t("title"), description: t("lead"), alternates: { languages: { ar: "/ar/for-owners", en: "/en/for-owners" } } };
+  return pageMeta({
+    locale,
+    path: "/for-owners",
+    title: t("title"),
+    description: t("lead"),
+    keywords: locale === "ar" ? ["إدارة أملاك", "شركة إدارة أملاك", "بوابة الملاك", "تحصيل الإيجارات"] : ["property management Saudi Arabia", "owner portal", "rent collection"],
+  });
 }
 
 export default async function OwnersPage({ params }: { params: Promise<{ locale: string }> }) {

@@ -8,6 +8,7 @@ import { pick, type Listing } from "@/lib/cms";
 import { ListingCard } from "./ListingCard";
 
 type Filters = {
+  q: string;
   purpose: "all" | "rent" | "sale";
   type: string;
   city: string;
@@ -17,7 +18,7 @@ type Filters = {
   sort: "new" | "low" | "high" | "area";
 };
 
-const EMPTY: Filters = { purpose: "all", type: "", city: "", district: "", maxPrice: "", beds: "", sort: "new" };
+const EMPTY: Filters = { q: "", purpose: "all", type: "", city: "", district: "", maxPrice: "", beds: "", sort: "new" };
 const KEYS = Object.keys(EMPTY) as (keyof Filters)[];
 
 /** Filters live in the URL (?purpose=rent&type=apartment…) so a search can be
@@ -60,8 +61,12 @@ export function ListingsBrowser({ listings, locale }: { listings: Listing[]; loc
   const shown = useMemo(() => {
     const max = Number(f.maxPrice) || 0;
     const beds = Number(f.beds) || 0;
+    const needle = f.q.trim().toLowerCase();
+    const hay = (l: Listing) =>
+      [l.title_ar, l.title_en, l.city_ar, l.city_en, l.district_ar, l.district_en, l.ref, t(`t_${l.property_type}`)].filter(Boolean).join(" ").toLowerCase();
     const out = scoped.filter(
       (l) =>
+        (!needle || needle.split(/\s+/).every((w) => hay(l).includes(w))) &&
         (!f.type || l.property_type === f.type) &&
         (!f.city || city(l) === f.city) &&
         (!f.district || district(l) === f.district) &&
@@ -88,6 +93,12 @@ export function ListingsBrowser({ listings, locale }: { listings: Listing[]; loc
           </button>
         ))}
       </div>
+
+      <label className="mk-qsearch">
+        <span className="ms" aria-hidden="true">search</span>
+        <span className="mk-sr">{t("search")}</span>
+        <input type="search" value={f.q} placeholder={t("searchPh")} onChange={(e) => update({ q: e.target.value })} enterKeyHint="search" />
+      </label>
 
       <div className="mk-filters">
         <label className="mk-select">
@@ -155,9 +166,9 @@ export function ListingsBrowser({ listings, locale }: { listings: Listing[]; loc
       {shown.length === 0 ? (
         <p className="mk-empty">{t("noMatch")}</p>
       ) : (
-        <div className="mk-listings">
-          {shown.map((l) => (
-            <ListingCard key={l.id} listing={l} locale={locale} />
+        <div className="mk-listings" data-stagger>
+          {shown.map((l, i) => (
+            <ListingCard key={l.id} listing={l} locale={locale} index={i} />
           ))}
         </div>
       )}

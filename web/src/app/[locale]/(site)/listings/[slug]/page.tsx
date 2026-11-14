@@ -10,6 +10,7 @@ import { Markdown } from "@/components/site/Markdown";
 import { ProjectMap } from "@/components/site/ProjectMap";
 import { ShareButton } from "@/components/site/ShareButton";
 import { SITE_URL, artVariant, cms, pick, waLink, type Listing } from "@/lib/cms";
+import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -20,12 +21,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const l = await cms.listing(slug);
   if (!l) return {};
   const cover = l.cover_url || l.gallery[0];
-  return {
-    title: pick(locale, l, "title"),
-    description: pick(locale, l, "summary"),
-    alternates: { languages: { ar: `/ar/listings/${slug}`, en: `/en/listings/${slug}` } },
-    openGraph: cover ? { images: [cover] } : undefined,
-  };
+  return pageMeta({ locale, path: `/listings/${slug}`, title: pick(locale, l, "title"), description: pick(locale, l, "summary"), image: cover });
 }
 
 function lines(s: string): string[] {
