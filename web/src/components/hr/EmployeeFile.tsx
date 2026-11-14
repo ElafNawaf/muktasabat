@@ -345,7 +345,9 @@ function Contracts({ data, ar, self, canApprove, companies }: { data: EmpFile; a
                 {c.total_salary != null && <div><span>{T("الراتب الإجمالي", "Total salary")}</span><b>{money(ar, c.total_salary)}</b><small>{T(`أساسي ${money(ar, c.basic_salary)}`, `basic ${money(ar, c.basic_salary)}`)}</small></div>}
                 <div><span>{T("الموافقة", "Accepted")}</span><b>{c.accepted_at ? `${c.accepted_at.slice(0, 10)}` : "—"}</b>{c.accepted_name && <small>{c.accepted_name}</small>}</div>
               </div>
-              {(c.needs_signed || c.signed_status) && (
+              {c.signed_digitally ? (
+                <p className="ct-sig is-verified"><span className="ms ms-sm" aria-hidden>verified</span>{lb(ar, HP.signed, "digital")}</p>
+              ) : (c.needs_signed || c.signed_status) && (
                 <p className={`ct-sig is-${c.signed_status ?? "missing"}`}>
                   <span className="ms ms-sm" aria-hidden>{c.signed_status === "verified" ? "verified" : c.signed_status === "uploaded" ? "hourglass_top" : "upload_file"}</span>
                   {lb(ar, HP.signed, c.signed_status ?? "missing")}{c.signed_status === "rejected" && c.signed_note ? ` — ${c.signed_note}` : ""}
@@ -354,7 +356,7 @@ function Contracts({ data, ar, self, canApprove, companies }: { data: EmpFile; a
               {c.declined_note && c.status === "draft" && <p className="ef-note">{T("ملاحظة الموظف: ", "Employee note: ")}{c.declined_note}</p>}
               <div className="ef-actions">
                 {(c.status !== "draft" || !self) && <Link className={`btn ${(self && (c.status === "pending_acceptance" || c.needs_signed)) ? "btn-primary" : "btn-secondary"} btn-sm`} href={`/${ar ? "ar" : "en"}/my-hr/contracts/${c.id}`}>
-                  {self && c.status === "pending_acceptance" ? T("مراجعة والموافقة", "Review & accept") : self && c.needs_signed ? T("رفع النسخة الموقعة", "Upload signed copy") : T("فتح العقد", "Open contract")}
+                  {self && c.status === "pending_acceptance" ? T("مراجعة وتوقيع", "Review & sign") : self && c.needs_signed ? T("توقيع العقد", "Sign the contract") : T("فتح العقد", "Open contract")}
                 </Link>}
                 <button className="btn btn-ghost btn-sm" onClick={() => setView(c)}>{T("ملخص", "Summary")}</button>
                 {!self && canApprove && c.status === "draft" && <>
@@ -409,13 +411,8 @@ function ContractView({ ar, c, self, canApprove, name, onClose }: { ar: boolean;
         {c.terms && <div className="ef-terms"><h4>{T("بنود العقد", "Terms")}</h4><div>{c.terms}</div></div>}
         {self && c.status === "pending_acceptance" && (
           <div className="mx-panel ef-sign">
-            <p className="mx-hint">{T("بكتابة اسمك الكامل والموافقة، تُقر بأنك قرأت بنود العقد والراتب ووافقت عليها. يُسجَّل التاريخ والوقت.", "By typing your full name and accepting, you confirm you've read and agree to these terms and salary. The date and time are recorded.")}</p>
-            <label className="field"><span>{T("اسمك الكامل", "Your full name")}</span><input className="input" value={typed} placeholder={name} onChange={(e) => setTyped(e.target.value)} /></label>
-            <label className="field"><span>{T("ملاحظة (إن طلبت تعديلًا)", "Note (if asking for changes)")}</span><input className="input" value={note} onChange={(e) => setNote(e.target.value)} /></label>
-            <div className="mx-row">
-              <button className="btn btn-primary btn-sm" disabled={pending || typed.trim().length < 3} onClick={() => run(() => meRespondContract(c.id, { accept: true, full_name: typed }), T("تمت الموافقة على العقد.", "Contract accepted."), onClose)}>{T("أوافق على العقد", "I accept this contract")}</button>
-              <button className="btn btn-secondary btn-sm" disabled={pending || typed.trim().length < 3 || !note.trim()} onClick={() => run(() => meRespondContract(c.id, { accept: false, full_name: typed, note }), T("أُرسل طلب التعديل.", "Change request sent."), onClose)}>{T("طلب تعديل", "Ask for changes")}</button>
-            </div>
+            <p className="mx-hint">{T("اقرأ العقد كاملًا ووقّعه إلكترونيًا من صفحة العقد.", "Read the full contract and sign it on its page.")}</p>
+            <Link className="btn btn-primary btn-sm" href={`/${ar ? "ar" : "en"}/my-hr/contracts/${c.id}`}>{T("فتح العقد والتوقيع", "Open and sign")}</Link>
           </div>
         )}
         {!self && canApprove && c.status === "accepted" && (

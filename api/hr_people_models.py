@@ -38,6 +38,12 @@ class HrCompany(Base):
     geofence_radius_m: Mapped[Optional[int]] = mapped_column(Integer)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    # Letterhead and the authorised signatory used on employment contracts.
+    logo_url: Mapped[Optional[str]] = mapped_column(String(500))
+    logo_key: Mapped[Optional[str]] = mapped_column(String(300))
+    signatory_name: Mapped[Optional[str]] = mapped_column(String(120))
+    signatory_title: Mapped[Optional[str]] = mapped_column(String(120))
+    signature_data: Mapped[Optional[str]] = mapped_column(Text)  # PNG data URL
 
 
 class HrDepartment(Base):
@@ -153,6 +159,12 @@ class HrContract(Base):
     signed_reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     signed_reviewed_by: Mapped[Optional[str]] = mapped_column(String(120))
     signed_note: Mapped[Optional[str]] = mapped_column(String(300))
+    # Digital signatures: drawn on screen, stored as PNG data URLs, plus a fingerprint of the accepted text.
+    employee_signature: Mapped[Optional[str]] = mapped_column(Text)
+    company_signature: Mapped[Optional[str]] = mapped_column(Text)
+    company_signatory: Mapped[Optional[str]] = mapped_column(String(250))
+    company_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    doc_hash: Mapped[Optional[str]] = mapped_column(String(64))
 
 
 class HrContractTemplate(Base):

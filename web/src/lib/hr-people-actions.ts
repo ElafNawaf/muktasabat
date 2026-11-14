@@ -60,10 +60,14 @@ export async function hrSetReporting(uid: number, b: Body) { return call(() => a
 export async function hrSaveTemplate(id: number | null, b: Body) { return call(() => (id ? api.put(`${B}/contract-templates/${id}`, b) : api.post(`${B}/contract-templates`, b))); }
 export async function hrDuplicateTemplate(id: number, companyId?: number | null) { return call(() => api.post(`${B}/contract-templates/${id}/duplicate${companyId ? `?company_id=${companyId}` : ""}`, {})); }
 export async function hrDeleteTemplate(id: number) { return call(() => api.delete(`${B}/contract-templates/${id}`)); }
-export async function hrPreviewTemplate(b: Body) { return call(() => api.post<{ text: string; unknown: string[] }>(`${B}/contract-templates/preview`, b)); }
+export type PreviewCompany = { name_ar: string; name_en?: string | null; cr?: string | null; color?: string | null; logo_url?: string | null; is_holding?: boolean; code?: string | null; signatory?: string | null; signature?: string | null };
+export async function hrPreviewTemplate(b: Body) { return call(() => api.post<{ text: string; unknown: string[]; company: PreviewCompany | null }>(`${B}/contract-templates/preview`, b)); }
 export async function hrMatchTemplate(companyId: number | null, type: string) { return call(() => api.get<{ id: number | null }>(`${B}/contract-templates/match?contract_type=${type}${companyId ? `&company_id=${companyId}` : ""}`)); }
 export async function hrBulkIssue(b: Body) { return call(() => api.post<{ created: { user_id: number; name: string; contract_id: number; number: string }[]; sent: { contract_id: number }[]; incomplete: { name: string; number: string }[]; skipped: { name?: string; reason: string }[] }>(`${B}/contracts/bulk`, b)); }
 export async function hrReviewSigned(id: number, b: Body) { return call(() => api.post(`${B}/contracts/${id}/signed/review`, b)); }
 export async function hrRefresh() { return call(async () => true); }
 export async function hrListTemplates() { return call(() => api.get<{ templates: unknown[] }>(`${B}/contract-templates`)); }
 export async function hrContractDoc(id: number) { return call(() => api.get<{ body?: string | null }>(`${B}/contracts/${id}/document`)); }
+export async function hrGetSignatory(cid: number) { return call(() => api.get<{ signatory_name?: string | null; signatory_title?: string | null; signature?: string | null }>(`${B}/companies/${cid}/signatory`)); }
+export async function hrSetSignatory(cid: number, b: Body) { return call(() => api.put(`${B}/companies/${cid}/signatory`, b)); }
+export async function hrDeleteLogo(cid: number) { return call(() => api.delete(`${B}/companies/${cid}/logo`)); }

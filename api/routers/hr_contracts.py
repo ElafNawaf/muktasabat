@@ -28,7 +28,7 @@ from api.hr_people_models import HrCompany, HrContract, HrContractTemplate
 from api.models import User
 from api.permissions import Perm, has_permission
 from api.routers.hr import _approvers, _base, _cc, _profile, _send, _staff, _uname
-from api.routers.hr_people import _cname, _contract_out, active_contract, needs_signed, seed_companies
+from api.routers.hr_people import _cname, _contract_out, active_contract, needs_signed, seed_companies, stamp_company, valid_signature
 from api.services.hr_contract_docs import PLACEHOLDERS, context, refresh_body, render, render_contract, seed_templates, unknown_tokens
 
 logger = logging.getLogger(__name__)
@@ -203,7 +203,15 @@ def preview_template(payload: PreviewIn, db: DbSession, user: Perm("hr", "view")
     out = render(payload.body_ar, ctx)
     if payload.body_en and payload.body_en.strip():
         out += "\n\n────────────────────────────\n\n" + render(payload.body_en, ctx)
-    return {"text": out, "unknown": sorted(set(unknown_tokens(payload.body_ar) + unknown_tokens(payload.body_en or "")))}
+    comp_id = payload.company_id or (_profile(db, payload.user_id).company_id if payload.user_id else None)
+    comp = db.get(HrCompany, comp_id) if comp_id else db.scalar(select(HrCompany).where(HrCompany.is_holding.is_(True)))
+    return {
+        "text": out, "unknown": sorted(set(unknown_tokens(payload.body_ar) + unknown_tokens(payload.body_en or ""))),
+        "company": {"name_ar": comp.name_ar, "name_en": comp.name_en, "cr": comp.cr_number, "color": comp.color, "logo_url": comp.logo_url,
+                    "is_holding": comp.is_holding, "code": comp.short_code,
+                    "signatory": " — ".join(x for x in (comp.signatory_name, comp.signatory_title) if x) or None,
+                    "signature": comp.signature_data} if comp else None,
+    }
 
 
 @router.get("/contract-templates/match")
@@ -276,6 +284,7 @@ def bulk_issue(payload: BulkIn, db: DbSession, user: Perm("hr", "approve"), loca
         if not c.basic_salary:
             incomplete.append(item)
         elif payload.send:
+            stamp_company(db, c)
             c.status, c.sent_at = "pending_acceptance", datetime.utcnow()
             sent.append((c, u))
     db.commit()
@@ -315,6 +324,11 @@ def contract_document(cid: int, db: DbSession, user: CurrentUser, locale: str = 
         "body": body if show else None,  # salary lives in the text; hidden from view-only HR
         "employee": _uname(emp, locale), "company_name_ar": comp.name_ar if comp else None, "company_name_en": (comp.name_en if comp else None),
         "company_cr": comp.cr_number if comp else None, "company_color": comp.color if comp else None,
+        "company_logo_url": comp.logo_url if comp else None, "company_is_holding": bool(comp and comp.is_holding),
+        "company_code": comp.short_code if comp else None,
+        "employee_signature": c.employee_signature if show or c.user_id == user.id else None,
+        "company_signature": c.company_signature, "company_signatory": c.company_signatory,
+        "company_signed_at": c.company_signed_at.isoformat() if c.company_signed_at else None,
         "is_self": c.user_id == user.id, "can_review": has_permission(db, user, "hr", "approve") and c.user_id != user.id,
         "can_upload_hr": has_permission(db, user, "hr", "edit"),
     })
@@ -472,3 +486,71 @@ def contracts_desk(db: DbSession, user: Perm("hr", "view"), locale: str = Query(
         },
         "no_contract": [{"user_id": u.id, "name": _uname(u, locale)} for u in _staff(db, working_only=True) if u.id not in with_active],
     }
+
+
+# ───────────────────────── company letterhead & signatory ─────────────────────────
+
+
+def _company(db: Session, cid: int) -> HrCompany:
+    c = db.get(HrCompany, cid)
+    if c is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Company not found")
+    return c
+
+
+@router.post("/companies/{cid}/logo")
+async def upload_logo(cid: int, db: DbSession, user: Perm("hr", "approve"), file: UploadFile = File(...)):
+    """Company logo for contract letterheads (PNG/JPG/WebP, ≤ 2 MB; transparent PNG prints best)."""
+    import io
+
+    c = _company(db, cid)
+    data = await file.read(2 * 1024 * 1024 + 1)
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "The logo is larger than 2 MB.")
+    try:
+        stored = storage.upload_image(io.BytesIO(data), content_type=(file.content_type or "").lower(), prefix=f"hr/companies/{cid}")
+    except storage.StorageNotConfigured as e:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
+    except ValueError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+    old = c.logo_key
+    c.logo_url, c.logo_key = stored.public_url, stored.object_key
+    db.commit()
+    if old and old != stored.object_key:
+        storage.delete_object(old)
+    return {"ok": True, "logo_url": c.logo_url}
+
+
+@router.delete("/companies/{cid}/logo")
+def delete_logo(cid: int, db: DbSession, user: Perm("hr", "approve")):
+    c = _company(db, cid)
+    old = c.logo_key
+    c.logo_url = c.logo_key = None
+    db.commit()
+    storage.delete_object(old)
+    return {"ok": True}
+
+
+class SignatoryIn(BaseModel):
+    signatory_name: Optional[str] = Field(default=None, max_length=120)
+    signatory_title: Optional[str] = Field(default=None, max_length=120)
+    signature: Optional[str] = Field(default=None, max_length=400_000)  # PNG data URL; empty string removes it
+    keep_signature: bool = True
+
+
+@router.get("/companies/{cid}/signatory")
+def get_signatory(cid: int, db: DbSession, user: Perm("hr", "approve")):
+    c = _company(db, cid)
+    return {"signatory_name": c.signatory_name, "signatory_title": c.signatory_title, "signature": c.signature_data}
+
+
+@router.put("/companies/{cid}/signatory")
+def set_signatory(cid: int, payload: SignatoryIn, db: DbSession, user: Perm("hr", "approve")):
+    """The person who signs employment contracts for this company. Applies to contracts sent from now on."""
+    c = _company(db, cid)
+    c.signatory_name = (payload.signatory_name or "").strip() or None
+    c.signatory_title = (payload.signatory_title or "").strip() or None
+    if not payload.keep_signature:
+        c.signature_data = valid_signature(payload.signature) if payload.signature else None
+    db.commit()
+    return {"ok": True, "has_signature": bool(c.signature_data)}

@@ -104,9 +104,39 @@ def active_contract(db: Session, user_id: int) -> Optional[HrContract]:
     return None
 
 
+def valid_signature(data: Optional[str]) -> Optional[str]:
+    """A drawn signature: PNG data URL, decodes to a real PNG, at most ~300 KB."""
+    import base64
+    import binascii
+
+    if not data:
+        return None
+    if not data.startswith("data:image/png;base64,"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The signature must be a PNG image.")
+    try:
+        raw = base64.b64decode(data.split(",", 1)[1], validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The signature image is damaged.")
+    if not raw.startswith(b"\x89PNG\r\n\x1a\n") or len(raw) > 300_000 or len(raw) < 200:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The signature image is empty or too large.")
+    return data
+
+
+def stamp_company(db: Session, c: HrContract) -> None:
+    """When a contract goes out, the company's authorised signatory signs it (if HR set one up)."""
+    comp = db.get(HrCompany, c.company_id) if c.company_id else None
+    if comp and comp.signature_data:
+        c.company_signature = comp.signature_data
+        c.company_signatory = " — ".join(x for x in (comp.signatory_name, comp.signatory_title) if x) or None
+        c.company_signed_at = datetime.utcnow()
+    else:
+        c.company_signature = c.company_signatory = None
+        c.company_signed_at = None
+
+
 def needs_signed(db: Session, c: HrContract) -> bool:
-    """Accepted contract whose signed copy is still missing (or was sent back)."""
-    if c.status != "accepted" or c.signed_status in ("uploaded", "verified"):
+    """Accepted contract with no signature yet: neither signed on screen nor a signed copy uploaded (or it was sent back)."""
+    if c.status != "accepted" or c.employee_signature or c.signed_status in ("uploaded", "verified"):
         return False
     t = db.get(HrContractTemplate, c.template_id) if c.template_id else None
     return t.requires_signed_copy if t else bool(c.body)
@@ -127,6 +157,7 @@ def _contract_out(c: HrContract, db: Session, locale: str, show_salary: bool) ->
         "signed_status": c.signed_status, "signed_filename": c.signed_filename, "signed_uploaded_at": _iso(c.signed_uploaded_at),
         "signed_uploaded_by": c.signed_uploaded_by, "signed_reviewed_at": _iso(c.signed_reviewed_at), "signed_reviewed_by": c.signed_reviewed_by,
         "signed_note": c.signed_note, "needs_signed": needs_signed(db, c),
+        "signed_digitally": bool(c.employee_signature), "company_signed": bool(c.company_signature), "doc_hash": c.doc_hash,
     }
     if show_salary:
         d.update({"basic_salary": c.basic_salary, "housing_allowance": c.housing_allowance, "transport_allowance": c.transport_allowance,
@@ -287,6 +318,7 @@ class AcceptIn(BaseModel):
     accept: bool = True
     full_name: str = Field(min_length=3, max_length=160)  # typed name as e-signature
     note: Optional[str] = Field(default=None, max_length=500)
+    signature: Optional[str] = Field(default=None, max_length=400_000)  # drawn signature, PNG data URL
 
 
 class TerminateIn(BaseModel):
@@ -441,8 +473,15 @@ def respond_contract(cid: int, payload: AcceptIn, request: Request, db: DbSessio
     if c.status != "pending_acceptance":
         raise HTTPException(status.HTTP_409_CONFLICT, "This contract isn't waiting for your response.")
     if payload.accept:
+        sig = valid_signature(payload.signature)
+        if sig is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Sign in the box to accept the contract.")
         refresh_body(db, c)
         c.status, c.accepted_at, c.accepted_name = "accepted", datetime.utcnow(), payload.full_name.strip()
+        c.employee_signature = sig
+        import hashlib
+
+        c.doc_hash = hashlib.sha256(f"{c.number}|{c.body or ''}|{c.basic_salary}|{c.housing_allowance}|{c.transport_allowance}|{c.other_allowance}|{c.start_date}|{c.end_date}".encode()).hexdigest()
         c.accepted_ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "") or "").split(",")[0][:64]
         prof = _profile(db, user.id)
         if c.job_title:
@@ -618,6 +657,7 @@ def send_contract(cid: int, db: DbSession, user: Perm("hr", "approve"), locale: 
     if c.status != "draft":
         raise HTTPException(status.HTTP_409_CONFLICT, "Only a draft can be sent for acceptance.")
     refresh_body(db, c)
+    stamp_company(db, c)
     c.status, c.sent_at, c.declined_note = "pending_acceptance", datetime.utcnow(), None
     db.commit()
     emp = db.get(User, c.user_id)
@@ -768,6 +808,7 @@ def companies(db: DbSession, user: CurrentUser, locale: str = Query("ar", patter
             "id": c.id, "name_ar": c.name_ar, "name_en": c.name_en, "name": _cname(c, locale), "short_code": c.short_code, "is_holding": c.is_holding,
             "parent_id": c.parent_id, "cr_number": c.cr_number, "color": c.color, "office_lat": c.office_lat, "office_lng": c.office_lng,
             "geofence_radius_m": c.geofence_radius_m, "active": c.active,
+            "logo_url": c.logo_url, "signatory_name": c.signatory_name, "signatory_title": c.signatory_title, "has_signature": bool(c.signature_data),
             "headcount": sum(1 for p in profs if p.company_id == c.id and p.user_id in staff_ids),
             "departments": [{"id": d.id, "name_ar": d.name_ar, "name_en": d.name_en, "name": _dname(d, locale), "parent_id": d.parent_id,
                              "head_user_id": d.head_user_id, "head": _uname(db.get(User, d.head_user_id), locale) if d.head_user_id else None,

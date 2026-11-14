@@ -7,10 +7,20 @@ import { useRef, useState, useTransition } from "react";
 import { hrReviewSigned, meRespondContract } from "@/lib/hr-people-actions";
 import { HP, lb, type ContractDoc } from "@/lib/hr-people";
 
-const money = (ar: boolean, n?: number | null) => (n == null ? "—" : `${new Intl.NumberFormat(ar ? "ar-SA" : "en-US", { maximumFractionDigits: 0 }).format(n)} ${ar ? "ر.س" : "SAR"}`);
-const dt = (s?: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "");
+import { ContractPaper } from "./ContractPaper";
+import { SignaturePad } from "./SignaturePad";
 
-/** One employment contract: steps, the printable text, and what the viewer can do next. */
+const money = (ar: boolean, n?: number | null) => (n == null ? "—" : `${new Intl.NumberFormat(ar ? "ar-SA" : "en-US", { maximumFractionDigits: 0 }).format(n)} ${ar ? "ر.س" : "SAR"}`);
+/** API timestamps are UTC without a zone; show them in Riyadh time. */
+const dt = (s?: string | null) => {
+  if (!s) return "";
+  const d = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : `${s}Z`);
+  if (Number.isNaN(d.getTime())) return s.slice(0, 16).replace("T", " ");
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+};
+
+/** One employment contract: progress, the document itself, and what the viewer can do next. */
 export function ContractDocument({ locale, doc }: { locale: string; doc: ContractDoc }) {
   const ar = locale === "ar";
   const T = (a: string, e: string) => (ar ? a : e);
@@ -19,18 +29,23 @@ export function ContractDocument({ locale, doc }: { locale: string; doc: Contrac
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
+  const [sig, setSig] = useState<string | null>(null);
+  const [agree, setAgree] = useState(false);
+  const [changes, setChanges] = useState(false);
   const [note, setNote] = useState("");
   const [reject, setReject] = useState("");
   const [busy, setBusy] = useState(false);
+  const [paper, setPaper] = useState(false);
   const file = useRef<HTMLInputElement>(null);
 
   const accepted = doc.status === "accepted" || doc.status === "terminated";
-  const signed = doc.signed_status;
-  const steps: { k: string; label: string; done: boolean; on: boolean; at?: string | null; who?: string | null }[] = [
-    { k: "sent", label: T("أُرسل للموظف", "Sent to employee"), done: doc.status !== "draft", on: doc.status === "draft", at: doc.sent_at },
-    { k: "accepted", label: T("وافق الموظف", "Employee accepted"), done: accepted, on: doc.status === "pending_acceptance", at: doc.accepted_at, who: doc.accepted_name },
-    { k: "uploaded", label: T("رُفعت النسخة الموقعة", "Signed copy uploaded"), done: signed === "uploaded" || signed === "verified", on: accepted && (!signed || signed === "rejected"), at: doc.signed_uploaded_at, who: doc.signed_uploaded_by },
-    { k: "verified", label: T("تحققت الموارد البشرية", "HR verified"), done: signed === "verified", on: signed === "uploaded", at: signed === "verified" ? doc.signed_reviewed_at : null, who: signed === "verified" ? doc.signed_reviewed_by : null },
+  const signedOk = !!doc.signed_digitally || doc.signed_status === "verified";
+  const steps = [
+    { k: "sent", label: T("أُرسل للموظف", "Sent to employee"), done: doc.status !== "draft", on: doc.status === "draft", at: doc.sent_at, who: doc.company_signatory },
+    { k: "signed", label: T("وقّع الموظف", "Employee signed"), done: accepted, on: doc.status === "pending_acceptance", at: doc.accepted_at, who: doc.accepted_name },
+    doc.signed_digitally
+      ? { k: "sealed", label: T("وُثّق إلكترونيًا", "Sealed digitally"), done: true, on: false, at: doc.accepted_at, who: doc.doc_hash ? doc.doc_hash.slice(0, 8).toUpperCase() : null }
+      : { k: "copy", label: accepted ? T("النسخة الموقعة معتمدة", "Signed copy verified") : T("التوثيق", "Sealed"), done: doc.signed_status === "verified", on: accepted && doc.signed_status !== "verified", at: doc.signed_reviewed_at, who: doc.signed_reviewed_by },
   ];
 
   const act = (fn: () => Promise<{ ok: boolean; error?: string }>, ok: string) => start(async () => {
@@ -58,9 +73,10 @@ export function ContractDocument({ locale, doc }: { locale: string; doc: Contrac
     } finally { setBusy(false); }
   };
 
-  const canUploadSelf = doc.is_self && accepted && signed !== "verified" && doc.status === "accepted";
-  const canUploadHr = !doc.is_self && doc.can_upload_hr && accepted && signed !== "verified";
-  const company = ar ? doc.company_name_ar : doc.company_name_en || doc.company_name_ar;
+  const canUploadSelf = doc.is_self && doc.status === "accepted" && !signedOk;
+  const canUploadHr = !doc.is_self && doc.can_upload_hr && accepted && doc.signed_status !== "verified";
+  const head = { name_ar: doc.company_name_ar ?? "", name_en: doc.company_name_en, cr: doc.company_cr, color: doc.company_color, logo_url: doc.company_logo_url, is_holding: doc.company_is_holding, code: doc.company_code };
+  const watermark = doc.status === "draft" ? T("مسودة", "DRAFT") : doc.status === "pending_acceptance" ? T("بانتظار التوقيع", "AWAITING SIGNATURE") : doc.status === "terminated" ? T("منتهٍ", "ENDED") : null;
 
   return (
     <div className="page screen-enter cdoc-page">
@@ -70,7 +86,7 @@ export function ContractDocument({ locale, doc }: { locale: string; doc: Contrac
         </Link>
         <div className="cdoc-bar__end">
           {!doc.is_self && <Link className="btn btn-ghost btn-sm" href={`/${locale}/hr?tab=contracts`}><span className="ms ms-sm" aria-hidden>contract</span>{T("كل العقود", "All contracts")}</Link>}
-          {doc.signed_filename && <a className="btn btn-secondary btn-sm" href={`/api/hr/contracts/${doc.id}/signed`} target="_blank" rel="noopener"><span className="ms ms-sm" aria-hidden>draft</span>{T("النسخة الموقعة", "Signed copy")}</a>}
+          {doc.signed_filename && <a className="btn btn-secondary btn-sm" href={`/api/hr/contracts/${doc.id}/signed`} target="_blank" rel="noopener"><span className="ms ms-sm" aria-hidden>draft</span>{T("النسخة الورقية الموقعة", "Paper signed copy")}</a>}
           {doc.body && <button className="btn btn-primary btn-sm" onClick={() => window.print()}><span className="ms ms-sm" aria-hidden>print</span>{T("طباعة / حفظ PDF", "Print / save PDF")}</button>}
         </div>
       </div>
@@ -84,37 +100,89 @@ export function ContractDocument({ locale, doc }: { locale: string; doc: Contrac
         ))}
       </ol>
 
-      {doc.is_self && doc.status === "pending_acceptance" && (
-        <section className="card cdoc-act no-print">
-          <h3>{T("راجع العقد ثم وافق عليه", "Review the contract, then accept it")}</h3>
-          <p className="text-sec">{T("بكتابة اسمك الكامل والموافقة تُقر بأنك قرأت البنود والراتب. بعد الموافقة اطبع العقد ووقّعه وارفع النسخة الموقعة هنا.", "Typing your full name and accepting confirms you've read the terms and salary. Then print the contract, sign it and upload the signed copy here.")}</p>
-          <div className="cdoc-act__row">
-            <label className="field"><span>{T("اسمك الكامل", "Your full name")}</span><input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={doc.employee} /></label>
-            <label className="field"><span>{T("ملاحظة (عند طلب تعديل)", "Note (when asking for changes)")}</span><input className="input" value={note} onChange={(e) => setNote(e.target.value)} /></label>
-          </div>
-          <div className="mx-row">
-            <button className="btn btn-primary" disabled={pending || typed.trim().length < 3} onClick={() => act(() => meRespondContract(doc.id, { accept: true, full_name: typed }), T("تمت الموافقة. اطبع العقد ووقّعه ثم ارفع النسخة الموقعة.", "Accepted. Print, sign and upload the signed copy."))}>{T("أوافق على العقد", "I accept this contract")}</button>
-            <button className="btn btn-secondary" disabled={pending || typed.trim().length < 3 || !note.trim()} onClick={() => act(() => meRespondContract(doc.id, { accept: false, full_name: typed, note }), T("أُرسل طلب التعديل للموارد البشرية.", "Change request sent to HR."))}>{T("طلب تعديل", "Ask for changes")}</button>
-          </div>
-        </section>
-      )}
-
-      {signed === "rejected" && (
+      {doc.signed_status === "rejected" && !doc.signed_digitally && (
         <p className="cdoc-alert no-print"><span className="ms" aria-hidden>error</span>{T("أعادت الموارد البشرية النسخة الموقعة: ", "HR sent the signed copy back: ")}<b>{doc.signed_note}</b></p>
+      )}
+      {msg && <p className="col-ok no-print">{msg}</p>}{err && <p className="mx-err no-print">{err}</p>}
+
+      <ContractPaper
+        ar={ar}
+        head={head}
+        number={doc.number}
+        kind={lb(ar, HP.ctype, doc.contract_type)}
+        issued={doc.sent_at ? doc.sent_at.slice(0, 10) : null}
+        watermark={watermark}
+        facts={[
+          { label: T("الموظف", "Employee"), value: doc.employee },
+          { label: T("المسمى الوظيفي", "Job title"), value: doc.job_title },
+          { label: T("مدة العقد", "Term"), value: doc.end_date ? <span dir="ltr">{doc.start_date} → {doc.end_date}</span> : <>{doc.start_date} · {T("غير محدد المدة", "open-ended")}</> },
+          ...(doc.total_salary != null ? [{ label: T("الأجر الشهري الإجمالي", "Monthly pay"), value: money(ar, doc.total_salary) }] : []),
+        ]}
+        body={doc.body ?? (doc.total_salary == null
+          ? T("نص العقد يتضمن الراتب، ويظهر للموظف ولمن لديه صلاحية الاعتماد فقط.", "The contract text includes salary, so only the employee and HR approvers can read it.")
+          : doc.terms || T("لا يوجد نص لهذا العقد. اختر قالبًا عند تعديل العقد ليُنشأ النص تلقائيًا.", "This contract has no text yet. Pick a template when editing it."))}
+        sign={{
+          company: { label: T("الطرف الأول — صاحب العمل", "First party — employer"), name: doc.company_signatory?.split(" — ")[0] ?? (ar ? doc.company_name_ar : doc.company_name_en || doc.company_name_ar),
+            role: doc.company_signatory?.split(" — ")[1] ?? null, signature: doc.company_signature, at: doc.company_signed_at ? dt(doc.company_signed_at) : null,
+            pending: T("التوقيع والختم", "Signature & stamp") },
+          employee: { label: T("الطرف الثاني — الموظف", "Second party — employee"), name: doc.accepted_name || doc.employee, role: doc.job_title,
+            signature: doc.employee_signature, at: doc.accepted_at ? dt(doc.accepted_at) : null, pending: T("التوقيع", "Signature") },
+        }}
+        fingerprint={doc.doc_hash}
+      />
+
+      {doc.is_self && doc.status === "pending_acceptance" && (
+        <section className="card cdoc-sign no-print" aria-labelledby="sign-h">
+          <header>
+            <span className="cdoc-sign__ico ms" aria-hidden>draw</span>
+            <div>
+              <h3 id="sign-h">{T("وقّع العقد إلكترونيًا", "Sign the contract")}</h3>
+              <p className="text-sec">{T("اقرأ العقد أعلاه، ثم اكتب اسمك الكامل ووقّع في المربع. يُحفظ توقيعك مع التاريخ والوقت وبصمة لنص العقد.", "Read the contract above, then type your full name and sign in the box. Your signature is saved with the date, time and a fingerprint of the text.")}</p>
+            </div>
+          </header>
+          {!changes ? (
+            <>
+              <label className="field"><span>{T("اسمك الكامل كما في الهوية", "Your full name as on your ID")}</span><input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={doc.employee} autoComplete="name" /></label>
+              <SignaturePad ar={ar} onChange={setSig} />
+              <label className="ct-check cdoc-sign__agree"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />{T("قرأت بنود العقد والراتب وأوافق عليها، وأقرّ بأن هذا التوقيع الإلكتروني يقوم مقام توقيعي الخطي.", "I've read and agree to the terms and salary, and accept this electronic signature as my handwritten signature.")}</label>
+              <div className="mx-row">
+                <button className="btn btn-primary" disabled={pending || typed.trim().length < 3 || !sig || !agree} onClick={() => act(() => meRespondContract(doc.id, { accept: true, full_name: typed, signature: sig }), T("وُقّع العقد. يمكنك طباعته أو حفظه PDF في أي وقت.", "Signed. You can print or save it as PDF any time."))}>
+                  <span className="ms ms-sm" aria-hidden>verified</span>{T("توقيع واعتماد العقد", "Sign and accept")}
+                </button>
+                <button className="btn btn-ghost" onClick={() => setChanges(true)}>{T("أحتاج تعديلًا قبل التوقيع", "I need a change first")}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <label className="field"><span>{T("اسمك الكامل", "Your full name")}</span><input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={doc.employee} /></label>
+              <label className="field"><span>{T("ما الذي تريد تعديله؟", "What should change?")}</span><textarea className="textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+              <div className="mx-row">
+                <button className="btn btn-primary" disabled={pending || typed.trim().length < 3 || note.trim().length < 3} onClick={() => act(() => meRespondContract(doc.id, { accept: false, full_name: typed, note }), T("أُرسل طلب التعديل للموارد البشرية.", "Change request sent to HR."))}>{T("إرسال طلب التعديل", "Send change request")}</button>
+                <button className="btn btn-ghost" onClick={() => setChanges(false)}>{T("رجوع للتوقيع", "Back to signing")}</button>
+              </div>
+            </>
+          )}
+        </section>
       )}
 
       {(canUploadSelf || canUploadHr) && (
         <section className="card cdoc-act no-print">
-          <h3>{canUploadSelf ? (signed === "uploaded" ? T("استبدال النسخة الموقعة", "Replace the signed copy") : T("ارفع نسخة العقد الموقّعة", "Upload the signed contract")) : T("إرفاق النسخة الموقعة نيابة عن الموظف", "File the signed copy for the employee")}</h3>
-          <p className="text-sec">{canUploadSelf ? T("اطبع العقد ووقّع على كل صفحة، ثم صوّره أو امسحه ضوئيًا وارفعه (PDF أو صورة، حتى 15 ميغابايت).", "Print the contract, sign every page, then scan or photograph it and upload it (PDF or image, up to 15 MB).") : T("للعقود الورقية الموقعة في المكتب. تُعتمد مباشرة إذا كانت لديك صلاحية الاعتماد.", "For paper contracts signed at the office. Counts as verified if you can approve.")}</p>
-          <div className="mx-row">
-            <input ref={file} className="input" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" aria-label={T("ملف العقد الموقّع", "Signed contract file")} />
-            <button className="btn btn-primary" disabled={busy} onClick={() => upload(!canUploadSelf)}><span className="ms ms-sm" aria-hidden>upload_file</span>{busy ? T("جارٍ الرفع…", "Uploading…") : T("رفع", "Upload")}</button>
-          </div>
+          {canUploadSelf && !paper ? (
+            <p className="text-sec cdoc-act__alt">{T("وقّعت هذا العقد ورقيًا؟", "Signed this contract on paper?")} <button className="btn btn-ghost btn-sm" onClick={() => setPaper(true)}>{T("ارفع النسخة الموقعة", "Upload the signed copy")}</button></p>
+          ) : (
+            <>
+              <h3>{canUploadSelf ? T("رفع النسخة الورقية الموقعة", "Upload the paper signed copy") : T("إرفاق النسخة الورقية الموقعة", "File the paper signed copy")}</h3>
+              <p className="text-sec">{T("PDF أو صورة واضحة لكل الصفحات، حتى 15 ميغابايت. تتحقق منها الموارد البشرية.", "A PDF or clear photo of every page, up to 15 MB. HR checks it.")}</p>
+              <div className="mx-row">
+                <input ref={file} className="input" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" aria-label={T("ملف العقد الموقّع", "Signed contract file")} />
+                <button className="btn btn-primary" disabled={busy} onClick={() => upload(!canUploadSelf)}><span className="ms ms-sm" aria-hidden>upload_file</span>{busy ? T("جارٍ الرفع…", "Uploading…") : T("رفع", "Upload")}</button>
+              </div>
+            </>
+          )}
         </section>
       )}
 
-      {doc.can_review && signed === "uploaded" && (
+      {doc.can_review && doc.signed_status === "uploaded" && (
         <section className="card cdoc-act no-print">
           <h3>{T("تحقق من النسخة الموقعة", "Check the signed copy")}</h3>
           <p className="text-sec">{T("افتح النسخة وتأكد أن جميع الصفحات موقعة وتطابق نص العقد.", "Open the copy and check every page is signed and matches the contract text.")} <a href={`/api/hr/contracts/${doc.id}/signed`} target="_blank" rel="noopener">{doc.signed_filename}</a></p>
@@ -125,34 +193,6 @@ export function ContractDocument({ locale, doc }: { locale: string; doc: Contrac
           </div>
         </section>
       )}
-      {msg && <p className="col-ok no-print">{msg}</p>}{err && <p className="mx-err no-print">{err}</p>}
-
-      <article className="cdoc" style={doc.company_color ? ({ "--cdoc-accent": doc.company_color } as React.CSSProperties) : undefined}>
-        <header className="cdoc__head">
-          <div>
-            <p className="cdoc__company">{company}</p>
-            {doc.company_cr && <p className="cdoc__cr">{T("سجل تجاري", "CR")} {doc.company_cr}</p>}
-          </div>
-          <div className="cdoc__meta">
-            <b>{doc.number}</b>
-            <span>{lb(ar, HP.ctype, doc.contract_type)} · {lb(ar, HP.cstate, doc.state)}</span>
-          </div>
-        </header>
-        <dl className="cdoc__facts">
-          <div><dt>{T("الموظف", "Employee")}</dt><dd>{doc.employee}</dd></div>
-          <div><dt>{T("المسمى الوظيفي", "Job title")}</dt><dd>{doc.job_title || "—"}</dd></div>
-          <div><dt>{T("المدة", "Term")}</dt><dd>{doc.end_date ? <span dir="ltr">{doc.start_date} → {doc.end_date}</span> : <>{doc.start_date} {T("(غير محدد)", "(open-ended)")}</>}</dd></div>
-          {doc.total_salary != null && <div><dt>{T("الإجمالي الشهري", "Monthly total")}</dt><dd>{money(ar, doc.total_salary)}</dd></div>}
-        </dl>
-        {doc.body ? <div className="cdoc__body" dir="auto">{doc.body}</div>
-          : doc.total_salary == null ? <p className="text-sec">{T("نص العقد يتضمن الراتب، ويظهر للموظف ولمن لديه صلاحية الاعتماد فقط.", "The contract text includes salary, so only the employee and HR approvers can read it.")}</p>
-          : <div className="cdoc__body">{doc.terms || T("لا يوجد نص لهذا العقد. اختر قالبًا عند تعديل العقد ليُنشأ النص تلقائيًا.", "This contract has no text yet. Pick a template when editing it to generate the text.")}</div>}
-        {doc.accepted_at && (
-          <footer className="cdoc__sig">
-            <span>{T("وافق إلكترونيًا", "Accepted electronically")}: <b>{doc.accepted_name}</b> · {dt(doc.accepted_at)}</span>
-          </footer>
-        )}
-      </article>
     </div>
   );
 }

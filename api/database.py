@@ -513,6 +513,12 @@ def ensure_hr_location_columns(engine) -> None:
         ("signed_key", "VARCHAR(300)"), ("signed_filename", "VARCHAR(200)"), ("signed_status", "VARCHAR(10)"),
         ("signed_uploaded_at", ts), ("signed_uploaded_by", "VARCHAR(120)"), ("signed_reviewed_at", ts),
         ("signed_reviewed_by", "VARCHAR(120)"), ("signed_note", "VARCHAR(300)"),
+        ("employee_signature", "TEXT"), ("company_signature", "TEXT"), ("company_signatory", "VARCHAR(250)"),
+        ("company_signed_at", ts), ("doc_hash", "VARCHAR(64)"),
+    ])
+    _add_missing_columns(engine, "hr_companies", [
+        ("logo_url", "VARCHAR(500)"), ("logo_key", "VARCHAR(300)"), ("signatory_name", "VARCHAR(120)"),
+        ("signatory_title", "VARCHAR(120)"), ("signature_data", "TEXT"),
     ])
     if not sqlite:  # widen the request kind column for 'work_location'
         with engine.begin() as conn:

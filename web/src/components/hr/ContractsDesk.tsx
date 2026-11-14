@@ -6,7 +6,10 @@ import { useMemo, useRef, useState, useTransition } from "react";
 
 import { FilterBar, FilterSearch, FilterSelect } from "@/components/EntityFilterBar";
 import { Modal } from "@/components/Modal";
+
+import { ContractPaper } from "./ContractPaper";
 import { hrBulkIssue, hrDeleteTemplate, hrDuplicateTemplate, hrPreviewTemplate, hrSaveTemplate } from "@/lib/hr-people-actions";
+import type { PreviewCompany } from "@/lib/hr-people-actions";
 import { HP, lb, type Company, type Contract, type ContractsDesk as Desk, type ContractTemplate, type Placeholder } from "@/lib/hr-people";
 
 type Person = { id: number; name: string; company_id?: number | null };
@@ -26,7 +29,7 @@ export function ContractsDesk({ locale, desk, templates, placeholders, companies
   const [bulk, setBulk] = useState<number[] | null>(null);
   const k = desk.counts;
 
-  const sigState = (c: Contract) => (c.signed_status ? c.signed_status : c.needs_signed ? "missing" : null);
+  const sigState = (c: Contract) => (c.signed_digitally ? "digital" : c.signed_status ? c.signed_status : c.needs_signed ? "missing" : null);
   const shown = useMemo(() => desk.contracts.filter((c) => {
     if (comp !== "all" && String(c.company_id) !== comp) return false;
     if (q.trim() && !`${c.number} ${c.employee ?? ""} ${c.job_title ?? ""}`.toLowerCase().includes(q.trim().toLowerCase())) return false;
@@ -84,7 +87,7 @@ export function ContractsDesk({ locale, desk, templates, placeholders, companies
             <div className="empty-sub">{T("أصدر العقود من قالب لكل الموظفين أو لموظف واحد من ملفه.", "Issue contracts from a template to many employees at once, or to one from their file.")}</div></div>
         ) : (
           <div className="card card-tight"><div className="tbl-wrap"><table className="tbl">
-            <thead><tr><th>{T("العقد", "Contract")}</th><th>{T("الموظف", "Employee")}</th><th>{T("المدة", "Term")}</th><th>{T("الحالة", "Status")}</th><th>{T("النسخة الموقعة", "Signed copy")}</th></tr></thead>
+            <thead><tr><th>{T("العقد", "Contract")}</th><th>{T("الموظف", "Employee")}</th><th>{T("المدة", "Term")}</th><th>{T("الحالة", "Status")}</th><th>{T("التوقيع", "Signature")}</th></tr></thead>
             <tbody>{shown.map((c) => {
               const s = sigState(c);
               return (
@@ -180,7 +183,7 @@ function TemplateEditor({ ar, t, companies, placeholders, people, onClose }: { a
   });
   const set = (k: keyof typeof f, v: string | boolean) => setF((o) => ({ ...o, [k]: v }));
   const [lang, setLang] = useState<"body_ar" | "body_en">("body_ar");
-  const [prev, setPrev] = useState<string | null>(null);
+  const [prev, setPrev] = useState<{ text: string; company: PreviewCompany | null } | string | null>(null);
   const [who, setWho] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
   const { pending, err, run } = useAct();
@@ -195,7 +198,7 @@ function TemplateEditor({ ar, t, companies, placeholders, people, onClose }: { a
   };
   const preview = () => startP(async () => {
     const r = await hrPreviewTemplate({ body_ar: f.body_ar, body_en: f.body_en || null, user_id: who ? Number(who) : null, company_id: f.company_id ? Number(f.company_id) : null });
-    setPrev(r.ok ? (r.data as { text: string }).text : r.error);
+    setPrev(r.ok ? (r.data as { text: string; company: PreviewCompany | null }) : r.error);
   });
   const body = () => ({
     name: f.name, company_id: f.company_id ? Number(f.company_id) : null, contract_type: f.contract_type, body_ar: f.body_ar, body_en: f.body_en.trim() || null,
@@ -222,7 +225,7 @@ function TemplateEditor({ ar, t, companies, placeholders, people, onClose }: { a
           {n("notice_days", T("فترة الإشعار (يوم)", "Notice period (days)"), 0, 365)}
         </div>
         <div className="ct-toggles">
-          <label className="ct-check"><input type="checkbox" checked={f.requires_signed_copy} onChange={(e) => set("requires_signed_copy", e.target.checked)} />{T("يتطلب رفع نسخة موقعة بعد الموافقة", "Require an uploaded signed copy after acceptance")}</label>
+          <label className="ct-check"><input type="checkbox" checked={f.requires_signed_copy} onChange={(e) => set("requires_signed_copy", e.target.checked)} />{T("يتطلب توقيع الموظف (إلكترونيًا أو نسخة ورقية موقعة)", "Require the employee's signature (on screen, or a paper signed copy)")}</label>
           <label className="ct-check"><input type="checkbox" checked={f.is_default} onChange={(e) => set("is_default", e.target.checked)} />{T("القالب الافتراضي لهذه الشركة ونوع العقد", "Default for this company and contract type")}</label>
           {t && <label className="ct-check"><input type="checkbox" checked={f.active} onChange={(e) => set("active", e.target.checked)} />{T("فعّال", "Active")}</label>}
         </div>
@@ -242,7 +245,16 @@ function TemplateEditor({ ar, t, companies, placeholders, people, onClose }: { a
             </select>
             <button className="btn btn-secondary btn-sm" disabled={pPending} onClick={preview}><span className="ms ms-sm" aria-hidden>visibility</span>{T("معاينة", "Preview")}</button>
           </div>
-          {prev != null && <div className="cdoc__body ct-prev__text" dir="auto">{prev}</div>}
+          {typeof prev === "string" && <p className="mx-err">{prev}</p>}
+          {prev != null && typeof prev !== "string" && (
+            <div className="ct-prev__paper">
+              <ContractPaper ar={ar} head={prev.company} number={T("رقم العقد", "No.")} kind={lb(ar, HP.ctype, f.contract_type)} watermark={T("معاينة", "PREVIEW")} body={prev.text}
+                sign={{
+                  company: { label: T("الطرف الأول — صاحب العمل", "First party — employer"), name: prev.company?.signatory?.split(" — ")[0] ?? prev.company?.name_ar, role: prev.company?.signatory?.split(" — ")[1], signature: prev.company?.signature, pending: T("التوقيع والختم", "Signature & stamp") },
+                  employee: { label: T("الطرف الثاني — الموظف", "Second party — employee"), name: who ? people.find((p) => String(p.id) === who)?.name : T("اسم الموظف", "Employee name"), pending: T("يوقّع الموظف هنا إلكترونيًا", "The employee signs here on screen") },
+                }} />
+            </div>
+          )}
         </div>
         {err && <p className="mx-err">{err}</p>}
       </div>

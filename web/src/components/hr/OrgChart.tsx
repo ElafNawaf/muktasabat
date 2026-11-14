@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { Modal } from "@/components/Modal";
-import { hrSaveCompany, hrSaveDepartment, hrSetReporting } from "@/lib/hr-people-actions";
+import { hrDeleteLogo, hrGetSignatory, hrSaveCompany, hrSaveDepartment, hrSetReporting, hrSetSignatory } from "@/lib/hr-people-actions";
+
+import { CompanyMark } from "./ContractPaper";
+import { SignaturePad } from "./SignaturePad";
 import type { Company, OrgNode } from "@/lib/hr-people";
 
 type Props = { locale: string; nodes: OrgNode[]; companies: Company[]; canEdit: boolean; canManageCompanies: boolean; canOpenFiles: boolean };
@@ -187,7 +190,79 @@ function CompanyModal({ ar, c, companies, onClose }: { ar: boolean; c: Company |
       </div>
       {c && <label className="checkbox" style={{ marginTop: 10 }}><input type="checkbox" checked={f.active} onChange={(e) => set("active", e.target.checked)} />{T("الشركة نشطة", "Company is active")}</label>}
       {err && <p className="mx-err">{err}</p>}
+      {c ? <Letterhead ar={ar} c={c} /> : <p className="text-sec mx-hint">{T("بعد حفظ الشركة يمكنك إضافة شعارها وتوقيع المفوّض بالتوقيع على العقود.", "After saving, you can add the company logo and the signature used on contracts.")}</p>}
     </Modal>
+  );
+}
+
+/** Logo and authorised signatory printed on this company's employment contracts. */
+function Letterhead({ ar, c }: { ar: boolean; c: Company }) {
+  const T = (a: string, e: string) => (ar ? a : e);
+  const router = useRouter();
+  const file = useRef<HTMLInputElement>(null);
+  const [logo, setLogo] = useState(c.logo_url ?? null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [who, setWho] = useState({ name: c.signatory_name ?? "", title: c.signatory_title ?? "" });
+  const [current, setCurrent] = useState<string | null>(null);
+  const [redraw, setRedraw] = useState(false);
+  const [sig, setSig] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  useEffect(() => { if (c.has_signature) hrGetSignatory(c.id).then((r) => r.ok && setCurrent((r.data as { signature?: string | null }).signature ?? null)); }, [c.id, c.has_signature]);
+
+  const upload = async () => {
+    const f = file.current?.files?.[0];
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) return setErr(T("الشعار أكبر من 2 ميغابايت.", "The logo is larger than 2 MB."));
+    setBusy(true); setErr(null); setMsg(null);
+    const fd = new FormData(); fd.append("file", f);
+    const res = await fetch(`/api/hr/companies/${c.id}/logo`, { method: "POST", body: fd });
+    const d = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setErr(typeof d.detail === "string" ? d.detail : T("تعذّر رفع الشعار.", "Couldn't upload the logo."));
+    setLogo(d.logo_url); setMsg(T("حُفظ الشعار.", "Logo saved.")); router.refresh();
+  };
+  const saveSignatory = () => start(async () => {
+    setErr(null); setMsg(null);
+    const r = await hrSetSignatory(c.id, { signatory_name: who.name || null, signatory_title: who.title || null, keep_signature: !redraw, signature: redraw ? sig : null });
+    if (!r.ok) return setErr(r.error ?? "Error");
+    if (redraw) { setCurrent(sig); setRedraw(false); }
+    setMsg(T("حُفظ المفوّض بالتوقيع. يُطبّق على العقود المرسلة من الآن.", "Signatory saved. Applies to contracts sent from now on.")); router.refresh();
+  });
+
+  return (
+    <section className="lh">
+      <h4 className="mx-h">{T("ترويسة العقود والتوقيع", "Contract letterhead & signature")}</h4>
+      <div className="lh-logo">
+        <div className="lh-logo__prev"><CompanyMark head={{ name_ar: c.name_ar, name_en: c.name_en, color: c.color, logo_url: logo, is_holding: c.is_holding, code: c.short_code }} size={56} /></div>
+        <div>
+          <p className="text-sec mx-hint">{T("PNG بخلفية شفافة يُطبع بأفضل شكل. حتى 2 ميغابايت.", "A transparent PNG prints best. Up to 2 MB.")}</p>
+          <div className="mx-row">
+            <input ref={file} type="file" accept="image/png,image/jpeg,image/webp" className="input" aria-label={T("ملف الشعار", "Logo file")} onChange={upload} disabled={busy} />
+            {logo && <button className="btn btn-ghost btn-sm mx-danger" disabled={busy} onClick={async () => { const r = await hrDeleteLogo(c.id); if (r.ok) { setLogo(null); router.refresh(); } }}>{T("إزالة", "Remove")}</button>}
+          </div>
+        </div>
+      </div>
+      <div className="mx-grid2">
+        <label className="field"><span>{T("المفوّض بالتوقيع", "Authorised signatory")}</span><input className="input" value={who.name} onChange={(e) => setWho({ ...who, name: e.target.value })} placeholder={T("مثال: نواف الحربي", "e.g. Nawaf Alharbi")} /></label>
+        <label className="field"><span>{T("صفته", "Title")}</span><input className="input" value={who.title} onChange={(e) => setWho({ ...who, title: e.target.value })} placeholder={T("مثال: الرئيس التنفيذي", "e.g. Chief Executive Officer")} /></label>
+      </div>
+      {current && !redraw ? (
+        <div className="lh-sig"><img src={current} alt={T("التوقيع الحالي", "Current signature")} /><button className="btn btn-ghost btn-sm" onClick={() => setRedraw(true)}>{T("توقيع جديد", "Replace signature")}</button></div>
+      ) : (
+        <>
+          {!redraw && <button className="btn btn-secondary btn-sm" onClick={() => setRedraw(true)}><span className="ms ms-sm" aria-hidden>draw</span>{T("إضافة توقيع المفوّض", "Add the signatory's signature")}</button>}
+          {redraw && <SignaturePad ar={ar} onChange={setSig} height={150} />}
+        </>
+      )}
+      <p className="text-sec mx-hint">{T("يظهر التوقيع تلقائيًا في خانة صاحب العمل عند إرسال العقد للموظف.", "The signature is added to the employer's block automatically when a contract is sent.")}</p>
+      <div className="mx-row">
+        <button className="btn btn-primary btn-sm" disabled={pending || (redraw && !sig)} onClick={saveSignatory}>{T("حفظ المفوّض والتوقيع", "Save signatory")}</button>
+        {redraw && <button className="btn btn-ghost btn-sm" onClick={() => { setRedraw(false); setSig(null); }}>{T("إلغاء", "Cancel")}</button>}
+      </div>
+      {msg && <p className="col-ok">{msg}</p>}{err && <p className="mx-err">{err}</p>}
+    </section>
   );
 }
 
