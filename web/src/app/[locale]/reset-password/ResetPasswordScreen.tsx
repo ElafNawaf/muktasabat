@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
+import { LoginSky } from "@/components/LoginSky";
 
 export function ResetPasswordScreen() {
   const t = useTranslations("resetPage");
@@ -62,7 +63,7 @@ export function ResetPasswordScreen() {
 
   return (
     <div className="login-page">
-      <div className="login-pattern" />
+      <LoginSky />
       <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={`/${otherLocale}/reset-password${token ? `?token=${encodeURIComponent(token)}` : ""}`}>
         {locale === "en" ? "العربية" : "English"}

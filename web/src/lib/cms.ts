@@ -298,3 +298,21 @@ export function artVariant(type: string): string {
   if (type === "office" || type === "shop" || type === "warehouse" || type === "building") return "commercial";
   return "residential";
 }
+
+/** Material icon for a listing/property type — used instead of placeholder art
+ *  because most properties have no photos yet. */
+export function typeIcon(type?: string | null): string {
+  const map: Record<string, string> = {
+    apartment: "apartment",
+    floor: "layers",
+    villa: "villa",
+    duplex: "stairs",
+    land: "landscape",
+    building: "domain",
+    office: "business_center",
+    shop: "storefront",
+    warehouse: "warehouse",
+    rest_house: "cottage",
+  };
+  return map[type ?? ""] ?? "home_work";
+}

@@ -3,13 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { FacadeArt } from "@/components/site/FacadeArt";
 import { LeadForm } from "@/components/site/LeadForm";
 import { ListingCard, ListingSpecs, PriceTag } from "@/components/site/ListingCard";
 import { Markdown } from "@/components/site/Markdown";
 import { ProjectMap } from "@/components/site/ProjectMap";
 import { ShareButton } from "@/components/site/ShareButton";
-import { SITE_URL, artVariant, cms, pick, waLink, type Listing } from "@/lib/cms";
+import { SITE_URL, cms, pick, typeIcon, waLink, type Listing } from "@/lib/cms";
 import { pageMeta } from "@/lib/seo";
 
 export const revalidate = 300;
@@ -98,19 +97,19 @@ export default async function ListingDetail({ params }: P) {
         <div className="mk-wrap">
           <Link href={`/${locale}/listings`} className="mk-back mk-back--dark">{t("listings.back")}</Link>
 
-          <div className={`mk-shots mk-shots--${Math.min(photos.length, 5)}`}>
-            {photos.length === 0 ? (
-              <div className="mk-shots__main"><FacadeArt variant={artVariant(l.property_type)} /></div>
-            ) : (
-              photos.slice(0, 5).map((src, i) => (
+          {/* Photos only when the listing has them — most don't yet, so the
+              page leads with the facts instead of placeholder art. */}
+          {photos.length > 0 && (
+            <div className={`mk-shots mk-shots--${Math.min(photos.length, 5)}`}>
+              {photos.slice(0, 5).map((src, i) => (
                 <a key={src} href={src} target="_blank" rel="noopener noreferrer" className={i === 0 ? "mk-shots__main" : undefined}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt={`${title} ${i + 1}`} loading={i === 0 ? "eager" : "lazy"} fetchPriority={i === 0 ? "high" : undefined} />
                   {i === 4 && photos.length > 5 && <span className="mk-shots__more">+{photos.length - 5}</span>}
                 </a>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="mk-article-grid mk-mt">
             <article>
@@ -120,7 +119,12 @@ export default async function ListingDetail({ params }: P) {
                 {closed && <span className="mk-pill mk-pill--closed">{t(`listings.status_${l.status}`)}</span>}
                 {where && <span>{where}</span>}
               </p>
-              <h1 className="mk-display mk-display--md mk-display--ink">{title}</h1>
+              <div className="mk-ltitle">
+                {photos.length === 0 && (
+                  <span className="mk-typeicon mk-typeicon--lg" aria-hidden="true"><span className="ms">{typeIcon(l.property_type)}</span></span>
+                )}
+                <h1 className="mk-display mk-display--md mk-display--ink">{title}</h1>
+              </div>
               {pick(locale, l, "summary") && <p className="mk-lead mk-lead--big">{pick(locale, l, "summary")}</p>}
               <ListingSpecs listing={l} locale={locale} />
 

@@ -181,3 +181,9 @@ html:has(.ow-root), html:has(.ow-root) body { height: auto !important; overflow:
 .ow-statement__h { flex-wrap: wrap; }
 @media screen { .ow-statement__brand { display: none; } }
 @media print { .ow-statement__brand { display: flex !important; } }
+
+/* 2026-11b clarity pass: same theme as the website & staff portal — neutral hero tile, softer corners. */
+.ow-kpi--hero { background: var(--brand-basalt); border-color: var(--brand-basalt); }
+.ow-root h1, .ow-root h2, .ow-root h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; }
+.ow-root :is(.ow-kpi, .ow-card, .ow-panel) { border-radius: 14px; }
+.ow-btn { border-radius: 10px; }

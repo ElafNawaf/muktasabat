@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
-import { artVariant, listingPrice, pick, type Listing } from "@/lib/cms";
+import { listingPrice, pick, typeIcon, type Listing } from "@/lib/cms";
 
-import { FacadeArt } from "./FacadeArt";
 
 
 export function PriceTag({ listing, locale, size = "md" }: { listing: Listing; locale: string; size?: "md" | "lg" }) {
@@ -48,30 +47,35 @@ export function ListingCard({ listing, locale, index = 0 }: { listing: Listing; 
   const title = pick(locale, listing, "title");
   const where = [pick(locale, listing, "district"), pick(locale, listing, "city")].filter(Boolean).join(locale === "ar" ? "، " : ", ");
   const closed = listing.status !== "available";
+  const photo = listing.cover_url || listing.gallery[0];
+  const flag = closed ? (
+    <span className="mk-listing__flag mk-listing__flag--closed">{t(`status_${listing.status}`)}</span>
+  ) : listing.exclusive ? (
+    <span className="mk-listing__flag">{t("exclusive")}</span>
+  ) : null;
   return (
     <Link
       href={`/${locale}/listings/${listing.slug}`}
-      className={`mk-listing${closed ? " is-closed" : ""}`}
+      className={`mk-listing${closed ? " is-closed" : ""}${photo ? "" : " mk-listing--nophoto"}`}
       data-reveal
       data-spot
       style={{ ["--i" as string]: index % 8 }}
     >
-      <div className="mk-listing__media">
-        {listing.cover_url || listing.gallery[0] ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={listing.cover_url || listing.gallery[0]} alt={title} loading="lazy" decoding="async" />
-        ) : (
-          <FacadeArt variant={artVariant(listing.property_type)} />
-        )}
-        <span className={`mk-listing__purpose mk-listing__purpose--${listing.purpose}`}>
-          {t(listing.purpose)}
-        </span>
-        {closed ? (
-          <span className="mk-listing__flag mk-listing__flag--closed">{t(`status_${listing.status}`)}</span>
-        ) : listing.exclusive ? (
-          <span className="mk-listing__flag">{t("exclusive")}</span>
-        ) : null}
-      </div>
+      {photo ? (
+        <div className="mk-listing__media">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo} alt={title} loading="lazy" decoding="async" />
+          <span className={`mk-listing__purpose mk-listing__purpose--${listing.purpose}`}>{t(listing.purpose)}</span>
+          {flag}
+        </div>
+      ) : (
+        // No photo (the common case): a compact, info-first header instead of placeholder art.
+        <div className={`mk-listing__head mk-listing__head--${listing.purpose}`}>
+          <span className="mk-typeicon" aria-hidden="true"><span className="ms">{typeIcon(listing.property_type)}</span></span>
+          <span className={`mk-listing__purpose mk-listing__purpose--${listing.purpose}`}>{t(listing.purpose)}</span>
+          {flag}
+        </div>
+      )}
       <div className="mk-listing__body">
         <p className="mk-listing__type">
           {t(`t_${listing.property_type}`)}

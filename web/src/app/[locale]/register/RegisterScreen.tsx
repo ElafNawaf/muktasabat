@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
+import { LoginSky } from "@/components/LoginSky";
 
 export function RegisterScreen() {
   const t = useTranslations("registerPage");
@@ -91,7 +92,7 @@ export function RegisterScreen() {
   if (submittedEmail) {
     return (
       <div className="login-page">
-        <div className="login-pattern" />
+        <LoginSky />
         <ThemeToggleButton />
         <Link className="lang-toggle login-lang" href={`/${otherLocale}/register`}>
           {locale === "en" ? "العربية" : "English"}
@@ -142,7 +143,7 @@ export function RegisterScreen() {
 
   return (
     <div className="login-page">
-      <div className="login-pattern" />
+      <LoginSky />
       <ThemeToggleButton />
       <Link className="lang-toggle login-lang" href={`/${otherLocale}/register`}>
         {locale === "en" ? "العربية" : "English"}
