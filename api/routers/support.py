@@ -58,9 +58,12 @@ def is_staff(db: Session, user: User) -> bool:
     return has_permission(db, user, "support", "edit")
 
 
-def _ticket_url(ticket: SupportTicket, locale: str | None) -> str:
+def _ticket_url(ticket: SupportTicket, locale: str | None, viewer: User | None = None) -> str:
+    """Link for an e-mail. Owners live in the owner portal (/owner/…); staff
+    pages redirect them away, so their links must point there."""
     loc = locale if locale in ("ar", "en") else "ar"
-    return _absolute(f"/{loc}/support/{ticket.id}")
+    prefix = "/owner" if viewer is not None and viewer.role == "owner" else ""
+    return _absolute(f"/{loc}{prefix}/support/{ticket.id}")
 
 
 def _staff_recipients(db: Session) -> list[str]:
@@ -293,7 +296,7 @@ async def create_ticket(
         to=user.email,
         ticket_ref=ref(t.id),
         subject=t.subject,
-        url=_ticket_url(t, user.preferred_locale),
+        url=_ticket_url(t, user.preferred_locale, user),
         locale=user.preferred_locale,
     )
     return _detail(t, is_staff(db, user), user.id)
@@ -354,7 +357,7 @@ async def reply(
                     ticket_ref=ref(t.id),
                     subject=t.subject,
                     excerpt=(body.strip()[:280] or (name or "")),
-                    url=_ticket_url(t, t.user.preferred_locale),
+                    url=_ticket_url(t, t.user.preferred_locale, t.user),
                     locale=t.user.preferred_locale,
                 )
         else:
@@ -415,7 +418,7 @@ def _notify_status(t: SupportTicket) -> None:
         subject=t.subject,
         status_ar=ar,
         status_en=en,
-        url=_ticket_url(t, t.user.preferred_locale),
+        url=_ticket_url(t, t.user.preferred_locale, t.user),
         locale=t.user.preferred_locale,
     )
 

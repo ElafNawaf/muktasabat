@@ -29,6 +29,7 @@ export function SupportClient({
   meId,
   locale,
   openNew,
+  base,
 }: {
   tickets: TicketSummary[];
   stats: TicketStats;
@@ -36,7 +37,9 @@ export function SupportClient({
   meId: number;
   locale: string;
   openNew: boolean;
+  base?: string;
 }) {
+  const root = base ?? `/${locale}`;
   const t = useTranslations("support");
   const tCommon = useTranslations("common");
   const [newOpen, setNewOpen] = useState(openNew);
@@ -178,7 +181,7 @@ export function SupportClient({
               <ul className="ticket-list">
                 {filtered.map((tk) => (
                   <li key={tk.id}>
-                    <Link href={`/${locale}/support/${tk.id}`} className="ticket-row">
+                    <Link href={`${root}/support/${tk.id}`} className="ticket-row">
                       <span className="ticket-cat ms">{CATEGORY_ICON[tk.category] ?? "help"}</span>
                       <div className="ticket-main">
                         <div className="ticket-subject">
@@ -239,16 +242,16 @@ export function SupportClient({
           <div className="card">
             <div className="card-hd"><h3>{t("selfHelpTitle")}</h3></div>
             <div className="card-body support-links">
-              <Link href={`/${locale}/account?tab=security`}><span className="ms ms-sm">key</span> {t("helpPassword")}</Link>
-              <Link href={`/${locale}/account`}><span className="ms ms-sm">badge</span> {t("helpProfile")}</Link>
-              <Link href={`/${locale}/account?tab=security`}><span className="ms ms-sm">devices</span> {t("helpSessions")}</Link>
-              <Link href={`/${locale}/account?tab=preferences`}><span className="ms ms-sm">translate</span> {t("helpLanguage")}</Link>
+              <Link href={`${root}/account?tab=security`}><span className="ms ms-sm">key</span> {t("helpPassword")}</Link>
+              <Link href={`${root}/account`}><span className="ms ms-sm">badge</span> {t("helpProfile")}</Link>
+              <Link href={`${root}/account?tab=security`}><span className="ms ms-sm">devices</span> {t("helpSessions")}</Link>
+              <Link href={`${root}/account?tab=preferences`}><span className="ms ms-sm">translate</span> {t("helpLanguage")}</Link>
             </div>
           </div>
         </aside>
       </div>
 
-      <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} locale={locale} />
+      <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} locale={locale} base={root} />
     </div>
   );
 }

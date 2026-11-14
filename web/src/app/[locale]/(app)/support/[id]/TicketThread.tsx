@@ -26,12 +26,14 @@ export function TicketThread({
   staff,
   meId,
   locale,
+  base,
 }: {
   ticket: TicketDetail;
   isStaff: boolean;
   staff: TicketUser[];
   meId: number;
   locale: string;
+  base?: string;
 }) {
   const t = useTranslations("support");
   const router = useRouter();
@@ -95,7 +97,7 @@ export function TicketThread({
     <div className="page screen-enter">
       <div className="page-header">
         <div style={{ minWidth: 0 }}>
-          <Link href={`/${locale}/support`} className="text-sec" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Link href={`${base ?? `/${locale}`}/support`} className="text-sec" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
             <span className="ms ms-sm flip-rtl">arrow_back</span> {t("backToTickets")}
           </Link>
           <h2 className="page-title" style={{ marginTop: 6 }}>{ticket.subject}</h2>

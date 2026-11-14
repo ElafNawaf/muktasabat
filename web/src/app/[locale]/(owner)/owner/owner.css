@@ -187,3 +187,6 @@ html:has(.ow-root), html:has(.ow-root) body { height: auto !important; overflow:
 .ow-root h1, .ow-root h2, .ow-root h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; }
 .ow-root :is(.ow-kpi, .ow-card, .ow-panel) { border-radius: 14px; }
 .ow-btn { border-radius: 10px; }
+
+/* Owner portal: staff screens embedded in the owner shell */
+.ow-embed .page { padding: 0; }

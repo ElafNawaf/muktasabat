@@ -122,6 +122,30 @@ jobs:
                 (grep -q '^SUPPORT_EMAIL=' .env && sed -i 's|^SUPPORT_EMAIL=.*|SUPPORT_EMAIL=$SUPPORT_EMAIL|' .env || echo 'SUPPORT_EMAIL=$SUPPORT_EMAIL' >> .env) && \
                 grep -c '^SUPPORT_EMAIL=' .env"
 
+      - name: Payment-alert Cc (PAYMENT_ALERTS_CC)
+        # The CEO is Cc'd on every payment alert. Uses the PAYMENT_ALERTS_CC
+        # repository secret when set; otherwise, if the runtime .env has no
+        # value yet, takes the e-mail of the portal account named by the
+        # repository variable CEO_USERNAME (default "nawaf"). Never overwrites
+        # a value someone set on the server by hand.
+        env:
+          CC_SECRET: ${{ secrets.PAYMENT_ALERTS_CC }}
+          CEO_USERNAME: ${{ vars.CEO_USERNAME || 'nawaf' }}
+        run: |
+          CC="$CC_SECRET"
+          if [ -z "$CC" ]; then
+            CUR=$($SSH "grep -E '^PAYMENT_ALERTS_CC=.+' $RUNTIME/.env | cut -d= -f2-" || true)
+            if [ -n "$CUR" ]; then echo "PAYMENT_ALERTS_CC already set on the server — leaving it"; exit 0; fi
+            case "$CEO_USERNAME" in *[!A-Za-z0-9._-]*) echo "::error::CEO_USERNAME has unexpected characters"; exit 1;; esac
+            CC=$($SSH "docker exec -i muktasabat-api-1 python -c \"from sqlalchemy import select; from api.database import SessionLocal; from api.models import User; db = SessionLocal(); u = db.scalar(select(User).where(User.username == '$CEO_USERNAME', User.is_active_user.is_(True))); print(u.email if u and u.email else '')\"" | tr -d '\r' | tail -1)
+          fi
+          if [ -z "$CC" ]; then echo "::warning::No PAYMENT_ALERTS_CC (no secret, no active user '$CEO_USERNAME') — alerts go To the employee only"; exit 0; fi
+          case "$CC" in *[!A-Za-z0-9@._,+-]*) echo "::error::PAYMENT_ALERTS_CC has unexpected characters"; exit 1;; esac
+          $SSH "cd $RUNTIME && cp .env .env.bak-cc-\$(date +%Y%m%d%H%M%S) && \
+                (grep -q '^PAYMENT_ALERTS_CC=' .env && sed -i 's|^PAYMENT_ALERTS_CC=.*|PAYMENT_ALERTS_CC=$CC|' .env || echo 'PAYMENT_ALERTS_CC=$CC' >> .env) && \
+                grep -c '^PAYMENT_ALERTS_CC=.' .env"
+          echo "PAYMENT_ALERTS_CC set (…@${CC##*@})"
+
       - name: Preflight — boot the new API next to the live one
         # Starts the NEW image with the live container's env + network and waits
         # for "Application startup complete". Startup runs the CMS table creation

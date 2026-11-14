@@ -13,10 +13,12 @@ export function NewTicketModal({
   open,
   onClose,
   locale,
+  base,
 }: {
   open: boolean;
   onClose: () => void;
   locale: string;
+  base?: string;
 }) {
   const t = useTranslations("support");
   const tCommon = useTranslations("common");
@@ -71,7 +73,7 @@ export function NewTicketModal({
       }
       reset();
       onClose();
-      router.push(`/${locale}/support/${data.id}`);
+      router.push(`${base ?? `/${locale}`}/support/${data.id}`);
       router.refresh();
     } catch {
       setError(t("createFailed"));

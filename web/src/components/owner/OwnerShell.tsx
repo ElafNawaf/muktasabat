@@ -5,12 +5,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { BrandLogo } from "@/components/BrandLogo";
 
-const NAV = [
+const NAV: { href: string; icon: string; ar: string; en: string; self?: boolean }[] = [
   { href: "", icon: "space_dashboard", ar: "نظرة عامة", en: "Overview" },
   { href: "/properties", icon: "apartment", ar: "عقاراتي", en: "My properties" },
   { href: "/contracts", icon: "description", ar: "العقود", en: "Contracts" },
   { href: "/payments", icon: "payments", ar: "التحصيل", en: "Collections" },
   { href: "/statements", icon: "receipt_long", ar: "كشوف الحساب", en: "Statements" },
+  // Self-service — hidden in staff preview (it would show the staff member's own account).
+  { href: "/support", icon: "support_agent", ar: "الدعم", en: "Support", self: true },
+  { href: "/account", icon: "account_circle", ar: "حسابي", en: "My account", self: true },
 ];
 
 export function OwnerShell({
@@ -68,7 +71,7 @@ export function OwnerShell({
           </div>
         </div>
         <nav className="ow-wrap ow-nav" aria-label={ar ? "أقسام البوابة" : "Portal sections"}>
-          {NAV.map((n) => {
+          {NAV.filter((n) => !(isPreview && n.self)).map((n) => {
             const href = base + n.href;
             const on = n.href === "" ? path === base : path.startsWith(href);
             return (

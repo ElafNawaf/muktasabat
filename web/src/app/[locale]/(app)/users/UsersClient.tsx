@@ -107,6 +107,9 @@ export function UsersClient({
   // The first super admin is picked by the built-in `admin` account; after
   // that only the current super admin can hand it over.
   const canAssignSuper = meIsSuper || (!hasSuper && meUsername === "admin");
+  const superUser = users.find((u) => u.is_super_admin) ?? null;
+  const superCandidates = users.filter((u) => u.role === "admin" && u.is_active_user && !u.is_super_admin);
+  const [superPick, setSuperPick] = useState<number | "">("");
   const toggleSelected = (id: number) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -347,6 +350,51 @@ export function UsersClient({
           style={{ padding: "8px 12px", fontSize: 12, marginBottom: 12 }}
         >
           {error}
+        </div>
+      )}
+
+      {!hasSuper && (
+        <div className="card super-setup" role="region" aria-label={t("superSetupTitle")}>
+          <span className="ms super-setup-icon" aria-hidden>verified_user</span>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <strong>{t("superSetupTitle")}</strong>
+            <div className="text-sec">{canAssignSuper ? t("superSetupHint") : t("superNoneNote")}</div>
+          </div>
+          {canAssignSuper && (
+            <div className="super-setup-pick">
+              <select
+                className="select"
+                value={superPick}
+                onChange={(e) => setSuperPick(e.target.value ? Number(e.target.value) : "")}
+                aria-label={t("superSetupPick")}
+              >
+                <option value="">{t("superSetupPick")}</option>
+                {superCandidates.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.username}
+                    {u.id === meId ? ` (${t("you")})` : ""} — {u.email}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn btn-primary"
+                disabled={superPick === ""}
+                onClick={() => {
+                  const target = users.find((u) => u.id === superPick);
+                  if (target) setConfirmSuper(target);
+                }}
+              >
+                {t("makeSuperAdmin")}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {hasSuper && superUser && (
+        <div className="super-current text-sec">
+          <span className="ms ms-sm" aria-hidden>verified_user</span>
+          {t("superCurrent", { username: superUser.username })}
+          {meIsSuper && <span> · {t("superHandoverHint")}</span>}
         </div>
       )}
 

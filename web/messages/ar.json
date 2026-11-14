@@ -617,7 +617,13 @@
     "sendInvitation": "إرسال دعوة",
     "sendResetLinks": "إرسال رابط إعادة التعيين",
     "clearSelection": "إلغاء التحديد",
-    "selectUser": "تحديد {username}"
+    "selectUser": "تحديد {username}",
+    "superSetupTitle": "اختيار المدير الأعلى",
+    "superSetupHint": "اختر الحساب الوحيد الذي يملك صلاحيات إدارة النظام كاملة: سجل البريد، ومنح صلاحية المدير أو سحبها، ونقل هذا الدور لاحقًا.",
+    "superSetupPick": "اختر مديرًا…",
+    "superNoneNote": "لم يُختر مدير أعلى بعد. سجّل الدخول بحساب «admin» المدمج لاختياره.",
+    "superCurrent": "المدير الأعلى: {username}",
+    "superHandoverHint": "لنقل الدور استخدم أيقونة الدرع في صف مدير آخر"
   },
   "contractsPage": {
     "title": "العقود",

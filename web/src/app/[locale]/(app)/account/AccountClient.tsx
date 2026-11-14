@@ -55,12 +55,16 @@ export function AccountClient({
   activity,
   locale,
   initialTab,
+  base,
 }: {
   profile: Profile;
   activity: AccountActivity[];
   locale: string;
   initialTab: AccountTab;
+  /** Path prefix for cross-links: `/{locale}` (staff) or `/{locale}/owner` (owner portal). */
+  base?: string;
 }) {
+  const root = base ?? `/${locale}`;
   const t = useTranslations("account");
   const router = useRouter();
   const pathname = usePathname();
@@ -89,7 +93,7 @@ export function AccountClient({
             <span>{t("memberSince", { date: formatDate(profile.created_at, locale) })}</span>
           </div>
         </div>
-        <Link href={`/${locale}/support`} className="btn btn-secondary">
+        <Link href={`${root}/support`} className="btn btn-secondary">
           <span className="ms">support_agent</span> {t("getHelp")}
         </Link>
       </div>

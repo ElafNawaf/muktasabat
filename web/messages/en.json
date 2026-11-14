@@ -617,7 +617,13 @@
     "sendInvitation": "Send invitation",
     "sendResetLinks": "Send reset link",
     "clearSelection": "Clear",
-    "selectUser": "Select {username}"
+    "selectUser": "Select {username}",
+    "superSetupTitle": "Choose the super admin",
+    "superSetupHint": "Pick the one account that gets full system administration: the email log, granting or removing administrator rights, and handing this role over later.",
+    "superSetupPick": "Select an administrator…",
+    "superNoneNote": "No super admin has been chosen yet. Sign in as the built-in “admin” account to choose one.",
+    "superCurrent": "Super admin: {username}",
+    "superHandoverHint": "to hand it over, use the shield icon on another administrator’s row"
   },
   "contractsPage": {
     "title": "Contracts",
