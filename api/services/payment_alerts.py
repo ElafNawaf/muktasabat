@@ -632,8 +632,15 @@ def send_alert(db: Session, payment: Payment, kind: str, stage: str, offset: int
         return False
     msg = build_email(payment, kind, offset, rcpt, today)
     ok = send_email(msg)
+    err = None if ok else (last_send_error() or "send_failed")
+    if not ok and msg.cc and err == "ses_sandbox_unverified_recipient":
+        # SES sandbox rejects the whole message when any address is unverified.
+        # The responsible employee must still be told — retry without the Cc.
+        msg.cc = None
+        ok = send_email(msg)
+        err = "cc_unverified" if ok else (last_send_error() or "send_failed")
     row.delivered = ok
-    row.error = None if ok else (last_send_error() or "send_failed")
+    row.error = err
     db.commit()
     return ok
 
