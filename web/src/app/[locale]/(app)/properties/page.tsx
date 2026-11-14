@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
 import type { Building, Contract, Owner, Tenant, Unit } from "@/lib/types";
 
+import type { BuildingSummary } from "./BuildingCards";
 import { PropertiesClient } from "./PropertiesClient";
 
 export default async function PropertiesPage({
@@ -16,13 +17,14 @@ export default async function PropertiesPage({
   const t = await getTranslations("properties");
   const me = await requireAuth(locale);
 
-  const [owners, buildings, units, contracts, tenants, users] = await Promise.all([
+  const [owners, buildings, units, contracts, tenants, users, summary] = await Promise.all([
     api.get<Owner[]>("/api/v1/owners"),
     api.get<Building[]>("/api/v1/buildings"),
     api.get<Unit[]>("/api/v1/units"),
     api.get<Contract[]>("/api/v1/contracts"),
     api.get<Tenant[]>("/api/v1/tenants"),
     api.get<UserPick[]>("/api/v1/auth/users"),
+    api.get<BuildingSummary[]>("/api/v1/buildings/summary").catch(() => [] as BuildingSummary[]),
   ]);
 
   return (
@@ -36,6 +38,7 @@ export default async function PropertiesPage({
         tenants={tenants}
         users={users}
         locale={locale}
+        summary={summary}
       />
     </>
   );

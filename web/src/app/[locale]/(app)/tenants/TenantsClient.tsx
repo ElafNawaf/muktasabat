@@ -35,13 +35,17 @@ type LeaseSummary = {
   status: "none" | "active";
 };
 
+import { TenantCards, TenantKpis, type TenantSummary } from "./TenantCards";
+
 export function TenantsClient({
   tenants,
   contracts,
   units,
   buildings,
   locale,
+  summary = [],
 }: {
+  summary?: TenantSummary[];
   tenants: Tenant[];
   contracts: Contract[];
   units: Unit[];
@@ -282,7 +286,8 @@ export function TenantsClient({
         </div>
       </div>
 
-      <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)" }}>
+      {summary.length > 0 ? <TenantKpis rows={summary} locale={locale} /> : (
+      <div className="kpi-grid kpi-grid--4">
         <Kpi icon="group" label={t("totalTenants")} value={String(tenants.length)} />
         <Kpi icon="check_circle" label={t("activeLeases")} value={String(totalActive)} variant="success" />
         <Kpi icon="event_available" label={t("expiringSoon")} value="0" variant="warning" />
@@ -292,6 +297,7 @@ export function TenantsClient({
           value={`${tCurrency("sar")} ${formatSAR(totalRent, locale)}`}
         />
       </div>
+      )}
 
       <FilterBar
         trailing={
@@ -376,6 +382,13 @@ export function TenantsClient({
 
       {filtered.length === 0 ? (
         <Empty icon="person" title={t("noTenants")} subtitle={t("noTenantsHint")} />
+      ) : view === "grid" && summary.length > 0 ? (
+        <TenantCards
+          rows={(() => { const m = new Map(summary.map((x) => [x.id, x])); return filtered.map((tn) => m.get(tn.id)).filter((x): x is TenantSummary => !!x); })()}
+          locale={locale}
+          onEdit={(id) => { const tn = tenants.find((x) => x.id === id); if (tn) openEdit(tn); }}
+          onDelete={canDelete ? (id) => { const tn = tenants.find((x) => x.id === id); if (tn) setConfirmDel(tn); } : undefined}
+        />
       ) : view === "grid" ? (
         <div className="owner-grid">
           {filtered.map((tn) => {

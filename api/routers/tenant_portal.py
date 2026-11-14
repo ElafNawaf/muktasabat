@@ -779,3 +779,39 @@ def reject_report(report_id: int, payload: ReviewIn, db: DbSession, user: Curren
     db.commit()
     _notify_tenant_review(db, rep)
     return {"ok": True}
+
+
+@router.get("/export/{kind}.csv")
+def export(kind: str, scope: ScopeDep, db: DbSession, locale: LocaleDep):
+    import csv
+    import io
+
+    ar = locale == "ar"
+    H = lambda a, e: a if ar else e  # noqa: E731
+    today = date.today()
+    reports = _reports(db, scope.tenant.id)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    ST = {"paid": H("مدفوعة", "Paid"), "reported": H("قيد التأكيد", "Being confirmed"), "overdue": H("متأخرة", "Overdue"),
+          "due_soon": H("مستحقة قريباً", "Due soon"), "upcoming": H("قادمة", "Upcoming")}
+    MT = {"bank_transfer": H("تحويل بنكي", "Bank transfer"), "cash": H("نقداً", "Cash"), "cheque": H("شيك", "Cheque")}
+    if kind == "payments":
+        w.writerow([H("رقم العقد", "Lease"), H("العقار", "Property"), H("الوحدة", "Unit"), H("الدفعة", "Instalment"), H("تاريخ الاستحقاق", "Due date"),
+                    H("المبلغ", "Amount"), H("الحالة", "Status"), H("تاريخ السداد", "Paid on"), H("طريقة الدفع", "Method"), H("رقم الإيصال", "Receipt")])
+        for c in _contracts(db, scope.tenant.id):
+            pays = sorted(c.payments, key=lambda p: (p.due_date, p.id))
+            for i, p in enumerate(pays):
+                j = _payment_json(p, c, reports.get(p.id), today, i + 1, len(pays), locale)
+                w.writerow([c.contract_number, j["property"] or "", j["unit"] or "", f"{i + 1}/{len(pays)}", j["due_date"], j["amount"], ST[j["state"]],
+                            j["paid_date"] or "", MT.get(j["method"] or "", j["method"] or ""), j["receipt_number"] or ""])
+    elif kind == "leases":
+        w.writerow([H("رقم العقد", "Lease"), H("رقم عقد إيجار", "Ejar no."), H("العقار", "Property"), H("الوحدة", "Unit"), H("البداية", "Start"), H("النهاية", "End"),
+                    H("الإيجار السنوي", "Annual rent"), H("إجمالي العقد", "Lease total"), H("المدفوع", "Paid"), H("المتبقي", "Left to pay")])
+        for c in _contracts(db, scope.tenant.id):
+            j = _contract_json(c, reports, today, locale)
+            w.writerow([j["contract_number"], j["ejar_contract_number"] or "", j["property"] or "", j["unit"] or "", j["start_date"], j["end_date"],
+                        j["annual_rent"], j["total_amount"], j["paid_amount"], j["remaining_amount"]])
+    else:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown export")
+    return Response("﻿" + buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{kind}.csv"'})

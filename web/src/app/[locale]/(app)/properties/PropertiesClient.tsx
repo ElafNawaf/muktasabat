@@ -25,7 +25,7 @@ const UNIT_ICON: Record<string, string> = {
   duplex: "stairs",
 };
 import { deleteBuilding, deleteUnit } from "@/lib/actions";
-import { ALL_BUILDING_TYPES, BUILDING_TYPE_ICONS, RESIDENCE_TYPES } from "@/lib/building-types";
+import { ALL_BUILDING_TYPES, BUILDING_TYPE_ICONS, RESIDENCE_TYPES, buildingTypeText } from "@/lib/building-types";
 import { localizedCity, localizedDistrict, uniqueSorted } from "@/lib/filters";
 import { formatSAR } from "@/lib/format";
 import { buildingMeta, type BuildingMeta } from "@/lib/palette";
@@ -38,6 +38,7 @@ import {
   type Unit,
 } from "@/lib/types";
 
+import { BuildingCards, PortfolioStrip, type BuildingSummary } from "./BuildingCards";
 import { BuildingFormModal } from "./BuildingFormModal";
 import type { UserPick } from "./page";
 import { UnitFormModal } from "./UnitFormModal";
@@ -62,7 +63,9 @@ export function PropertiesClient({
   tenants,
   users,
   locale,
+  summary = [],
 }: {
+  summary?: BuildingSummary[];
   owners: Owner[];
   buildings: Building[];
   units: Unit[];
@@ -80,6 +83,8 @@ export function PropertiesClient({
   const canDelete = can("properties", "delete");
   const tCurrency = useTranslations("currency");
 
+  const [view, setView] = useState<"cards" | "list">("cards");
+  const summaryMap = useMemo(() => Object.fromEntries(summary.map((x) => [x.id, x])) as Record<number, BuildingSummary>, [summary]);
   const [openBuildings, setOpenBuildings] = useState<Set<number>>(() => new Set());
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<Lightbox | null>(null);
@@ -382,6 +387,14 @@ export function PropertiesClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="seg" role="group" aria-label={locale === "ar" ? "طريقة العرض" : "View"}>
+            <button className={view === "cards" ? "is-on" : undefined} aria-pressed={view === "cards"} onClick={() => setView("cards")}>
+              <span className="ms ms-sm">grid_view</span>{locale === "ar" ? "بطاقات" : "Cards"}
+            </button>
+            <button className={view === "list" ? "is-on" : undefined} aria-pressed={view === "list"} onClick={() => setView("list")}>
+              <span className="ms ms-sm">view_list</span>{locale === "ar" ? "قائمة الوحدات" : "Units list"}
+            </button>
+          </div>
           {canCreate && (
           <button
             className="btn btn-primary"
@@ -392,6 +405,10 @@ export function PropertiesClient({
           )}
         </div>
       </div>
+
+      {summary.length > 0 && (
+        <PortfolioStrip rows={visibleBuildings.map((b) => summaryMap[b.id]).filter(Boolean)} locale={locale} />
+      )}
 
       <FilterBar
         trailing={
@@ -535,14 +552,23 @@ export function PropertiesClient({
         >
           {tCommon("noResults")}
         </div>
+      ) : view === "cards" ? (
+        <BuildingCards
+          buildings={visibleBuildings}
+          summary={summaryMap}
+          locale={locale}
+          onEdit={(b) => setBuildingForm({ open: true, editing: b })}
+          onPhotos={(b) => setGallery({ kind: "buildings", building: b })}
+          onDelete={canDelete ? (b) => setConfirmDelBuilding(b) : undefined}
+        />
       ) : (
       <div className="drill">
         {visibleBuildings.map((b) => {
           const isOpen = openBuildings.has(b.id);
           const owner = ownerOf(b.owner_id);
           const us = visibleUnitsOf(b.id);
-          const occ = us.filter((u) => !u.is_available).length;
-          const occPct = us.length ? Math.round((occ / us.length) * 100) : 0;
+          const occ = summaryMap[b.id]?.occupied ?? us.filter((u) => !u.is_available).length;
+          const occPct = summaryMap[b.id]?.occupancy ?? (us.length ? Math.round((occ / us.length) * 100) : 0);
           const activeCount = us.reduce(
             (q, u) => q + (activeContractFor(u.id) ? 1 : 0),
             0,
@@ -601,7 +627,7 @@ export function PropertiesClient({
                         >
                           {BUILDING_TYPE_ICONS[b.property_type] ?? "domain"}
                         </span>
-                        {buildingTypeLabel(b.property_type)}
+                        {buildingTypeText(locale, b.property_type)}
                       </span>
                     )}
                   </div>

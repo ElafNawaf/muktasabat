@@ -350,3 +350,61 @@ def activity(owner: ScopedOwner, db: DbSession, locale: LocaleDep, days: int = Q
                        "number": w.number, "building": _name(b_ids[w.building_id], locale), "building_id": w.building_id})
     ev.sort(key=lambda e: e["at"], reverse=True)
     return ev[:80]
+
+
+# ═══════════════════════════ exports (CSV, Excel-friendly) ═══════════════════════════
+
+import csv as _csv
+import io as _io
+
+from fastapi.responses import Response as _Response
+
+
+def _csv_response(name: str, header: list[str], rows: list[list]) -> _Response:
+    buf = _io.StringIO()
+    w = _csv.writer(buf)
+    w.writerow(header)
+    w.writerows(rows)
+    # UTF-8 BOM so Excel opens Arabic text correctly.
+    return _Response("﻿" + buf.getvalue(), media_type="text/csv; charset=utf-8",
+                     headers={"Content-Disposition": f'attachment; filename="{name}.csv"'})
+
+
+@router.get("/export/{kind}.csv")
+def export(kind: str, owner: ScopedOwner, db: DbSession, locale: LocaleDep):
+    ar = locale == "ar"
+    H = lambda a, e: a if ar else e  # noqa: E731
+    today = date.today()
+    ST = {"paid": H("محصّلة", "Collected"), "reported": H("أبلغ المستأجر بالسداد", "Tenant reported paying"), "overdue": H("متأخرة", "Overdue"),
+          "due_soon": H("مستحقة قريباً", "Due soon"), "upcoming": H("قادمة", "Upcoming"), "transferred": H("حُوّلت", "Sent"),
+          "pending": H("قيد التحويل", "Scheduled"), "late": H("تحويل متأخر", "Late"), "not_paid": ""}
+    if kind == "payments":
+        rows = _rows(owner)
+        reported = _reported_ids(db, [r.payment.id for r in rows])
+        items = sorted((_row_json(r, today, reported, locale) for r in rows), key=lambda x: x["due_date"])
+        return _csv_response("payments", [
+            H("تاريخ الاستحقاق", "Due date"), H("العقار", "Property"), H("الوحدة", "Unit"), H("المستأجر", "Tenant"), H("رقم العقد", "Lease"),
+            H("المبلغ", "Amount"), H("حالة التحصيل", "Collection"), H("تاريخ السداد", "Paid on"), H("رقم الإيصال", "Receipt"),
+            H("أتعاب الإدارة", "Management fee"), H("الوساطة", "Brokerage"), H("رسوم إيجار", "Ejar fee"), H("حصتك", "Your share"),
+            H("حالة التحويل", "Payout"), H("موعد التحويل", "Payout due"), H("تاريخ التحويل", "Sent on"), H("مرجع الحوالة", "Bank reference"),
+        ], [[i["due_date"], i["building"], i["unit"], i["tenant"] or "", i["contract_number"], i["amount"], ST[i["status"]], i["paid_date"] or "",
+             i["receipt"] or "", i["management_fee"], i["agent_fee"], i["ejar_fee"], i["net"], ST[i["transfer"]["state"]],
+             i["transfer"]["due_date"] or "", i["transfer"]["date"] or "", i["transfer"]["reference"] or ""] for i in items])
+    if kind == "units":
+        out = []
+        for b in owner.buildings:
+            for u in sorted(b.units, key=lambda u: u.number or ""):
+                cur = next((c for c in u.contracts if _is_lease(c) and _is_active(c, today)), None)
+                out.append([_name(b, locale), u.number, u.unit_type or "", u.area_sqm or "", H("مؤجرة", "Leased") if cur else H("شاغرة", "Vacant"),
+                            localized_value(cur.tenant, "name", locale) if cur and cur.tenant else "", cur.contract_number if cur else "",
+                            cur.start_date.isoformat() if cur else "", cur.end_date.isoformat() if cur else "", r2(cur.rent_amount) if cur else r2(u.rent_amount)])
+        return _csv_response("units", [H("العقار", "Property"), H("الوحدة", "Unit"), H("النوع", "Type"), H("المساحة م²", "Area m²"), H("الحالة", "Status"),
+                                       H("المستأجر", "Tenant"), H("رقم العقد", "Lease"), H("بداية العقد", "Lease start"), H("نهاية العقد", "Lease end"), H("الإيجار السنوي", "Annual rent")], out)
+    if kind == "expenses":
+        exps = _owner_expenses(db, owner, date(2000, 1, 1), today)
+        return _csv_response("expenses", [H("التاريخ", "Date"), H("العقار", "Property"), H("البند", "Category"), H("الوصف", "Description"), H("المورد", "Vendor"),
+                                          H("المبلغ", "Amount"), H("يُخصم من حصتك", "Deducted from you"), H("رقم الإيصال", "Receipt")],
+                             [[e.expense_date.isoformat(), _name(e.building, locale) if e.building else "", e.category, localized_value(e, "description", locale) or "",
+                               e.vendor_name or "", r2(e.amount), H("نعم", "Yes") if _deductible(e) else H("لا", "No"), e.receipt_number or ""]
+                              for e in sorted(exps, key=lambda e: e.expense_date)])
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown export")

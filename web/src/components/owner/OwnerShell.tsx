@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -29,6 +29,19 @@ const NAV: NavItem[] = [
   { href: "/account", icon: "account_circle", ar: "حسابي", en: "My account", self: true },
 ];
 
+type ExportItem = { kind: string; icon: string; ar: string; en: string };
+const EXPORTS: Record<"owner" | "tenant", ExportItem[]> = {
+  owner: [
+    { kind: "payments", icon: "receipt_long", ar: "الدفعات والتحويلات", en: "Payments & payouts" },
+    { kind: "units", icon: "apartment", ar: "الوحدات والعقود", en: "Units & leases" },
+    { kind: "expenses", icon: "construction", ar: "المصروفات", en: "Expenses" },
+  ],
+  tenant: [
+    { kind: "payments", icon: "receipt_long", ar: "دفعاتي", en: "My payments" },
+    { kind: "leases", icon: "description", ar: "عقودي", en: "My leases" },
+  ],
+};
+
 export function OwnerShell({
   locale,
   ownerName,
@@ -53,88 +66,174 @@ export function OwnerShell({
   const qs = as ? `?as=${as}` : "";
   const other = ar ? "en" : "ar";
   const switchHref = path.replace(new RegExp(`^/${locale}`), `/${other}`) + qs;
+  const [menu, setMenu] = useState(false);
+  const L = (a: string, e: string) => (ar ? a : e);
 
-  // Keep the current section visible in the scrollable tab row on phones.
+  // Close the phone menu on navigation; Esc closes it too.
+  useEffect(() => setMenu(false), [path]);
   useEffect(() => {
-    navRef.current?.querySelector<HTMLElement>(".is-on")?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [path]);
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push(`/${locale}/login`);
   }
 
+  const isOn = (href: string) => (href === "" ? path === base : path.startsWith(base + href));
+  const main = nav.filter((n) => !n.self);
+  const self = nav.filter((n) => n.self && !isPreview);
+  const exportHref = (k: string) => `/api/${kind}/export?kind=${k}&locale=${locale}${as ? `&as_${kind}=${as}` : ""}`;
+  const initials = ownerName.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("");
+  const section = nav.filter((n) => n.href).find((n) => path.startsWith(base + n.href + "/"));
+  const current = nav.find((n) => isOn(n.href));
+
   return (
-    <div className={`ow-root ow-root--${kind}`} dir={ar ? "rtl" : "ltr"}>
+    <div className={`ow-root ow-root--${kind} ow-app${menu ? " is-menu" : ""}`} dir={ar ? "rtl" : "ltr"}>
       {isPreview && (
         <div className="ow-preview">
           <span className="ms">visibility</span>
           {kind === "tenant"
-            ? ar ? "معاينة كما يراها المستأجر (للقراءة فقط)" : "Previewing as the tenant sees it (read-only)"
-            : ar ? "معاينة كما يراها المالك" : "Previewing as the owner sees it"}
-          <Link href={`/${locale}/${kind}-access`}>{ar ? "رجوع" : "Back"}</Link>
+            ? L("معاينة كما يراها المستأجر (للقراءة فقط)", "Previewing as the tenant sees it (read-only)")
+            : L("معاينة كما يراها المالك", "Previewing as the owner sees it")}
+          <Link href={`/${locale}/${kind}-access`}>{L("رجوع", "Back")}</Link>
         </div>
       )}
-      <header className="ow-top">
-        <div className="ow-wrap ow-top__bar">
-          <Link href={base + qs} className="ow-brand">
-            <span className="ow-brand__mark"><BrandLogo size={26} /></span>
+
+      <div className="ow-frame">
+        <aside className="ow-side" aria-label={L("القائمة", "Menu")}>
+          <Link href={base + qs} className="ow-side__brand">
+            <span className="ow-brand__mark"><BrandLogo size={28} /></span>
             <span>
-              <strong>{ar ? "شركة مكتسبات العقارية" : "Muktasabat Real Estate"}</strong>
-              <small>{kind === "tenant" ? (ar ? "بوابة المستأجرين" : "Tenant portal") : ar ? "بوابة الملاك" : "Owner portal"}</small>
+              <strong>{L("شركة مكتسبات العقارية", "Muktasabat Real Estate")}</strong>
+              <small>{kind === "tenant" ? L("بوابة المستأجرين", "Tenant portal") : L("بوابة الملاك", "Owner portal")}</small>
             </span>
           </Link>
-          <div className="ow-top__end">
-            <span className="ow-hello">{ownerName}</span>
-            <Link href={switchHref} className="ow-lang" lang={other}>{ar ? "EN" : "ع"}</Link>
+
+          <div className="ow-side__me">
+            <span className="ow-side__avatar">{initials}</span>
+            <span>
+              <strong>{ownerName}</strong>
+              <small>{isPreview ? L("معاينة الموظف", "Staff preview") : kind === "tenant" ? L("مستأجر", "Tenant") : L("مالك", "Owner")}</small>
+            </span>
+          </div>
+
+          <nav ref={navRef} className="ow-sidenav">
+            <p className="ow-sidenav__h">{L("الرئيسية", "Main")}</p>
+            {main.map((n) => {
+              const on = isOn(n.href);
+              return (
+                <Link key={n.href} href={base + n.href + qs} className={on ? "is-on" : undefined} aria-current={on ? "page" : undefined}>
+                  <span className="ms">{n.icon}</span>
+                  {ar ? n.ar : n.en}
+                </Link>
+              );
+            })}
+            {self.length > 0 && <p className="ow-sidenav__h">{L("حسابي والدعم", "Account & help")}</p>}
+            {self.map((n) => {
+              const on = isOn(n.href);
+              return (
+                <Link key={n.href} href={base + n.href + qs} className={on ? "is-on" : undefined} aria-current={on ? "page" : undefined}>
+                  <span className="ms">{n.icon}</span>
+                  {ar ? n.ar : n.en}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {!isPreview && (
+            <Link href={`${base}/support?new=1`} className="ow-side__ticket">
+              <span className="ms">confirmation_number</span>
+              <span>
+                <strong>{L("رفع تذكرة دعم", "Raise a support ticket")}</strong>
+                <small>{L("مشكلة تقنية أو استفسار؟ نرد عليك بسرعة", "A technical issue or a question? We'll reply fast")}</small>
+              </span>
+            </Link>
+          )}
+
+          <details className="ow-side__export">
+            <summary><span className="ms">download</span>{L("تصدير البيانات (Excel)", "Export data (Excel)")}<span className="ms ow-side__chev">expand_more</span></summary>
+            <ul>
+              {EXPORTS[kind].map((x) => (
+                <li key={x.kind}>
+                  <a href={exportHref(x.kind)} download>
+                    <span className="ms">{x.icon}</span>
+                    {ar ? x.ar : x.en}
+                  </a>
+                </li>
+              ))}
+              {kind === "owner" && (
+                <li>
+                  <Link href={`${base}/statements${qs}`}><span className="ms">summarize</span>{L("كشف الحساب الشهري", "Monthly statement")}</Link>
+                </li>
+              )}
+            </ul>
+          </details>
+
+          <div className="ow-side__foot">
+            <Link href={switchHref} className="ow-side__btn" lang={other}><span className="ms">translate</span>{ar ? "English" : "العربية"}</Link>
+            <a href="tel:920007039" className="ow-side__btn"><span className="ms">call</span><span dir="ltr">920007039</span></a>
             {!isPreview && (
-              <button className="ow-icon" onClick={logout} title={ar ? "تسجيل الخروج" : "Sign out"} aria-label={ar ? "تسجيل الخروج" : "Sign out"}>
-                <span className="ms">logout</span>
-              </button>
+              <button className="ow-side__btn ow-side__btn--out" onClick={logout}><span className="ms">logout</span>{L("خروج", "Sign out")}</button>
             )}
           </div>
+        </aside>
+        <div className="ow-scrim" onClick={() => setMenu(false)} aria-hidden />
+
+        <div className="ow-body">
+          <header className="ow-topbar">
+            <button className="ow-topbar__menu" onClick={() => setMenu(true)} aria-label={L("فتح القائمة", "Open menu")} aria-expanded={menu}>
+              <span className="ms">menu</span>
+            </button>
+            <div className="ow-topbar__title">
+              {section ? (
+                <button
+                  type="button"
+                  className="ow-topbar__back"
+                  onClick={() => (window.history.length > 1 ? router.back() : router.push(base + section.href + qs))}
+                >
+                  <span className="ms ms-sm" style={{ transform: ar ? "scaleX(-1)" : undefined }} aria-hidden>arrow_back</span>
+                  {ar ? section.ar : section.en}
+                </button>
+              ) : (
+                <strong>{current ? (ar ? current.ar : current.en) : ""}</strong>
+              )}
+            </div>
+            <Link href={base + qs} className="ow-topbar__brand" aria-label={L("الرئيسية", "Home")}><BrandLogo size={24} /></Link>
+            {!isPreview && (
+              <Link href={`${base}/support?new=1`} className="ow-topbar__ticket" title={L("رفع تذكرة دعم", "Raise a ticket")}>
+                <span className="ms">confirmation_number</span>
+                <span className="ow-topbar__ticket-t">{L("تذكرة دعم", "Support ticket")}</span>
+              </Link>
+            )}
+          </header>
+          <main className="ow-main">
+            <div className="route-fade" key={path}>{children}</div>
+          </main>
+          <footer className="ow-foot">
+            {kind === "tenant"
+              ? L("لأي استفسار عن عقدك أو دفعاتك تواصل معنا على 920007039 أو ارفع تذكرة دعم.", "Questions about your lease or payments? Call 920007039 or raise a support ticket.")
+              : L("الأرقام محدّثة لحظياً من نظام إدارة الأملاك. لأي استفسار تواصل مع مدير حسابك أو على 920007039.", "Figures are live from our property-management system. Questions? Contact your account manager or call 920007039.")}
+          </footer>
         </div>
-        <nav ref={navRef} className="ow-wrap ow-nav" aria-label={ar ? "أقسام البوابة" : "Portal sections"}>
+      </div>
+
+      {kind === "tenant" && (
+        <nav className="ow-tabbar" aria-label={L("أقسام البوابة", "Portal sections")}>
           {nav.filter((n) => !(isPreview && n.self)).map((n) => {
-            const href = base + n.href;
-            const on = n.href === "" ? path === base : path.startsWith(href);
+            const on = isOn(n.href);
             return (
-              <Link key={n.href} href={href + qs} className={on ? "is-on" : undefined} aria-current={on ? "page" : undefined}>
+              <Link key={n.href} href={base + n.href + qs} className={on ? "is-on" : undefined} aria-current={on ? "page" : undefined}>
                 <span className="ms">{n.icon}</span>
                 {ar ? n.ar : n.en}
               </Link>
             );
           })}
         </nav>
-      </header>
-      <main className="ow-wrap ow-main">
-        {(() => {
-          // Detail pages (e.g. a support ticket) get a Back control to their section.
-          const section = nav.filter((n) => n.href).find((n) => path.startsWith(base + n.href + "/"));
-          if (!section) return null;
-          const to = base + section.href + qs;
-          return (
-            <button
-              type="button"
-              className="ow-backbtn"
-              onClick={() => (window.history.length > 1 ? router.back() : router.push(to))}
-            >
-              <span className="ms ms-sm" style={{ transform: ar ? "scaleX(-1)" : undefined }} aria-hidden>arrow_back</span>
-              {ar ? `رجوع إلى ${section.ar}` : `Back to ${section.en}`}
-            </button>
-          );
-        })()}
-        <div className="route-fade" key={path}>{children}</div>
-      </main>
-      <footer className="ow-wrap ow-foot">
-        {kind === "tenant"
-          ? ar
-            ? "لأي استفسار عن عقدك أو دفعاتك تواصل معنا على 920007039 أو من صفحة الدعم."
-            : "Questions about your lease or payments? Call 920007039 or use Support."
-          : ar
-          ? "الأرقام محدّثة لحظياً من نظام إدارة الأملاك. لأي استفسار تواصل مع مدير حسابك أو على 920007039."
-          : "Figures are live from our property-management system. Questions? Contact your account manager or call 920007039."}
-      </footer>
+      )}
     </div>
   );
 }

@@ -1,0 +1,25 @@
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+
+import { API_BASE, TOKEN_COOKIE } from "@/lib/api";
+
+const KINDS = new Set(["payments", "leases"]);
+
+/** Tenant-portal CSV exports (auth + tenant scoping enforced by the API). */
+export async function GET(req: Request) {
+  const token = (await cookies()).get(TOKEN_COOKIE)?.value;
+  if (!token) return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });
+  const src = new URL(req.url).searchParams;
+  const kind = src.get("kind") ?? "";
+  if (!KINDS.has(kind)) return NextResponse.json({ detail: "Unknown export" }, { status: 404 });
+  const p = new URLSearchParams();
+  for (const k of ["locale", "as_tenant"]) {
+    const v = src.get(k);
+    if (v && /^[a-z0-9]{1,8}$/i.test(v)) p.set(k, v);
+  }
+  const res = await fetch(`${API_BASE}/api/v1/tenant-portal/export/${kind}.csv?${p}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!res.ok) return NextResponse.json({ detail: "Not available" }, { status: res.status });
+  return new NextResponse(res.body, {
+    headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="muktasabat-${kind}.csv"`, "Cache-Control": "no-store" },
+  });
+}
