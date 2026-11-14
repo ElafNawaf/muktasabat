@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { CustomFieldsCard } from "@/components/forms/CustomFields";
 import { Modal } from "@/components/Modal";
 import { sarText } from "@/lib/format";
 import { contractPreview, paymentPreview } from "@/lib/preview-actions";
@@ -278,6 +279,7 @@ function ContractBody({ d, t, fmt, money, lb, go, locale }: { d: ContractP } & H
           )}
         </div>
       )}
+      <CustomFieldsCard entity="contract" id={d.id} locale={locale} className="pv-card" />
       {d.notes && <p className="pv-notes">{d.notes}</p>}
     </div>
   );

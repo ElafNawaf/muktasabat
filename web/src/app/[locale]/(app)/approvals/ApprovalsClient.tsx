@@ -1,5 +1,6 @@
 "use client";
 
+import { formApprove, formReject } from "@/lib/forms-actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -9,12 +10,12 @@ import { hrDecide } from "@/lib/hr-actions";
 import { woDecision } from "@/lib/maintenance-actions";
 import { rnAction } from "@/lib/renewal-actions";
 
-type Kind = "work_order" | "renewal" | "payout" | "hr";
+type Kind = "work_order" | "renewal" | "payout" | "hr" | "form";
 export type Item = {
   kind: Kind; id: number; ref?: string | null; title?: string | null; where: string; owner?: string | null;
   amount?: number | null; limit?: number | null; current?: number | null; gross?: number | null; change_pct?: number | null;
   since?: string | null; due?: string | null; days_late?: number; days_left?: number; priority?: string;
-  waiting_on: "owner" | "company"; urgent: boolean; href: string; hr_kind?: "leave" | "permission" | "ticket" | "work_location"; reason?: string | null;
+  waiting_on: "owner" | "company"; urgent: boolean; href: string; hr_kind?: "leave" | "permission" | "ticket" | "work_location"; reason?: string | null; requested_by?: string | null;
 };
 export type Inbox = { items: Item[]; can: Record<Kind, boolean>; counts: Record<Kind, number> };
 export type HistoryItem = {
@@ -28,6 +29,7 @@ const KIND: Record<Kind, { icon: string; ar: string; en: string }> = {
   renewal: { icon: "autorenew", ar: "تجديد بإيجار أقل", en: "Renewal at lower rent" },
   payout: { icon: "account_balance", ar: "تحويل حصة المالك", en: "Owner payout" },
   hr: { icon: "badge", ar: "طلبات الموظفين", en: "Staff requests" },
+  form: { icon: "dynamic_form", ar: "تعديل نموذج", en: "Form change" },
 };
 const HR_KIND: Record<string, [string, string, string]> = {
   leave: ["beach_access", "طلب إجازة", "Leave request"], permission: ["schedule", "طلب استئذان", "Permission request"], ticket: ["flight", "طلب تذكرة سفر", "Travel ticket request"],
@@ -155,7 +157,9 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
     });
   }
   const decide = (approve: boolean) =>
-    i.kind === "hr"
+    i.kind === "form"
+      ? run(() => (approve ? formApprove(i.id, note || undefined, locale) : formReject(i.id, note || (locale === "ar" ? "رُفض من صندوق الموافقات" : "Rejected from the approvals inbox"))), approve ? T("اعتُمد وطُبّق", "Approved & applied") : T("تم الرفض", "Rejected"))
+      : i.kind === "hr"
       ? run(() => hrDecide(i.id, approve, note || undefined, locale), approve ? T("تمت الموافقة", "Approved") : T("تم الرفض", "Rejected"))
       : i.kind === "work_order"
       ? run(() => woDecision(i.id, approve, note || undefined), approve ? T("تمت الموافقة", "Approved") : T("تم الرفض", "Rejected"))
@@ -168,7 +172,7 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
         <div className="ap-head">
           <span className="ap-kind">{i.kind === "hr" && i.hr_kind ? T(HR_KIND[i.hr_kind][1], HR_KIND[i.hr_kind][2]) : T(KIND[i.kind].ar, KIND[i.kind].en)}</span>
           {i.urgent && <span className="mx-sla mx-sla--breached">{i.kind === "hr" ? T("يبدأ خلال يومين", "Starts within 2 days") : i.kind === "payout" ? T(`متأخر ${i.days_late} يوم`, `${i.days_late} days late`) : i.kind === "renewal" ? T(`العقد ينتهي خلال ${i.days_left} يوم`, `Lease ends in ${i.days_left} days`) : T("أولوية عالية", "High priority")}</span>}
-          <span className="ap-since">{i.kind === "hr" ? T(`قُدّم ${ago(i.since, true)}`, `Submitted ${ago(i.since, false)}`) : i.kind === "payout" ? T(`دفع المستأجر ${ago(i.since, true)}`, `Tenant paid ${ago(i.since, false)}`) : T(`بانتظار المالك ${ago(i.since, true)}`, `Waiting for owner ${ago(i.since, false)}`)}</span>
+          <span className="ap-since">{i.kind === "hr" || i.kind === "form" ? T(`قُدّم ${ago(i.since, true)}`, `Submitted ${ago(i.since, false)}`) : i.kind === "payout" ? T(`دفع المستأجر ${ago(i.since, true)}`, `Tenant paid ${ago(i.since, false)}`) : T(`بانتظار المالك ${ago(i.since, true)}`, `Waiting for owner ${ago(i.since, false)}`)}</span>
         </div>
         <Link href={`/${locale}/${i.href}`} className="ap-title">{i.title || [i.ref, i.where].filter(Boolean).join(" — ")}</Link>
         <div className="ap-meta">{[i.title ? i.ref : null, i.title ? i.where : null, i.owner ? `${T("المالك", "Owner")}: ${i.owner}` : null].filter(Boolean).join(" · ")}</div>
@@ -178,8 +182,8 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
           {i.kind === "hr" && i.amount != null && <>{T("التكلفة التقديرية", "Estimated cost")} <strong>{sar(i.amount)}</strong></>}
           {i.kind === "payout" && <>{T("صافي المالك ≈", "Owner net ≈")} <strong>{sar(i.amount)}</strong> <span className="text-sec">· {T("من دفعة", "from")} {sar(i.gross)} · {T("الاستحقاق", "due")} {i.due}</span></>}
         </div>
-        {i.kind === "hr" && i.reason && <p className="ap-hint text-sec">{i.reason}</p>}
-        {i.kind !== "payout" && i.kind !== "hr" && <p className="ap-hint text-sec">{T("القرار هنا يُسجّل باسمك نيابة عن المالك (مثلًا بعد موافقته هاتفيًا). المالك يستطيع أيضًا القرار من بوابته.", "Deciding here records it in your name on the owner's behalf (e.g. after they agreed by phone). The owner can also decide in their portal.")}</p>}
+        {(i.kind === "hr" || i.kind === "form") && i.reason && <p className="ap-hint text-sec">{i.kind === "form" && i.requested_by ? `${i.requested_by}: ` : ""}{i.reason}</p>}
+        {i.kind !== "payout" && i.kind !== "hr" && i.kind !== "form" && <p className="ap-hint text-sec">{T("القرار هنا يُسجّل باسمك نيابة عن المالك (مثلًا بعد موافقته هاتفيًا). المالك يستطيع أيضًا القرار من بوابته.", "Deciding here records it in your name on the owner's behalf (e.g. after they agreed by phone). The owner can also decide in their portal.")}</p>}
       </div>
       <div className="ap-act">
         {done ? (

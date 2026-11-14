@@ -56,6 +56,7 @@ from api.routers import (
     entity_overview,
     people_overview,
     previews,
+    forms,
     notifications,
     owner_portal_detail,
     management,
@@ -234,6 +235,7 @@ API_V1 = "/api/v1"
 app.include_router(entity_overview.router, prefix=API_V1)
 app.include_router(people_overview.router, prefix=API_V1)
 app.include_router(previews.router, prefix=API_V1)
+app.include_router(forms.router, prefix=API_V1)
 app.include_router(notifications.router, prefix=API_V1)
 app.include_router(auth.router, prefix=API_V1)
 # Self-service profile / credentials / sessions + support tickets

@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useCustomFields } from "@/components/forms/CustomFields";
+import { useLocale as useCfLocale } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { BilingualField } from "@/components/BilingualField";
@@ -35,6 +37,8 @@ export function AgentFormModal({
     notes_ar: agent?.notes_ar ?? "",
   }));
   const [error, setError] = useState<string | null>(null);
+  const cfLocale = useCfLocale();
+  const cf = useCustomFields("agent", agent?.id, cfLocale);
   const [pending, start] = useTransition();
 
   const set = <K extends keyof AgentInput>(k: K, v: AgentInput[K]) =>
@@ -64,12 +68,18 @@ export function AgentFormModal({
       setError(t("nameRequired"));
       return;
     }
+    if (cf.missing.length) return setError((cfLocale === "ar" ? "أكمل الحقول المطلوبة: " : "Fill in: ") + cf.missing.map((f) => (cfLocale === "ar" ? f.label_ar : f.label_en || f.label_ar)).join("، "));
     start(async () => {
       const res = isEdit && agent
         ? await updateAgent(agent.id, payload)
         : await createAgent(payload);
       if (!res.ok) {
         setError(res.error);
+        return;
+      }
+      const cfErr = await cf.save(res.data.id);
+      if (cfErr) {
+        setError(cfErr);
         return;
       }
       onClose();
@@ -175,6 +185,7 @@ export function AgentFormModal({
           onChangeEn={(v) => set("notes_en", v)}
           onChangeAr={(v) => set("notes_ar", v)}
         />
+        {cf.node}
       </form>
     </Modal>
   );
