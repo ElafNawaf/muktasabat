@@ -397,9 +397,9 @@ export function UsersClient({
                         </span>
                         {u.is_active_user ? t("deactivate") : t("activate")}
                       </button>
-                      {canDeleteUser && u.is_active_user && !isMe && (
+                      {canDeleteUser && !isMe && (
                         <button
-                          className="icon-btn"
+                          className="icon-btn icon-btn--danger"
                           title={tCommon("delete")}
                           onClick={() => setConfirmDel(u)}
                           disabled={isBusy}

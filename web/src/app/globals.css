@@ -2353,3 +2353,4 @@ a.icon-btn { text-decoration: none; }
 .empty-state .empty-icon .ms { font-size: 28px; }
 .empty-state .empty-title { font-family: var(--font-display); font-size: 19px; font-weight: 600; color: var(--color-text-primary); }
 .empty-state .empty-sub { color: var(--color-text-secondary); max-width: 46ch; font-size: 14px; }
+.icon-btn--danger { color: var(--color-danger); } .icon-btn--danger:hover { background: var(--color-danger-soft); color: var(--color-danger); }
