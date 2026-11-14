@@ -46,6 +46,7 @@ with SessionLocal() as db:
     rcpt = pa.recipients_for(p)
     msg = pa.build_email(p, kind, -off, rcpt, today)
     msg.subject = "[تجربة | TEST] " + msg.subject
+    msg.cc = None  # CC address not yet verified in SES (sandbox)
     ok = send_email(msg)
     print(f"test alert: contract {p.contract.contract_number}, instalment due {p.due_date}, kind={kind}")
     print("  to:", msg.to, "| cc:", msg.cc, "| delivered:", ok, "| error:", last_send_error())
