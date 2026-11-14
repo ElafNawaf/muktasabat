@@ -70,6 +70,26 @@ jobs:
           docker save muktasabat-web:v$NEW_WEB | gzip -1 > web.tar.gz
           ls -lh *.tar.gz
 
+      - name: Free disk space on the instance
+        # The box is small: every release adds two images. Keep the live
+        # version and the one before it (for rollback); drop older muktasabat
+        # images, leftover upload tarballs, dangling layers and build cache.
+        run: |
+          $SSH "bash -s" <<REMOTE
+          set -u
+          df -h / | tail -1
+          rm -f /home/ubuntu/api.tar.gz /home/ubuntu/web.tar.gz
+          for repo in muktasabat-api muktasabat-web; do
+            cur=\$([ "\$repo" = muktasabat-api ] && echo $CUR_API || echo $CUR_WEB)
+            docker images "\$repo" --format '{{.Tag}}' | sed -n 's/^v\([0-9][0-9]*\)$/\1/p' | while read -r n; do
+              if [ "\$n" -lt \$((cur - 1)) ]; then docker rmi "\$repo:v\$n" >/dev/null 2>&1 && echo "removed \$repo:v\$n" || true; fi
+            done
+          done
+          docker image prune -f >/dev/null 2>&1 || true
+          docker builder prune -af >/dev/null 2>&1 || true
+          df -h / | tail -1
+          REMOTE
+
       - name: Ship and load
         run: |
           $SCP api.tar.gz web.tar.gz $USER@$HOST:/home/ubuntu/
