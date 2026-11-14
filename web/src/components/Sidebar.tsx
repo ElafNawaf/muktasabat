@@ -66,6 +66,7 @@ export function Sidebar({ user }: { user: { username: string; role: string } | n
       label: t("management"),
       items: [
         ...(isAdmin ? [{ id: "users", href: L("users"), icon: "admin_panel_settings", label: t("users") }] : []),
+        ...(isAdmin ? [{ id: "data-management", href: L("data-management"), icon: "database", label: t("dataManagement") }] : []),
         ...(isAdmin || can("owners", "view")
           ? [{ id: "owner-access", href: L("owner-access"), icon: "key", label: t("ownerAccess") }]
           : []),

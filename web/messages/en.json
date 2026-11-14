@@ -22,7 +22,8 @@
     "contractsGroup": "Contracts",
     "finance": "Finance",
     "management": "Management",
-    "leaseContracts": "Lease contracts"
+    "leaseContracts": "Lease contracts",
+    "dataManagement": "Data management"
   },
   "roles": {
     "admin": "Administrator",
@@ -1422,5 +1423,52 @@
     "footerSeo": {
       "cities": "Browse property"
     }
+  },
+  "dataManagement": {
+    "title": "Data management",
+    "subtitle": "Bulk export, correct and re-import owners, properties, units, tenants, contracts and every lookup — validated strictly before anything is saved.",
+    "exportTitle": "Export to Excel",
+    "exportHelp": "One workbook with a sheet per entity ({records} records), drop-downs bound to the lookups, live name columns beside every link, a Lookups sheet and a data dictionary.",
+    "exportAll": "Export all data",
+    "exportTemplate": "Empty template",
+    "referenceOnly": "Reference only",
+    "columnsCount": "{n} editable columns",
+    "lookupsIncluded": "{n} lookup lists are included in the Lookups sheet.",
+    "importTitle": "Import corrected workbook",
+    "step1": "Edit the exported workbook — fix rows, or add new rows with a blank ID (or NEW-1, NEW-2… to link them from other sheets).",
+    "step2": "Validate: the whole file is checked — types, formats, lookups, links, duplicates and business rules. Every problem is listed with its sheet, row and column.",
+    "step3": "Apply: only a file with zero errors can be imported, and it is saved in a single all-or-nothing transaction.",
+    "chooseFile": "Choose .xlsx file",
+    "changeFile": "Change file",
+    "validate": "Validate",
+    "validating": "Validating…",
+    "apply": "Apply import",
+    "applying": "Importing…",
+    "fixErrorsFirst": "Fix every error in the file and validate again",
+    "colSheet": "Sheet",
+    "colRows": "Rows",
+    "colNew": "New",
+    "colUpdated": "Updated",
+    "colUnchanged": "Unchanged",
+    "colInvalid": "Rows with errors",
+    "colErrors": "Errors",
+    "colRow": "Row",
+    "colColumn": "Column",
+    "colValue": "Value",
+    "colProblem": "Problem",
+    "errorsTitle": "{n} errors to fix",
+    "allSheets": "All sheets",
+    "downloadErrors": "Error report (CSV)",
+    "truncated": "Showing the first {n} errors. Fix these and validate again to see the rest.",
+    "showingFirst": "Showing the first {n} matching errors.",
+    "empty": "(empty)",
+    "hasErrors": "{n} errors found — nothing can be imported until the file is clean.",
+    "noChanges": "The file is valid and matches the system — nothing to import.",
+    "readyToApply": "The file is valid — {n} records will be created or updated.",
+    "appliedOk": "Import complete — {n} records saved.",
+    "confirmTitle": "Apply this import?",
+    "confirmMessage": "{n} records will be created or updated in one transaction. Rows removed from the file are not deleted. Continue?",
+    "unexpectedError": "Unexpected error ({status}).",
+    "networkError": "Could not reach the server. Check your connection and try again."
   }
 }

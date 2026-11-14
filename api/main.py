@@ -34,6 +34,7 @@ from api.routers import (
     auth,
     buildings,
     contracts,
+    data_io,
     employees,
     expenses,
     management,
@@ -189,6 +190,8 @@ app.include_router(expenses.router, prefix=API_V1)
 app.include_router(analytics.router, prefix=API_V1)
 app.include_router(roles.router, prefix=API_V1)
 app.include_router(translate.router, prefix=API_V1)
+# Admin bulk data management — Excel export / validate / import
+app.include_router(data_io.router, prefix=API_V1)
 # Public website CMS — /api/v1/cms/public/* (anonymous) and /api/v1/cms/admin/*
 app.include_router(cms.public, prefix=API_V1)
 app.include_router(cms.admin, prefix=API_V1)
