@@ -250,6 +250,8 @@ jobs:
           $SSH "HOST_IP=$HOST bash -s" <<'REMOTE'
           set -u
           F=/etc/caddy/Caddyfile
+          # Forget cached DNS answers so a domain that was just repointed is seen right away.
+          sudo resolvectl flush-caches 2>/dev/null || sudo systemd-resolve --flush-caches 2>/dev/null || true
           here() { [ "$(getent ahostsv4 "$1" | awk 'NR==1{print $1}')" = "$HOST_IP" ]; }
           if here mrc.sa; then
             MAIN=mrc.sa; T=mrc.sa; aliases="muktasabat.com, www.muktasabat.com"; extra="www.mrc.sa"
