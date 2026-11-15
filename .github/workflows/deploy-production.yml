@@ -220,6 +220,63 @@ jobs:
           [ "$RESTARTS" = 0 ] || { echo "API container restarted $RESTARTS time(s)"; FAIL=1; }
           [ $FAIL = 0 ]
 
+      - name: Short domains (mrc.sa → muktasabat.com)
+        # Forwards each short domain to https://muktasabat.com, keeping the path.
+        # A domain is only added once its DNS points at this server, so nothing
+        # breaks before the DNS change; certificates come from Let's Encrypt.
+        # Never fails the deploy.
+        if: success()
+        continue-on-error: true
+        env:
+          SHORT_DOMAINS: "mrc.sa www.mrc.sa"
+        run: |
+          $SSH "HOST_IP=$HOST SHORT_DOMAINS='$SHORT_DOMAINS' bash -s" <<'REMOTE'
+          set -u
+          if [ -f /etc/caddy/Caddyfile ]; then echo "Web proxy on host: Caddy"; elif command -v nginx >/dev/null 2>&1; then echo "Web proxy on host: nginx $(nginx -v 2>&1 | sed 's/.*\///')"; else echo "Web proxy on host: unknown"; fi
+          ready=""
+          for d in $SHORT_DOMAINS; do
+            ip=$(getent ahostsv4 "$d" 2>/dev/null | awk 'NR==1{print $1}')
+            if [ "$ip" = "$HOST_IP" ]; then ready="$ready $d"; echo "DNS ok: $d"; else echo "DNS not pointing here yet: $d (${ip:-no A record})"; fi
+          done
+          ready=$(echo $ready)
+          [ -z "$ready" ] && { echo "Nothing to do until DNS is updated."; exit 0; }
+
+          if [ -f /etc/caddy/Caddyfile ]; then
+            echo "Proxy: Caddy"
+            f=/etc/caddy/Caddyfile
+            sudo cp "$f" "$f.bak-short"
+            sudo sed -i '/# >>> short-domains/,/# <<< short-domains/d' "$f"
+            hosts=$(echo "$ready" | sed 's/ /, /g')
+            printf '\n# >>> short-domains (managed by deploy)\n%s {\n\tredir https://muktasabat.com{uri} permanent\n}\n# <<< short-domains\n' "$hosts" | sudo tee -a "$f" >/dev/null
+            if sudo caddy validate --config "$f" --adapter caddyfile >/dev/null 2>&1; then sudo systemctl reload caddy && echo "Caddy reloaded: $ready"; else echo "Caddy config invalid — restoring"; sudo cp "$f.bak-short" "$f"; fi
+          elif command -v nginx >/dev/null 2>&1; then
+            echo "Proxy: nginx"
+            if ! command -v certbot >/dev/null 2>&1; then
+              sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq certbot python3-certbot-nginx >/dev/null || { echo "certbot install failed"; exit 0; }
+            fi
+            conf=/etc/nginx/sites-available/short-domains.conf
+            sudo mkdir -p /var/www/letsencrypt
+            # 1) plain-HTTP block so Let's Encrypt can verify the domains
+            printf 'server {\n  listen 80;\n  listen [::]:80;\n  server_name %s;\n  location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }\n  location / { return 301 https://muktasabat.com$request_uri; }\n}\n' "$ready" | sudo tee "$conf" >/dev/null
+            sudo ln -sf "$conf" /etc/nginx/sites-enabled/short-domains.conf
+            sudo nginx -t >/dev/null 2>&1 && sudo systemctl reload nginx || { echo "nginx test failed"; sudo rm -f /etc/nginx/sites-enabled/short-domains.conf; exit 0; }
+            args=""; for d in $ready; do args="$args -d $d"; done
+            if sudo certbot certonly --webroot -w /var/www/letsencrypt --cert-name short-domains --expand --non-interactive --agree-tos --register-unsafely-without-email $args >/tmp/certbot.log 2>&1; then
+              # 2) HTTPS block with the certificate
+              printf 'server {\n  listen 443 ssl http2;\n  listen [::]:443 ssl http2;\n  server_name %s;\n  ssl_certificate /etc/letsencrypt/live/short-domains/fullchain.pem;\n  ssl_certificate_key /etc/letsencrypt/live/short-domains/privkey.pem;\n  return 301 https://muktasabat.com$request_uri;\n}\n' "$ready" | sudo tee -a "$conf" >/dev/null
+              if sudo nginx -t >/dev/null 2>&1; then sudo systemctl reload nginx && echo "nginx reloaded with HTTPS for: $ready"; else echo "nginx test failed (https) — keeping HTTP only"; printf 'server {\n  listen 80;\n  listen [::]:80;\n  server_name %s;\n  location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }\n  location / { return 301 https://muktasabat.com$request_uri; }\n}\n' "$ready" | sudo tee "$conf" >/dev/null; sudo nginx -t && sudo systemctl reload nginx; fi
+            else
+              echo "certbot failed:"; tail -5 /tmp/certbot.log
+            fi
+          else
+            echo "No Caddy or nginx found on the host — can't add short domains automatically."
+            sudo ss -ltnp 2>/dev/null | grep -E ':(80|443) ' | sed -E 's/users:.*//' || true
+          fi
+          REMOTE
+          for d in $SHORT_DOMAINS; do
+            echo "$d → $(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 15 https://$d/ar 2>/dev/null || echo 'not reachable over HTTPS yet')"
+          done
+
       - name: Roll back on failure
         if: failure() && env.NEW_API != ''
         run: |
