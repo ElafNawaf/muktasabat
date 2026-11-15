@@ -1,0 +1,14 @@
+Muktasabat Real Estate (شركة مكتسبات العقارية) is a licensed property-management and leasing company in Riyadh and Makkah, Saudi Arabia. https://muktasabat.com is our own property-management portal; SES sends only transactional email from our verified domain muktasabat.com (DKIM enabled).
+
+Who receives email: only people with an existing business relationship who gave us their address — our own staff (about 10 accounts across the group), our tenants and property owners (a few hundred), and people who contact us through the website. We never buy, rent or scrape lists, and we send no marketing or newsletters.
+
+What we send, all triggered by an action or a due date in the portal:
+- Account invitations and password-reset links for staff, tenants and owners
+- Rent instalment reminders, overdue notices and payment receipts to tenants
+- Owner payout and monthly statement notices to property owners
+- Maintenance and support-ticket updates
+- HR notices for staff: leave/permission decisions, employment contracts to sign, monthly payslips
+
+Volume: under 3,000 emails a month, typically under 150 a day, in Arabic and English.
+
+Bounces and complaints: the account-level SES suppression list is enabled for bounces and complaints, so we never retry a suppressed address. Every send is logged in the portal's email log with the SES message ID; an administrator reviews failures and corrects addresses with the tenant or employee. Recipients can ask us to stop non-essential notices at any time by replying or contacting support, and we update their profile. Reminder schedules are capped per invoice so no one receives repeated messages.
