@@ -11,7 +11,8 @@ mkdir -p ~/.ssh; printf '%s\n' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/k; chmod 600 ~/.ssh
 ssh-keyscan -T 20 -H 13.232.25.224 >> ~/.ssh/known_hosts 2>/dev/null
 { printf 'LEGACY=%q\nNEW=%q\n' "$LEGACY" "$NEW"; cat <<'REMOTE'
 set -euo pipefail
-echo "== reach RDS from host"; timeout 8 bash -c "</dev/tcp/${NEW#*@}" 2>/dev/null; H=$(echo "$NEW" | sed -E 's#.*@([^:/]+):.*#\1#'); timeout 8 bash -c "</dev/tcp/$H/5432" && echo reachable
+H=$(echo "$NEW" | sed -E 's#.*@([^:/]+):.*#\1#')
+if timeout 8 bash -c "</dev/tcp/$H/5432" 2>/dev/null; then echo "== RDS reachable from host"; else echo "== RDS NOT reachable from host"; exit 3; fi
 docker run --rm -i --network host -e LEGACY="$LEGACY" -e NEW="$NEW" public.ecr.aws/docker/library/postgres:17-alpine sh -s <<'IN'
 set -e
 pg_dump --no-owner --no-privileges -Fc "$LEGACY" -f /tmp/d.dump; echo "dump_ok $(du -h /tmp/d.dump | cut -f1)"
