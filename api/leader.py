@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Awaitable, Callable
 
 from api.database import engine
@@ -20,6 +21,9 @@ LOCK_ID = 727_001  # arbitrary, constant for this app
 
 
 async def run_as_leader(jobs: list[Callable[[], Awaitable[None]]], retry_seconds: int = 60) -> None:
+    if os.environ.get("BACKGROUND_JOBS", "1").lower() in ("0", "false", "no", "off"):
+        log.info("background jobs: disabled (BACKGROUND_JOBS=0)")
+        return
     if engine.dialect.name != "postgresql":
         await asyncio.gather(*(j() for j in jobs))
         return

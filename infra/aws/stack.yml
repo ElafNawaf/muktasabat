@@ -19,6 +19,7 @@ Parameters:
   UploadsBucket: { Type: String, Default: muktasabat-uploads }
   LightsailCidr: { Type: String, Default: 172.26.0.0/16, Description: "Peered Lightsail VPC (data copy)" }
   AlarmEmail: { Type: String, Default: "", NoEcho: true }
+  BackgroundJobs: { Type: String, Default: "1", AllowedValues: ["0", "1"], Description: "0 while testing next to the live site" }
 
 Conditions:
   HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, ""]]
@@ -228,6 +229,7 @@ Resources:
             - { Name: API_PUBLIC_BASE_URL, Value: !Sub "https://${DomainName}" }
             - { Name: DISABLE_BOOTSTRAP_ADMIN, Value: "1" }
             - { Name: STORAGE_FALLBACK_LOCAL, Value: "0" }
+            - { Name: BACKGROUND_JOBS, Value: !Ref BackgroundJobs }
           Secrets:
             - { Name: DB_USER, ValueFrom: !Sub "${DbSecret}:username::" }
             - { Name: DB_PASS, ValueFrom: !Sub "${DbSecret}:password::" }
