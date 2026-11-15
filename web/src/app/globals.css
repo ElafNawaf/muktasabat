@@ -3451,7 +3451,8 @@ a.bd-person:hover { background: rgba(255,255,255,.22); }
 .bd-drawer__bg { position: absolute; inset: 0; background: rgba(15, 10, 8, .45); animation: bd-fade .25s; }
 @keyframes bd-fade { from { opacity: 0; } }
 .bd-drawer__panel { --c: var(--tn-idle); position: relative; width: min(460px, 100%); height: 100%; background: var(--color-surface); display: flex; flex-direction: column; box-shadow: -20px 0 50px rgba(0,0,0,.2); animation: bd-slide .32s cubic-bezier(.16,1,.3,1); border-top: 5px solid var(--c); }
-[dir="rtl"] .bd-drawer { justify-content: flex-start; }
+/* end edge like every other drawer: right in English, left in Arabic */
+[dir="rtl"] .bd-drawer__panel { box-shadow: 20px 0 50px rgba(0,0,0,.2); }
 @keyframes bd-slide { from { transform: translateX(40px); opacity: 0; } }
 [dir="rtl"] .bd-drawer__panel { animation-name: bd-slide-r; }
 @keyframes bd-slide-r { from { transform: translateX(-40px); opacity: 0; } }
