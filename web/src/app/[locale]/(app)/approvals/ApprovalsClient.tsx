@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { markOwnerTransferred } from "@/lib/actions";
 import { payDecideLoan } from "@/lib/payroll-actions";
 import { decideApproval } from "@/lib/workflow-actions";
+import { ClickRow } from "@/components/ClickRow";
 
 type Kind = "work_order" | "renewal" | "payout" | "hr" | "bank" | "expense" | "form" | "payroll" | "loan";
 export type ChainStep = { step: number; label: string; approver: string; status: string; decided_by?: string | null; on_behalf?: boolean; decided_at?: string | null; overdue?: boolean; escalated?: boolean };
@@ -112,7 +113,7 @@ export function ApprovalsClient({ locale, inbox, history }: { locale: string; in
               <thead><tr><th>{T("الطلب", "Request")}</th><th>{T("القرار", "Decision")}</th><th>{T("بواسطة", "By")}</th><th>{T("المبلغ", "Amount")}</th><th>{T("التاريخ", "Date")}</th></tr></thead>
               <tbody>
                 {hist.map((h, n) => (
-                  <tr key={n}>
+                  <ClickRow key={n} href={`/${locale}/${h.href}`}>
                     <td>
                       <Link href={`/${locale}/${h.href}`} className="ap-link"><span className="ms ms-sm" aria-hidden>{KIND[h.kind]?.icon}</span>{h.title || T(KIND[h.kind].ar, KIND[h.kind].en)}</Link>
                       <div className="text-sec" style={{ fontSize: 12 }}>{[h.ref, h.where, h.owner].filter(Boolean).join(" · ")}</div>
@@ -127,7 +128,7 @@ export function ApprovalsClient({ locale, inbox, history }: { locale: string; in
                     <td>{h.by ? (h.by === "system" ? T("النظام", "System") : h.by) : "—"}</td>
                     <td>{sar(h.amount)}</td>
                     <td className="text-sec">{h.at?.slice(0, 10)}</td>
-                  </tr>
+                  </ClickRow>
                 ))}
               </tbody>
             </table>

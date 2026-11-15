@@ -15,6 +15,7 @@ import { Modal } from "@/components/Modal";
 import { getPosition, geoErrorText } from "@/lib/geo";
 import { hrAttendanceDay, hrAttendanceReport, hrDecide, hrSaveEmployee, hrSaveSettings, hrSetAttendance } from "@/lib/hr-actions";
 import { HR, hl, mins, statusClass, type Balance, type DayStatus, type HrReq } from "@/lib/hr-labels";
+import { ClickRow } from "@/components/ClickRow";
 
 type BoardRow = DayStatus & { user_id: number; name: string; department?: string | null };
 export type Dash = {
@@ -335,7 +336,7 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
           <thead><tr><th>{T("الموظف", "Employee")}</th><th>{T("الحالة", "Status")}</th><th>{T("الحضور", "In")}</th><th>{T("الانصراف", "Out")}</th><th>{T("التأخير", "Late")}</th><th>{T("المسجّل", "Recorded")}</th><th>{T("الفعلي", "Actual")}</th><th>{T("ملاحظات", "Exceptions")}</th>{canEdit && <th />}</tr></thead>
           <tbody>
             {board.map((b) => (
-              <tr key={b.user_id}>
+              <ClickRow key={b.user_id} href={`/${locale}/hr/people/${b.user_id}?tab=attendance`}>
                 <td><strong>{b.name}</strong>{b.note && <div className="text-sec" style={{ fontSize: 12 }}>{b.note}</div>}</td>
                 <td><span className={`hr-day hr-day--${b.status}`}>{hl(ar, HR.day, b.status)}</span>{b.mode && b.mode !== "office" && <span className="mx-chip" style={{ marginInlineStart: 6 }}>{hl(ar, HR.mode, b.mode)}</span>}{b.excused && <div className="text-sec" style={{ fontSize: 12 }}>{T("بعذر (استئذان)", "Excused (permission)")}</div>}</td>
                 <td><span dir="ltr">{b.check_in ?? "—"}</span>{b.source === "manual" && <span className="text-sec"> ✎</span>}{b.in_distance != null && <div className="text-sec" style={{ fontSize: 12 }}>{T(`${Math.round(b.in_distance)} م`, `${Math.round(b.in_distance)} m`)}</div>}</td>
@@ -345,7 +346,7 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
                 <td><strong>{b.verified_minutes != null ? mins(b.verified_minutes, ar) : "—"}</strong>{!!b.away_minutes && <div className="text-sec" style={{ fontSize: 12 }}>{T(`خارج المكتب ${mins(b.away_minutes, true)}`, `${mins(b.away_minutes, false)} away`)}</div>}</td>
                 <td>{(b.flags ?? []).map((f) => <div key={f} className="hr-flagtxt">{hl(ar, HR.flag, f)}</div>)}{!(b.flags ?? []).length && "—"}</td>
                 {canEdit && <td><button className="btn btn-ghost btn-sm" onClick={() => setEdit(b)}>{T("تعديل", "Edit")}</button></td>}
-              </tr>
+              </ClickRow>
             ))}
           </tbody>
         </table></div></div>
@@ -354,7 +355,7 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
           <thead><tr><th>{T("الموظف", "Employee")}</th><th>{T("نسبة الحضور", "Attendance")}</th><th>{T("حضور", "Present")}</th><th>{T("تأخير", "Late")}</th><th>{T("غياب", "Absent")}</th><th>{T("إجازة", "Leave")}</th><th>{T("عن بُعد / ميداني", "Remote / field")}</th><th>{T("استئذان", "Permission")}</th><th>{T("الساعات (مسجّلة / فعلية)", "Hours (recorded / actual)")}</th><th>{T("مخالفات", "Exceptions")}</th></tr></thead>
           <tbody>
             {report.rows.map((r) => (
-              <tr key={r.user_id}>
+              <ClickRow key={r.user_id} href={`/${locale}/hr/people/${r.user_id}?tab=attendance`}>
                 <td><strong>{r.name}</strong><div className="text-sec" style={{ fontSize: 12 }}>{T(`${r.working_days} يوم عمل`, `${r.working_days} working days`)}</div></td>
                 <td><div className="hr-pct"><div className="hr-meter"><i style={{ width: `${r.attendance_pct}%`, background: r.attendance_pct >= 95 ? "#2f7d4f" : r.attendance_pct >= 85 ? "#c58a1e" : "#b42318" }} /></div><span>{r.attendance_pct}%</span></div></td>
                 <td>{r.present}</td>
@@ -365,7 +366,7 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
                 <td>{r.permission_minutes ? mins(r.permission_minutes, ar) : "—"}</td>
                 <td>{r.worked_hours} / <strong className={r.verified_hours < r.worked_hours * 0.9 ? "hr-bad" : ""}>{r.verified_hours}</strong>{r.away_minutes ? <div className="text-sec" style={{ fontSize: 12 }}>{T(`خارج المكتب ${mins(r.away_minutes, true)}`, `${mins(r.away_minutes, false)} away`)}</div> : null}</td>
                 <td className={r.exceptions ? "hr-bad" : ""}>{r.exceptions || "—"}{r.refused_checkins ? <div className="text-sec" style={{ fontSize: 12 }}>{T(`${r.refused_checkins} حضور مرفوض`, `${r.refused_checkins} refused`)}</div> : null}</td>
-              </tr>
+              </ClickRow>
             ))}
           </tbody>
         </table></div></div>
@@ -416,7 +417,7 @@ function Employees({ locale, rows, canEdit, companies }: { locale: string; rows:
         <thead><tr><th>{T("الموظف", "Employee")}</th><th>{T("الشركة", "Company")}</th><th>{T("القسم / المسمى", "Department / title")}</th><th>{T("المدير المباشر", "Manager")}</th><th>{T("تاريخ التعيين", "Hired")}</th><th>{T("رصيد الإجازة", "Leave left")}</th><th>{T("التذكرة", "Ticket")}</th><th>{T("الحالة", "Status")}</th><th /></tr></thead>
         <tbody>
           {shown.map((e) => (
-            <tr key={e.user_id}>
+            <ClickRow key={e.user_id} href={`/${locale}/hr/people/${e.user_id}`}>
               <td><a className="ap-link" href={`/${locale}/hr/people/${e.user_id}`}><strong>{e.name}</strong></a><div className="text-sec" style={{ fontSize: 12 }}>{[e.employee_no && `#${e.employee_no}`, e.phone].filter(Boolean).join(" · ") || e.username}</div></td>
               <td><span className="hr-comp" style={{ ["--cc" as string]: cname(e.company_id)?.color || "var(--color-primary)" }}>{cname(e.company_id)?.name ?? "—"}</span></td>
               <td>{e.department ?? "—"}<div className="text-sec" style={{ fontSize: 12 }}>{e.job_title ?? ""}</div></td>
@@ -426,7 +427,7 @@ function Employees({ locale, rows, canEdit, companies }: { locale: string; rows:
               <td>{hl(ar, HR.ticketEnt, e.ticket_entitlement)}{e.ticket_destination ? <div className="text-sec" style={{ fontSize: 12 }}>{e.ticket_destination}</div> : null}</td>
               <td><span className={`mx-chip ${e.employment_status === "active" ? "" : "hr-muted"}`}>{hl(ar, HR.emp, e.employment_status)}</span><div className="text-sec" style={{ fontSize: 12 }}>{hl(ar, HR.mode, e.work_mode)}{e.work_mode === "hybrid" && e.remote_days.length ? `: ${e.remote_days.map((d) => HR.weekday[d][ar ? 0 : 1]).join("، ")}` : ""}</div></td>
               <td className="ef-rowact"><a className="btn btn-ghost btn-sm" href={`/${locale}/hr/people/${e.user_id}`}>{T("الملف", "File")}</a>{canEdit && <button className="btn btn-ghost btn-sm" onClick={() => setEdit(e)}>{T("الإعدادات", "Settings")}</button>}</td>
-            </tr>
+            </ClickRow>
           ))}
         </tbody>
       </table></div></div>

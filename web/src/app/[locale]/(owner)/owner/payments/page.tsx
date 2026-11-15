@@ -4,6 +4,7 @@ import { ParamSelect } from "@/components/owner/OwnerShell";
 import { L, day, money, num, ownerApi, type CollectState, type LedgerItem, type TransferState } from "@/lib/owner";
 
 import { load, one, type SP } from "../guard";
+import { ClickRow } from "@/components/ClickRow";
 
 const COLLECT: Record<CollectState, [string, string, string]> = {
   paid: ["محصّلة", "Collected", "is-ok"],
@@ -125,7 +126,7 @@ export default async function OwnerPayments({ params, searchParams }: { params: 
                   const c = COLLECT[i.status];
                   const tr = TRANSFER[i.transfer.state];
                   return (
-                    <tr key={i.id}>
+                    <ClickRow key={i.id} href={`/${locale}/owner/contracts/${i.contract_id}${qs}`}>
                       <td data-label={t("الدفعة", "Instalment")}>
                         <strong>{day(locale, i.due_date)}</strong>
                         <small>{t("الدفعة", "No.")} {num(locale, i.seq)}/{num(locale, i.of)}</small>
@@ -177,7 +178,7 @@ export default async function OwnerPayments({ params, searchParams }: { params: 
                           </>
                         )}
                       </td>
-                    </tr>
+                    </ClickRow>
                   );
                 })}
               </tbody>

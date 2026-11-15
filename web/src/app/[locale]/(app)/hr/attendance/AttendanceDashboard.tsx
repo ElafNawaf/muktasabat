@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { Modal } from "@/components/Modal";
 import { hrLive, hrSendMonthly, hrStats } from "@/lib/hr-actions";
 import { HR, hl, mins } from "@/lib/hr-labels";
+import { ClickRow } from "@/components/ClickRow";
 
 type LiveStatus = "in_office" | "away" | "remote" | "field" | "not_yet" | "absent" | "checked_out" | "on_leave" | "weekend" | "untracked";
 type Person = {
@@ -221,6 +222,7 @@ function Delta({ v, p, suffix = "", invert = false }: { v: number | null; p: num
 }
 
 function MonthStats({ stats, ar }: { stats: Stats; ar: boolean }) {
+  const locale = ar ? "ar" : "en";
   const T = (a: string, e: string) => (ar ? a : e);
   const t = stats.totals;
   const p = stats.prev;
@@ -307,7 +309,7 @@ function MonthStats({ stats, ar }: { stats: Stats; ar: boolean }) {
           </tr></thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.user_id}>
+              <ClickRow key={r.user_id} href={`/${locale}/hr/people/${r.user_id}?tab=attendance`}>
                 <td><strong>{r.name}</strong><div className="text-sec" style={{ fontSize: 12 }}>{T(`${r.present} من ${r.working_days} يوم`, `${r.present} of ${r.working_days} days`)}</div></td>
                 <td><div className="hr-pct"><div className="hr-meter"><i style={{ width: `${r.attendance_pct}%`, background: r.attendance_pct >= 95 ? "#2f7d4f" : r.attendance_pct >= 85 ? "#c58a1e" : "#b42318" }} /></div><span>{r.attendance_pct}%</span></div></td>
                 <td>{r.punctuality_pct == null ? "—" : `${r.punctuality_pct}%`}</td>
@@ -318,7 +320,7 @@ function MonthStats({ stats, ar }: { stats: Stats; ar: boolean }) {
                 <td>{r.remote_days + r.field_days}</td>
                 <td><strong>{r.verified_hours}</strong><span className="text-sec"> / {r.worked_hours}</span></td>
                 <td className={r.exceptions ? "hr-bad" : ""}>{r.exceptions || "—"}</td>
-              </tr>
+              </ClickRow>
             ))}
           </tbody>
         </table></div>

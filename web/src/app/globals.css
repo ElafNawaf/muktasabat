@@ -5367,3 +5367,54 @@ li.py-req { display: grid; gap: 6px; }
 .hr-periods li b { font-variant-numeric: tabular-nums; }
 .hr-periods li.is-open { background: var(--color-success-soft); color: var(--color-success); }
 .hr-periods__break { background: transparent !important; border: 1px dashed var(--color-border-strong); color: var(--color-text-secondary); }
+
+/* ── Clickable table rows (every list opens its record) ───────────── */
+.tbl tr.tr-link { cursor: pointer; }
+.tbl tr.tr-link:hover td { background: var(--color-bg); }
+.tbl tr.tr-link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
+/* ── Lease contract page ──────────────────────────────────────────── */
+.ct-page { display: grid; gap: 16px; }
+.ct-page > * { margin: 0; }
+.ct-hero { min-height: 200px; background: linear-gradient(135deg, #3b1d1a, #6e2a24 55%, #8a3b2c); }
+.ct-no { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.bd-hero__loc a, .bd-hero__people a { color: inherit; }
+.ct-st--ok { background: rgba(46, 160, 90, .28) !important; }
+.ct-st--bad { background: rgba(220, 70, 60, .35) !important; }
+.ct-kpis { grid-template-columns: 1.4fr repeat(4, 1fr); }
+.ct-dates { font-size: 15px !important; line-height: 1.4; }
+.ct-dates span { color: var(--color-text-secondary); font-weight: 400; }
+.ct-bar { height: 6px; border-radius: 999px; background: var(--color-bg-deep); overflow: hidden; margin: 6px 0 2px; }
+.ct-bar i { display: block; height: 100%; background: var(--color-primary); border-radius: inherit; }
+.ct-neg { color: var(--color-danger); }
+.ct-small { font-size: 16px !important; }
+.ct-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; align-items: start; }
+.ct-sched { grid-row: span 2; }
+.ct-card { padding: 0; overflow: hidden; }
+.ct-card__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--color-border); }
+.ct-card__head h3 { margin: 0; font-size: 15px; }
+.ct-empty { margin: 0; padding: 18px; }
+.ct-sm { font-size: 12px; }
+.ct-pill { display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; background: var(--color-bg-deep); color: var(--color-text-secondary); }
+.ct-pill--ok { background: var(--color-success-soft); color: var(--color-success); }
+.ct-pill--bad { background: var(--color-danger-soft); color: var(--color-danger); }
+.ct-pill--warn { background: var(--color-warning-soft); color: var(--color-warning); }
+.ct-pill--info { background: var(--color-primary-soft); color: var(--color-primary); }
+.ct-dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 0; }
+.ct-dl > div { padding: 10px 18px; border-bottom: 1px dashed var(--color-border); display: grid; gap: 2px; }
+.ct-dl dt { font-size: 12px; color: var(--color-text-secondary); }
+.ct-dl dd { margin: 0; font-weight: 600; font-size: 14px; }
+.ct-notes { margin: 0; padding: 12px 18px; font-size: 13px; color: var(--color-text-secondary); white-space: pre-line; }
+.ct-files { list-style: none; margin: 0; padding: 10px 18px 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+.ct-files a { display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--color-border); font-size: 13px; color: inherit; text-decoration: none; }
+.ct-tl { list-style: none; margin: 0; padding: 8px 18px 14px; display: grid; gap: 12px; }
+.ct-tl li { display: flex; gap: 10px; }
+.ct-tl li > .ms { width: 28px; height: 28px; flex: none; border-radius: 9px; display: grid; place-items: center; background: var(--color-primary-soft); color: var(--color-primary); }
+.ct-tl p { margin: 2px 0; font-size: 13px; }
+.ct-tl small { display: block; font-size: 11px; margin-top: 2px; }
+.ct-wo { list-style: none; margin: 0; padding: 6px 0; }
+.ct-wo a { display: flex; align-items: center; gap: 10px; padding: 9px 18px; color: inherit; text-decoration: none; font-size: 13px; }
+.ct-wo a:hover { background: var(--color-bg); }
+.ct-wo a span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1100px) { .ct-kpis { grid-template-columns: repeat(2, 1fr); } .ct-term { grid-column: 1 / -1; } .ct-grid { grid-template-columns: 1fr; } .ct-sched { grid-row: auto; } }
+@media (max-width: 560px) { .ct-dl { grid-template-columns: 1fr; } }

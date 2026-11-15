@@ -191,7 +191,7 @@ function Drawer({ r, locale, canEdit, sar, onClose }: { r: CRow; locale: string;
         <nav className="xl-related" aria-label={T("روابط ذات صلة", "Related")}>
           {r.tenant_id && <Link href={`/${locale}/tenants/${r.tenant_id}`}><span className="ms ms-sm" aria-hidden>person</span>{T("ملف المستأجر", "Tenant profile")}</Link>}
           {r.contract_id && <Link href={`/${locale}/payments?contract=${r.contract_id}&open=${r.payment_id}`}><span className="ms ms-sm" aria-hidden>payments</span>{T("جدول دفعات العقد", "Lease payment schedule")}</Link>}
-          {r.contract_number && <Link href={`/${locale}/contracts?q=${encodeURIComponent(r.contract_number)}`}><span className="ms ms-sm" aria-hidden>description</span>{T("العقد", "Lease")} {r.contract_number}</Link>}
+          {r.contract_number && <Link href={r.contract_id ? `/${locale}/contracts/${r.contract_id}` : `/${locale}/contracts?q=${encodeURIComponent(r.contract_number)}`}><span className="ms ms-sm" aria-hidden>description</span>{T("العقد", "Lease")} {r.contract_number}</Link>}
           {r.building_id && <Link href={`/${locale}/properties/${r.building_id}`}><span className="ms ms-sm" aria-hidden>domain</span>{T("العقار", "Property")}</Link>}
           {r.owner_id && <Link href={`/${locale}/owners/${r.owner_id}`}><span className="ms ms-sm" aria-hidden>group</span>{T("المالك", "Owner")}</Link>}
         </nav>

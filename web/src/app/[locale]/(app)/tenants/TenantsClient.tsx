@@ -36,6 +36,7 @@ type LeaseSummary = {
 };
 
 import { TenantCards, TenantKpis, type TenantSummary } from "./TenantCards";
+import { useRowLink } from "@/lib/row-link";
 
 export function TenantsClient({
   tenants,
@@ -52,6 +53,7 @@ export function TenantsClient({
   buildings: Building[];
   locale: string;
 }) {
+  const rowLink = useRowLink();
   const t = useTranslations("tenants");
   const tForm = useTranslations("tenantForm");
   const tCommon = useTranslations("common");
@@ -558,7 +560,7 @@ export function TenantsClient({
                   const c = tenantColor(tn.id);
                   const tenantType = tn.tenant_type ?? "individual";
                   return (
-                    <tr key={tn.id}>
+                    <tr key={tn.id} {...rowLink(`/${locale}/tenants/${tn.id}`)}>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div

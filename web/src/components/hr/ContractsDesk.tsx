@@ -11,6 +11,7 @@ import { ContractPaper } from "./ContractPaper";
 import { hrBulkIssue, hrDeleteTemplate, hrDuplicateTemplate, hrPreviewTemplate, hrSaveTemplate } from "@/lib/hr-people-actions";
 import type { PreviewCompany } from "@/lib/hr-people-actions";
 import { HP, lb, type Company, type Contract, type ContractsDesk as Desk, type ContractTemplate, type Placeholder } from "@/lib/hr-people";
+import { ClickRow } from "@/components/ClickRow";
 
 type Person = { id: number; name: string; company_id?: number | null };
 type Res = { ok: boolean; error?: string };
@@ -91,13 +92,13 @@ export function ContractsDesk({ locale, desk, templates, placeholders, companies
             <tbody>{shown.map((c) => {
               const s = sigState(c);
               return (
-                <tr key={c.id}>
+                <ClickRow key={c.id} href={`/${locale}/my-hr/contracts/${c.id}`}>
                   <td><Link href={`/${locale}/my-hr/contracts/${c.id}`}><strong>{c.number}</strong></Link><div className="text-sec ct-sub">{lb(ar, HP.ctype, c.contract_type)}{c.company ? ` · ${c.company}` : ""}</div></td>
                   <td><Link href={`/${locale}/hr/people/${c.user_id}?tab=contracts`}>{c.employee}</Link><div className="text-sec ct-sub">{c.job_title || "—"}</div></td>
                   <td dir="ltr" className="ct-term">{c.start_date}{c.end_date ? ` → ${c.end_date}` : ""}{c.state === "active" && c.days_left != null && c.days_left <= 60 && <div className="ct-warn">{T(`متبقٍ ${c.days_left} يوم`, `${c.days_left} days left`)}</div>}</td>
                   <td><span className={`mx-status ${c.state === "active" ? "mx-status--completed" : c.state === "pending_acceptance" || c.state === "upcoming" ? "mx-status--awaiting_approval" : c.state === "draft" ? "" : "mx-status--cancelled"}`}>{lb(ar, HP.cstate, c.state)}</span></td>
                   <td>{s ? <Link href={`/${locale}/my-hr/contracts/${c.id}`} className={`ct-sig is-${s}`}>{lb(ar, HP.signed, s)}</Link> : <span className="text-sec">—</span>}</td>
-                </tr>
+                </ClickRow>
               );
             })}</tbody>
           </table></div></div>

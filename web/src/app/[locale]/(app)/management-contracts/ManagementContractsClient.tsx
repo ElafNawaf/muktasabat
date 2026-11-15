@@ -376,7 +376,7 @@ export function ManagementContractsClient({
               {filtered.map((c) => {
                 const owner = ownerOf(c.owner_id);
                 return (
-                  <tr key={c.id}>
+                  <tr key={c.id} className="tr-link" tabIndex={0} onClick={(ev) => { if (!(ev.target as HTMLElement).closest("a,button,input,select")) { setEditing(c); setFormOpen(true); } }} onKeyDown={(ev) => { if (ev.key === "Enter" && ev.target === ev.currentTarget) { setEditing(c); setFormOpen(true); } }}>
                     <td className="mono" style={{ fontSize: 12 }}>
                       {c.contract_number}
                       {c.ejar_contract_number && (

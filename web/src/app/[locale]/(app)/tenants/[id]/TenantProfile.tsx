@@ -131,7 +131,7 @@ export function TenantProfile({ ov, tenant, locale }: { ov: TenantOverview; tena
                           </div>
                         ))}
                       </div>
-                      <div className="xl-related">{l.building_id && <Link href={`/${locale}/properties/${l.building_id}`}><span className="ms ms-sm" aria-hidden>domain</span>{t("فتح العقار", "Open property")}</Link>}<Link href={`/${locale}/payments?contract=${l.id}`}><span className="ms ms-sm" aria-hidden>payments</span>{t("دفعات العقد", "Lease payments")}</Link><Link href={`/${locale}/contracts?q=${encodeURIComponent(l.contract_number)}`}><span className="ms ms-sm" aria-hidden>description</span>{t("العقد", "Lease")}</Link></div>
+                      <div className="xl-related">{l.building_id && <Link href={`/${locale}/properties/${l.building_id}`}><span className="ms ms-sm" aria-hidden>domain</span>{t("فتح العقار", "Open property")}</Link>}<Link href={`/${locale}/payments?contract=${l.id}`}><span className="ms ms-sm" aria-hidden>payments</span>{t("دفعات العقد", "Lease payments")}</Link><Link href={`/${locale}/contracts/${l.id}`}><span className="ms ms-sm" aria-hidden>description</span>{t("العقد", "Lease")}</Link></div>
                     </div>
                   )}
                 </div>

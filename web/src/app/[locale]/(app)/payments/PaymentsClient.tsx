@@ -321,7 +321,7 @@ export function PaymentsClient({
                 return (
                   <tr key={p.id} id={`pay-${p.id}`} className={"pv-row" + (focusId === p.id ? " xl-focus" : "")} onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a, input, select")) setPreview({ kind: "payment", id: p.id }); }}>
                     <td className="mono" style={{ fontSize: 12 }}>
-                      {c ? <Link className="xl-a" href={`/${locale}/contracts?q=${encodeURIComponent(c.contract_number)}`} title={L("Open the lease", "فتح العقد")}>{c.contract_number}</Link> : "—"}
+                      {c ? <Link className="xl-a" href={`/${locale}/contracts/${c.id}`} title={L("Open the lease", "فتح العقد")}>{c.contract_number}</Link> : "—"}
                     </td>
                     <td>{tn ? <Link className="xl-a" href={`/${locale}/tenants/${tn.id}`}>{localized(tn, "name", locale)}</Link> : "—"}</td>
                     <td>

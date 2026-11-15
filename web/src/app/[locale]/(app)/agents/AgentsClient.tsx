@@ -20,6 +20,7 @@ import { localized, type Agent, type Owner } from "@/lib/types";
 
 import { AgentCards, AgentKpis, type AgentSummary } from "./AgentCards";
 import { AgentFormModal } from "./AgentFormModal";
+import { useRowLink } from "@/lib/row-link";
 
 type View = "grid" | "list";
 
@@ -34,6 +35,7 @@ export function AgentsClient({
   owners: Owner[];
   locale: string;
 }) {
+  const rowLink = useRowLink();
   const t = useTranslations("agents");
   const tCommon = useTranslations("common");
   const tFilters = useTranslations("filters");
@@ -294,7 +296,7 @@ export function AgentsClient({
               </thead>
               <tbody>
                 {filtered.map((a) => (
-                  <tr key={a.id}>
+                  <tr key={a.id} {...rowLink(`/${locale}/agents/${a.id}`)}>
                     <td><Link href={`/${locale}/agents/${a.id}`} style={{ fontWeight: 600, color: "inherit" }}>{localized(a, "name", locale)}</Link></td>
                     <td className="mono text-sec">{a.phone ?? "—"}</td>
                     <td className="text-sec">{a.email ?? "—"}</td>

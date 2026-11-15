@@ -4,6 +4,7 @@ import { L, day, money, num, ownerApi } from "@/lib/owner";
 
 import { load, one, type SP } from "../guard";
 import { OwnerDecision } from "./OwnerDecision";
+import { ClickRow } from "@/components/ClickRow";
 
 const STATUS: Record<string, [string, string]> = {
   new: ["جديد", "New"], assigned: ["مُسند", "Assigned"], awaiting_approval: ["بانتظار موافقتك", "Needs your approval"], approved: ["معتمد", "Approved"],
@@ -74,13 +75,13 @@ export default async function OwnerMaintenance({ params, searchParams }: { param
               <thead><tr><th>{t("العمل", "Job")}</th><th>{t("العقار / الوحدة", "Property / unit")}</th><th>{t("الحالة", "Status")}</th><th className="num">{t("التكلفة", "Cost")}</th><th>{t("التاريخ", "Date")}</th></tr></thead>
               <tbody>
                 {all.map((w) => (
-                  <tr key={w.id}>
+                  <ClickRow key={w.id} href={`/${locale}/owner/maintenance/${w.id}${as ? `?as=${as}` : ""}`}>
                     <td><Link href={`/${locale}/owner/maintenance/${w.id}${as ? `?as=${as}` : ""}`}>{w.title}</Link><small>{lb(CAT, w.category)} · {w.number}{w.reported_by === "tenant" ? ` · ${t("من المستأجر", "from tenant")}` : ""}</small></td>
                     <td>{w.building}{w.unit && <small>{t("وحدة", "Unit")} {w.unit}</small>}</td>
                     <td><span className={`ow-chip ${["completed", "closed"].includes(w.status) ? "is-ok" : w.status === "awaiting_approval" ? "is-warn" : ""}`}>{lb(STATUS, w.status)}</span></td>
                     <td className="num">{w.actual_cost != null ? money(locale, w.actual_cost) : w.estimate_amount != null ? `≈ ${money(locale, w.estimate_amount)}` : "—"}</td>
                     <td>{day(locale, w.created_at.slice(0, 10))}</td>
-                  </tr>
+                  </ClickRow>
                 ))}
               </tbody>
             </table>

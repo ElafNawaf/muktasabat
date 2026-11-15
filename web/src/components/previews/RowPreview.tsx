@@ -81,6 +81,7 @@ export function RowPreview({ target, locale, onClose }: { target: PreviewTarget;
       footer={
         <>
           {back && <button className="btn btn-secondary" onClick={back}><span className="ms ms-sm flip-rtl">arrow_back</span>{t("رجوع", "Back")}</button>}
+          {head && <Link className="btn btn-secondary" href={`/${locale}/contracts/${head.id}`}><span className="ms ms-sm">open_in_new</span>{t("صفحة العقد", "Open lease page")}</Link>}
           <button className="btn btn-primary" onClick={onClose}>{t("إغلاق", "Close")}</button>
         </>
       }>

@@ -104,6 +104,75 @@ def get_contract(contract_id: int, db: DbSession, _user: CurrentUser):
     return contract
 
 
+@router.get("/{contract_id}/overview")
+def contract_overview(contract_id: int, db: DbSession, _user: Perm("contracts", "view"), locale: str = "ar"):
+    """Everything about one lease on one page: parties, terms, payment schedule,
+    collection follow-ups, renewal case and the unit's recent work orders."""
+    from datetime import date as _date
+
+    from sqlalchemy import func as _f
+
+    from api.maintenance_models import WorkOrder
+    from api.models import Agent, Building, ManagementContract, Owner, Payment
+    from api.renewal_models import LeaseRenewal
+    from api.routers.collections import CollectionAction
+
+    c = db.get(Contract, contract_id)
+    if c is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
+    ar = locale == "ar"
+    nm = lambda o: None if o is None else ((getattr(o, "name_ar", None) if ar else getattr(o, "name_en", None)) or o.name)  # noqa: E731
+    unit = db.get(Unit, c.unit_id)
+    b = db.get(Building, unit.building_id) if unit else None
+    owner = db.get(Owner, b.owner_id) if b else None
+    tenant = db.get(Tenant, c.tenant_id) if c.tenant_id else None
+    agent = db.get(Agent, c.agent_id) if c.agent_id else None
+    mc = db.get(ManagementContract, c.management_contract_id) if c.management_contract_id else None
+    today = _date.today()
+    pays = db.scalars(select(Payment).where(Payment.contract_id == c.id).order_by(Payment.due_date)).all()
+    rows, paid, due_now, overdue = [], 0.0, 0.0, 0.0
+    for p in pays:
+        is_paid = p.status == "paid"
+        late = (not is_paid) and p.due_date < today
+        paid += p.amount if is_paid else 0
+        overdue += p.amount if late else 0
+        due_now += p.amount if (not is_paid and p.due_date <= today) else 0
+        rows.append({"id": p.id, "due_date": p.due_date.isoformat(), "amount": p.amount, "status": "overdue" if late else p.status,
+                     "paid_date": p.paid_date.isoformat() if p.paid_date else None, "method": p.payment_method,
+                     "receipt_number": p.receipt_number, "transferred": bool(p.owner_transferred_date)})
+    acts = []
+    if pays:
+        for a in db.scalars(select(CollectionAction).where(CollectionAction.payment_id.in_([p.id for p in pays]))
+                            .order_by(CollectionAction.at.desc()).limit(8)).all():
+            acts.append({"id": a.id, "payment_id": a.payment_id, "at": a.at.isoformat(), "kind": a.kind, "note": a.note, "actor": a.actor,
+                         "promise_date": a.promise_date.isoformat() if a.promise_date else None, "promise_amount": a.promise_amount})
+    ren = db.scalar(select(LeaseRenewal).where(LeaseRenewal.contract_id == c.id))
+    wos = []
+    if unit:
+        for w in db.scalars(select(WorkOrder).where(WorkOrder.unit_id == unit.id).order_by(WorkOrder.id.desc()).limit(5)).all():
+            wos.append({"id": w.id, "number": w.number, "title": w.title, "status": w.status})
+    total = sum(p.amount for p in pays)
+    days_left = (c.end_date - today).days
+    return {
+        "contract": ContractRead.model_validate(c).model_dump(mode="json"),
+        "unit": {"id": unit.id, "number": unit.number, "name": nm(unit), "type": unit.unit_type} if unit else None,
+        "building": {"id": b.id, "name": nm(b)} if b else None,
+        "owner": {"id": owner.id, "name": nm(owner), "phone": owner.phone} if owner else None,
+        "tenant": {"id": tenant.id, "name": nm(tenant), "phone": tenant.phone, "email": getattr(tenant, "email", None)} if tenant else None,
+        "agent": {"id": agent.id, "name": nm(agent)} if agent else None,
+        "management_contract": {"id": mc.id, "number": getattr(mc, "contract_number", None) or str(mc.id)} if mc else None,
+        "payments": rows,
+        "totals": {"scheduled": total, "paid": paid, "outstanding": max(0.0, total - paid), "due_now": due_now, "overdue": overdue,
+                   "paid_pct": round(paid / total * 100) if total else 0, "count": len(pays),
+                   "paid_count": sum(1 for p in pays if p.status == "paid")},
+        "collections": acts,
+        "renewal": {"id": ren.id, "stage": ren.stage} if ren else None,
+        "work_orders": wos,
+        "days_left": days_left,
+        "elapsed_pct": max(0, min(100, round((today - c.start_date).days / max(1, (c.end_date - c.start_date).days) * 100))),
+    }
+
+
 @router.post("", response_model=ContractRead, status_code=status.HTTP_201_CREATED)
 def create_contract(
     payload: ContractCreateRequest,

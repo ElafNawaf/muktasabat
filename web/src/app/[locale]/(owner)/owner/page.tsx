@@ -6,6 +6,7 @@ import { L, MONTHS, day, money, num, ownerApi } from "@/lib/owner";
 
 import { ActivityFeed } from "./ActivityFeed";
 import { load, one, type SP } from "./guard";
+import { ClickRow } from "@/components/ClickRow";
 
 export default async function OwnerOverview({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: SP }) {
   const { locale } = await params;
@@ -115,7 +116,7 @@ export default async function OwnerOverview({ params, searchParams }: { params: 
               </thead>
               <tbody>
                 {o.buildings.map((b) => (
-                  <tr key={b.id}>
+                  <ClickRow key={b.id} href={`/${locale}/owner/properties/${b.id}${qs}`}>
                     <td>
                       <Link className="ow-plain" href={`/${locale}/owner/properties/${b.id}${qs}`}><strong>{b.name}</strong></Link>
                       <small>{[b.district, b.city].filter(Boolean).join("، ")}</small>
@@ -127,7 +128,7 @@ export default async function OwnerOverview({ params, searchParams }: { params: 
                     <td className="num">{money(locale, b.collected)}</td>
                     <td className="num">{money(locale, b.net)}</td>
                     <td className={`num${b.outstanding > 0 ? " is-warn" : ""}`}>{money(locale, b.outstanding)}</td>
-                  </tr>
+                  </ClickRow>
                 ))}
               </tbody>
             </table>

@@ -16,6 +16,7 @@ import { BuildingFormModal } from "../BuildingFormModal";
 import type { UserPick } from "../page";
 import { UnitFormModal } from "../UnitFormModal";
 import { Portal } from "@/components/Portal";
+import { useRowLink } from "@/lib/row-link";
 
 type PayState = "paid" | "overdue" | "due_soon" | "upcoming";
 type OvUnit = {
@@ -60,6 +61,7 @@ const WO: Record<string, [string, string, string]> = {
 type Tab = "units" | "leases" | "money" | "maintenance" | "details";
 
 export function BuildingDetail({ ov, building, owners, users, units, locale }: { ov: BuildingOverview; building: Building; owners: Owner[]; users: UserPick[]; units: Unit[]; locale: string }) {
+  const rowLink = useRowLink();
   const router = useRouter();
   const { can } = usePermissions();
   const canEdit = can("properties", "edit");
@@ -218,7 +220,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
                 {ov.leases.map((l) => {
                   const pct = l.total_amount ? Math.round((100 * l.paid_amount) / l.total_amount) : 0;
                   return (
-                    <tr key={l.id} className={l.active ? undefined : "bd-dim"}>
+                    <tr key={l.id} {...rowLink(`/${locale}/contracts/${l.id}`, l.active ? "" : "bd-dim")}>
                       <td><span dir="ltr">{l.contract_number}</span></td>
                       <td>{l.unit}</td>
                       <td>{l.tenant_id ? <Link className="bd-link" href={`/${locale}/tenants/${l.tenant_id}`}>{l.tenant}</Link> : "—"}</td>

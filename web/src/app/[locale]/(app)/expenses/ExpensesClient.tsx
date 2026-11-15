@@ -20,6 +20,7 @@ import { clearQuery, useQuery } from "@/lib/use-query";
 import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
 import { ExpenseFormModal } from "./ExpenseFormModal";
+import { useRowLink } from "@/lib/row-link";
 
 export type ExpenseRow = {
   id: number;
@@ -59,6 +60,7 @@ export function ExpensesClient({
   /** expense id → work order that posted it */
   workOrders?: Record<number, { id: number; number: string }>;
 }) {
+  const rowLink = useRowLink();
   const t = useTranslations("expensesPage");
   const tCommon = useTranslations("common");
   const tCurrency = useTranslations("currency");
@@ -308,7 +310,7 @@ export function ExpensesClient({
                       ? localized(o, "name", locale)
                       : t("scopeAll");
                 return (
-                  <tr key={e.id}>
+                  <tr key={e.id} {...(workOrders[e.id] ? rowLink(`/${locale}/maintenance?open=${workOrders[e.id].id}`) : canEdit ? { className: "tr-link", tabIndex: 0, onClick: (ev: React.MouseEvent) => { if (!(ev.target as HTMLElement).closest("a,button,input,select")) { setEditing(e); setFormOpen(true); } }, onKeyDown: (ev: React.KeyboardEvent) => { if (ev.key === "Enter") { setEditing(e); setFormOpen(true); } } } : {})}>
                     <td className="text-sec" style={{ fontSize: 12 }}>
                       {fmtDate(e.expense_date)}
                     </td>

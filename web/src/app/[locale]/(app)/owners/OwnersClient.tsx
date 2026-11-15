@@ -21,6 +21,7 @@ import { localized, type Agent, type Building, type Contract, type Owner, type U
 
 import { OwnerCards, OwnerKpis, type OwnerSummary } from "./OwnerCards";
 import { OwnerFormModal } from "./OwnerFormModal";
+import { useRowLink } from "@/lib/row-link";
 
 type View = "grid" | "list";
 
@@ -41,6 +42,7 @@ export function OwnersClient({
   contracts: Contract[];
   locale: string;
 }) {
+  const rowLink = useRowLink();
   const t = useTranslations("owners");
   const tOwnerForm = useTranslations("ownerForm");
   const tCommon = useTranslations("common");
@@ -509,7 +511,7 @@ export function OwnersClient({
                   const c = ownerColor(o.id);
                   const agent = agentOf(o.agent_id);
                   return (
-                    <tr key={o.id}>
+                    <tr key={o.id} {...rowLink(`/${locale}/owners/${o.id}`)}>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div

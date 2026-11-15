@@ -40,6 +40,7 @@ import {
 import { PreviewButton, RowPreview, type PreviewTarget } from "@/components/previews/RowPreview";
 
 import { ContractFormModal } from "./ContractFormModal";
+import { useRowLink } from "@/lib/row-link";
 
 type StatusFilter = "all" | "active" | "expired" | "terminated";
 
@@ -62,6 +63,7 @@ export function ContractsClient({
   managementContracts?: ManagementContract[];
   locale: string;
 }) {
+  const rowLink = useRowLink();
   const t = useTranslations("contractsPage");
   const tCommon = useTranslations("common");
   const tFilters = useTranslations("filters");
@@ -488,7 +490,7 @@ export function ContractsClient({
                 const tn = tenantOf(c.tenant_id);
                 const b = u ? buildingOf(u.building_id) : null;
                 return (
-                  <tr key={c.id} className="pv-row" onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a, input, select")) setPreview({ kind: "contract", id: c.id }); }}>
+                  <tr key={c.id} {...rowLink(`/${locale}/contracts/${c.id}`, "pv-row")}>
                     <td className="mono" style={{ fontSize: 12 }}>
                       {c.contract_number}
                     </td>

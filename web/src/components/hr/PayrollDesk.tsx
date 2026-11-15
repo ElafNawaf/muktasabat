@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import type { Company } from "@/lib/hr-people";
 import { PAY, monthLabel, pl, sar, type Loan, type PayRun, type PaySettings } from "@/lib/payroll";
 import { payCancelLoan, payCreateLoan, payCreateRun, payDecideLoan, paySaveSettings } from "@/lib/payroll-actions";
+import { ClickRow } from "@/components/ClickRow";
 
 type Res = { ok: boolean; error?: string; data?: unknown };
 
@@ -101,13 +102,13 @@ export function PayrollDesk({ locale, runs, loans, settings, companies, people }
           <div className="tbl-wrap"><table className="tbl">
             <thead><tr><th>{T("الرقم", "No.")}</th><th>{T("الموظف", "Employee")}</th><th>{T("النوع", "Type")}</th><th>{T("المبلغ", "Amount")}</th><th>{T("القسط الشهري", "Monthly")}</th><th>{T("المتبقي", "Remaining")}</th><th>{T("الحالة", "Status")}</th><th /></tr></thead>
             <tbody>{loans.filter((l) => l.status !== "pending").map((l) => (
-              <tr key={l.id}>
+              <ClickRow key={l.id} href={`/${locale}/hr/people/${l.user_id}`}>
                 <td className="mono">{l.number}</td><td>{l.employee}</td><td>{pl(ar, PAY.kind, l.kind)}</td>
                 <td>{sar(ar, l.amount, 0)}</td><td>{sar(ar, l.monthly_amount, 0)}<div className="text-sec py-small">{T(`من ${l.start_month}`, `from ${l.start_month}`)}{!l.consent ? T(" · بحد 10% (م92)", " · capped 10% (art. 92)") : ""}</div></td>
                 <td><b>{sar(ar, l.remaining, 0)}</b><div className="py-bar" aria-hidden><i style={{ width: `${Math.min(100, (l.repaid / l.amount) * 100)}%` }} /></div></td>
                 <td><span className={`py-status is-${l.status}`}>{pl(ar, PAY.loanStatus, l.status)}</span></td>
                 <td>{l.status === "approved" && <CancelLoan ar={ar} id={l.id} />}</td>
-              </tr>
+              </ClickRow>
             ))}</tbody>
           </table></div>
         )}
