@@ -23,4 +23,5 @@ jobs:
       - name: Task
         env:
           LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-        run: bash scripts/ops/aws_task.sh 2>&1 | sed -E 's/([A-Za-z0-9])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[a-z]{2,})/\1***@\2/g'
+          TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+        run: set -o pipefail; bash scripts/ops/aws_task.sh 2>&1 | sed -E 's/([A-Za-z0-9])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[a-z]{2,})/\1***@\2/g'

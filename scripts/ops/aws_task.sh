@@ -1,14 +1,51 @@
 #!/usr/bin/env bash
-# Read-only: Lightsail database + host sizing (no hostnames or secrets printed).
-set -u
-echo "== Lightsail DB"; aws lightsail get-relational-databases --query 'relationalDatabases[].[name,relationalDatabaseBundleId,engine,engineVersion,state,publiclyAccessible,backupRetentionEnabled,hardware.ramSizeInGb,hardware.diskSizeInGb,location.availabilityZone]' --output text
-echo "== DB disk free (last 6h, MB)"; N=$(aws lightsail get-relational-databases --query 'relationalDatabases[0].name' --output text)
-aws lightsail get-relational-database-metric-data --relational-database-name "$N" --metric-name FreeStorageSpace --period 3600 --start-time $(date -u -d '-6 hours' +%FT%TZ) --end-time $(date -u +%FT%TZ) --unit Bytes --statistics Minimum --query 'metricData[].minimum' --output text | tr '\t' '\n' | awk '{printf "%.0f\n",$1/1048576}' | tail -2
-echo "== DB CPU max 24h"; aws lightsail get-relational-database-metric-data --relational-database-name "$N" --metric-name CPUUtilization --period 86400 --start-time $(date -u -d '-1 day' +%FT%TZ) --end-time $(date -u +%FT%TZ) --unit Percent --statistics Maximum --query 'metricData[].maximum' --output text
-echo "== DB connections max 24h"; aws lightsail get-relational-database-metric-data --relational-database-name "$N" --metric-name DatabaseConnections --period 86400 --start-time $(date -u -d '-1 day' +%FT%TZ) --end-time $(date -u +%FT%TZ) --unit Count --statistics Maximum --query 'metricData[].maximum' --output text
-echo "== Lightsail VPC peered"; aws lightsail is-vpc-peered --output text
-echo "== Host CPU (hourly max, last 6h)"; aws lightsail get-instance-metric-data --instance-name muktasabat-host --metric-name CPUUtilization --period 3600 --start-time $(date -u -d '-6 hours' +%FT%TZ) --end-time $(date -u +%FT%TZ) --unit Percent --statistics Maximum --query 'sort_by(metricData,&timestamp)[].[timestamp,maximum]' --output text
-echo "== Host burst capacity % (last 6h)"; aws lightsail get-instance-metric-data --instance-name muktasabat-host --metric-name BurstCapacityPercentage --period 3600 --start-time $(date -u -d '-6 hours' +%FT%TZ) --end-time $(date -u +%FT%TZ) --unit Percent --statistics Minimum --query 'sort_by(metricData,&timestamp)[].[timestamp,minimum]' --output text
-echo "== Route 53 records"; Z=$(aws route53 list-hosted-zones-by-name --dns-name muktasabat.com --query 'HostedZones[0].Id' --output text); aws route53 list-resource-record-sets --hosted-zone-id "$Z" --query 'ResourceRecordSets[].[Name,Type,TTL]' --output text
-echo "== SES sandbox?"; aws sesv2 get-account --query '[ProductionAccessEnabled,SendQuota.Max24HourSend]' --output text
-echo "== Fargate pricing check region"; aws ecs list-account-settings --effective-settings --query 'settings[?name==`awsvpcTrunking`||name==`containerInsights`].[name,value]' --output text
+# Phase A: registry + images + secrets + Lightsail peering + template check.
+# Prints names/ARNs only — never secret values.
+set -euo pipefail
+R=ap-south-1; ACCT=$(aws sts get-caller-identity --query Account --output text)
+REG=$ACCT.dkr.ecr.$R.amazonaws.com
+TAG=$(git rev-parse --short HEAD)
+
+echo "== ECR"
+for r in muktasabat-api muktasabat-web; do
+  aws ecr describe-repositories --repository-names $r >/dev/null 2>&1 || aws ecr create-repository --repository-name $r --image-scanning-configuration scanOnPush=true --query repository.repositoryName --output text
+  aws ecr put-lifecycle-policy --repository-name $r --lifecycle-policy-text '{"rules":[{"rulePriority":1,"description":"keep 15","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":15},"action":{"type":"expire"}}]}' >/dev/null
+done
+aws ecr get-login-password | docker login --username AWS --password-stdin $REG >/dev/null
+
+echo "== build + push ($TAG)"
+docker build -q -t $REG/muktasabat-api:$TAG . >/dev/null
+docker build -q --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY="${TURNSTILE_SITE_KEY:-}" -t $REG/muktasabat-web:$TAG -f web/Dockerfile web/ >/dev/null
+docker push -q $REG/muktasabat-api:$TAG; docker push -q $REG/muktasabat-web:$TAG
+
+echo "== app secret from the live server (values never printed)"
+mkdir -p ~/.ssh; printf '%s\n' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/k; chmod 600 ~/.ssh/k
+ssh-keyscan -T 20 -H 13.232.25.224 >> ~/.ssh/known_hosts 2>/dev/null
+ssh -o ConnectTimeout=30 -i ~/.ssh/k ubuntu@13.232.25.224 'cat /home/ubuntu/muktasabat/.env' > /tmp/live.env
+python3 - <<'PY' > /tmp/app.json
+import json
+env = {}
+for line in open("/tmp/live.env"):
+    line = line.strip()
+    if not line or line.startswith("#") or "=" not in line: continue
+    k, v = line.split("=", 1); env[k] = v.strip().strip('"').strip("'")
+keep = ["SECRET_KEY","REVALIDATE_SECRET","SES_FROM_EMAIL","SUPPORT_EMAIL","PAYMENT_ALERTS_CC","LEGACY_DATABASE_URL"]
+env["LEGACY_DATABASE_URL"] = env.get("DATABASE_URL","")
+out = {k: env.get(k, "") for k in keep}
+print(json.dumps(out))
+import sys; print("keys:", {k: bool(v) for k, v in out.items()}, file=sys.stderr)
+PY
+if aws secretsmanager describe-secret --secret-id muktasabat/app >/dev/null 2>&1; then
+  aws secretsmanager put-secret-value --secret-id muktasabat/app --secret-string file:///tmp/app.json --query Name --output text
+else
+  aws secretsmanager create-secret --name muktasabat/app --secret-string file:///tmp/app.json --query Name --output text
+fi
+shred -u /tmp/live.env /tmp/app.json
+echo "== web container env keys on the server"
+ssh -i ~/.ssh/k ubuntu@13.232.25.224 'docker inspect muktasabat-web-1 --format "{{range .Config.Env}}{{println .}}{{end}}" | cut -d= -f1 | sort | tr "\n" " "'; echo
+
+echo "== Lightsail VPC peering"
+aws lightsail is-vpc-peered --query isPeered --output text | grep -q True || aws lightsail peer-vpc --query operation.status --output text
+echo "== template"
+aws cloudformation validate-template --template-body file://infra/aws/stack.yml --query 'Parameters[].ParameterKey' --output text
+echo "TAG=$TAG"
