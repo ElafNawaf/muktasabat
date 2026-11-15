@@ -437,8 +437,46 @@ def delete_user(user_id: int, db: DbSession, actor: Perm("users", "delete")):
             entity_id=str(user.id),
         )
     )
+    _release_user_references(db, user.id)
     db.delete(user)
     db.commit()
+
+
+def _release_user_references(db, user_id: int) -> None:
+    """Clear every remaining link to a user before deleting it.
+
+    Modules keep adding tables that point at users (support history, HR, payroll…).
+    Nullable links without an ON DELETE rule are set to NULL (history keeps the row,
+    the person shows as "—"); CASCADE / SET NULL links are left to the database.
+    A required link with no rule means the user still owns data → 409 with the table.
+    """
+    from sqlalchemy import update
+
+    import api.main  # noqa: F401  — make sure every model is registered
+    from api.database import Base
+
+    blocking: list[str] = []
+    for table in Base.metadata.sorted_tables:
+        for col in table.columns:
+            for fk in col.foreign_keys:
+                if fk.column.table.name != "users" or (fk.ondelete or "").upper() in ("CASCADE", "SET NULL"):
+                    continue
+                n = db.scalar(select(func.count()).select_from(table).where(col == user_id))
+                if not n:
+                    continue
+                if col.nullable:
+                    db.execute(update(table).where(col == user_id).values({col.name: None}))
+                else:
+                    blocking.append(f"{table.name} ({n})")
+    if blocking:
+        db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This user still owns records that can't be cleared automatically: "
+            + ", ".join(blocking)
+            + ". Suspend the account instead.",
+        )
+    db.flush()
 
 
 @router.post(
