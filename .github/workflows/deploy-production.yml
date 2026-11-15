@@ -59,6 +59,9 @@ jobs:
           echo "CUR_API=$CUR_API" >> "$GITHUB_ENV"; echo "NEW_API=$((CUR_API + 1))" >> "$GITHUB_ENV"
           echo "CUR_WEB=$CUR_WEB" >> "$GITHUB_ENV"; echo "NEW_WEB=$((CUR_WEB + 1))" >> "$GITHUB_ENV"
           echo "prod $LAST_SHA → $GITHUB_SHA | api v$CUR_API→v$((CUR_API+1)) web v$CUR_WEB→v$((CUR_WEB+1))"
+          # Main address: mrc.sa once the proxy serves it, else muktasabat.com.
+          if $SSH "grep -q '^mrc.sa {' /etc/caddy/Caddyfile"; then SITE=https://mrc.sa; else SITE=https://muktasabat.com; fi
+          echo "SITE=$SITE" >> "$GITHUB_ENV"; echo "main address: $SITE"
 
       - name: Build images (linux/amd64, on the runner)
         run: |
@@ -106,7 +109,7 @@ jobs:
         # Persistent upload volume + settings the release needs. Backs up both
         # files, validates with `docker compose config`, restores on failure.
         run: |
-          $SSH 'bash -s' <<'REMOTE'
+          $SSH "SITE=$SITE bash -s" <<'REMOTE'
           set -euo pipefail
           cd /home/ubuntu/muktasabat
           ts=$(date +%Y%m%d%H%M%S)
@@ -116,8 +119,8 @@ jobs:
           setenv() { grep -qE "^$1=" .env || echo "$1=$2" >> .env; }
           setenv LOCAL_UPLOAD_DIR /app/uploads
           setenv STORAGE_FALLBACK_LOCAL 1
-          setenv API_PUBLIC_BASE_URL https://muktasabat.com
-          setenv S3_PUBLIC_BASE_URL https://muktasabat.com/uploads
+          setenv API_PUBLIC_BASE_URL "$SITE"
+          setenv S3_PUBLIC_BASE_URL "$SITE/uploads"
           setenv DISABLE_BOOTSTRAP_ADMIN 1
           grep -qE '^REVALIDATE_SECRET=' .env || echo "REVALIDATE_SECRET=$(openssl rand -hex 24)" >> .env
           if ! grep -q '/app/uploads' docker-compose.yml; then
@@ -208,11 +211,11 @@ jobs:
         run: |
           FAIL=0
           for p in /en/login /ar/login /en/dashboard /ar /en /ar/services /ar/projects /ar/contact /sitemap.xml /robots.txt; do
-            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "https://muktasabat.com$p" || echo 000)
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "$SITE$p" || echo 000)
             printf "%-16s %s\n" "$p" "$code"
             [ "$code" = 200 ] || FAIL=1
           done
-          if curl -sS --max-time 30 https://muktasabat.com/ar | grep -q 'mk-hero'; then echo "homepage: new site"; else echo "homepage: NOT the new site"; FAIL=1; fi
+          if curl -sS --max-time 30 "$SITE/ar" | grep -q 'mk-hero'; then echo "homepage: new site"; else echo "homepage: NOT the new site"; FAIL=1; fi
           if $SSH "docker logs muktasabat-api-1 --since 3m 2>&1 | grep -qiE 'Traceback|startup failed'"; then
             echo "API errors:"; $SSH "docker logs muktasabat-api-1 --since 3m 2>&1 | grep -v '\"level\": \"INFO\"' | tail -80"; FAIL=1
           fi
@@ -236,61 +239,57 @@ jobs:
           for d in mrc.sa www.mrc.sa muktasabat.com www.muktasabat.com mro.com.sa www.mro.com.sa; do echo "$d → $(getent ahostsv4 $d | awk 'NR==1{print $1}')"; done
           REMOTE
 
-      - name: Short domains (mrc.sa → muktasabat.com)
-        # Forwards each short domain to https://muktasabat.com, keeping the path.
-        # A domain is only added once its DNS points at this server, so nothing
-        # breaks before the DNS change; certificates come from Let's Encrypt.
-        # Never fails the deploy.
-        if: success()
+      - name: Main address mrc.sa (muktasabat.com and mro.com.sa forward to it)
+        # Runs once mrc.sa points at this server: Caddy serves the site on mrc.sa
+        # (automatic HTTPS) and permanently forwards muktasabat.com, www.* and
+        # mro.com.sa (when its DNS points here) to https://mrc.sa, keeping the path.
+        # If mrc.sa doesn't answer within 2 minutes the old proxy config is restored.
+        # Then the app's own URLs (emails, links, SEO, uploads) move to mrc.sa.
         continue-on-error: true
-        env:
-          SHORT_DOMAINS: "mrc.sa www.mrc.sa"
         run: |
-          $SSH "HOST_IP=$HOST SHORT_DOMAINS='$SHORT_DOMAINS' bash -s" <<'REMOTE'
+          $SSH "HOST_IP=$HOST bash -s" <<'REMOTE'
           set -u
-          if [ -f /etc/caddy/Caddyfile ]; then echo "Web proxy on host: Caddy"; elif command -v nginx >/dev/null 2>&1; then echo "Web proxy on host: nginx $(nginx -v 2>&1 | sed 's/.*\///')"; else echo "Web proxy on host: unknown"; fi
-          ready=""
-          for d in $SHORT_DOMAINS; do
-            ip=$(getent ahostsv4 "$d" 2>/dev/null | awk 'NR==1{print $1}')
-            if [ "$ip" = "$HOST_IP" ]; then ready="$ready $d"; echo "DNS ok: $d"; else echo "DNS not pointing here yet: $d (${ip:-no A record})"; fi
-          done
-          ready=$(echo $ready)
-          [ -z "$ready" ] && { echo "Nothing to do until DNS is updated."; exit 0; }
-
-          if [ -f /etc/caddy/Caddyfile ]; then
-            echo "Proxy: Caddy"
-            f=/etc/caddy/Caddyfile
-            sudo cp "$f" "$f.bak-short"
-            sudo sed -i '/# >>> short-domains/,/# <<< short-domains/d' "$f"
-            hosts=$(echo "$ready" | sed 's/ /, /g')
-            printf '\n# >>> short-domains (managed by deploy)\n%s {\n\tredir https://muktasabat.com{uri} permanent\n}\n# <<< short-domains\n' "$hosts" | sudo tee -a "$f" >/dev/null
-            if sudo caddy validate --config "$f" --adapter caddyfile >/dev/null 2>&1; then sudo systemctl reload caddy && echo "Caddy reloaded: $ready"; else echo "Caddy config invalid — restoring"; sudo cp "$f.bak-short" "$f"; fi
-          elif command -v nginx >/dev/null 2>&1; then
-            echo "Proxy: nginx"
-            if ! command -v certbot >/dev/null 2>&1; then
-              sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq certbot python3-certbot-nginx >/dev/null || { echo "certbot install failed"; exit 0; }
-            fi
-            conf=/etc/nginx/sites-available/short-domains.conf
-            sudo mkdir -p /var/www/letsencrypt
-            # 1) plain-HTTP block so Let's Encrypt can verify the domains
-            printf 'server {\n  listen 80;\n  listen [::]:80;\n  server_name %s;\n  location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }\n  location / { return 301 https://muktasabat.com$request_uri; }\n}\n' "$ready" | sudo tee "$conf" >/dev/null
-            sudo ln -sf "$conf" /etc/nginx/sites-enabled/short-domains.conf
-            sudo nginx -t >/dev/null 2>&1 && sudo systemctl reload nginx || { echo "nginx test failed"; sudo rm -f /etc/nginx/sites-enabled/short-domains.conf; exit 0; }
-            args=""; for d in $ready; do args="$args -d $d"; done
-            if sudo certbot certonly --webroot -w /var/www/letsencrypt --cert-name short-domains --expand --non-interactive --agree-tos --register-unsafely-without-email $args >/tmp/certbot.log 2>&1; then
-              # 2) HTTPS block with the certificate
-              printf 'server {\n  listen 443 ssl http2;\n  listen [::]:443 ssl http2;\n  server_name %s;\n  ssl_certificate /etc/letsencrypt/live/short-domains/fullchain.pem;\n  ssl_certificate_key /etc/letsencrypt/live/short-domains/privkey.pem;\n  return 301 https://muktasabat.com$request_uri;\n}\n' "$ready" | sudo tee -a "$conf" >/dev/null
-              if sudo nginx -t >/dev/null 2>&1; then sudo systemctl reload nginx && echo "nginx reloaded with HTTPS for: $ready"; else echo "nginx test failed (https) — keeping HTTP only"; printf 'server {\n  listen 80;\n  listen [::]:80;\n  server_name %s;\n  location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }\n  location / { return 301 https://muktasabat.com$request_uri; }\n}\n' "$ready" | sudo tee "$conf" >/dev/null; sudo nginx -t && sudo systemctl reload nginx; fi
-            else
-              echo "certbot failed:"; tail -5 /tmp/certbot.log
-            fi
+          F=/etc/caddy/Caddyfile
+          here() { [ "$(getent ahostsv4 "$1" | awk 'NR==1{print $1}')" = "$HOST_IP" ]; }
+          if ! here mrc.sa; then echo "mrc.sa doesn't point to this server yet — staying on muktasabat.com"; exit 0; fi
+          aliases="muktasabat.com, www.muktasabat.com"
+          for d in www.mrc.sa mro.com.sa www.mro.com.sa; do if here "$d"; then aliases="$aliases, $d"; else echo "DNS not pointing here yet: $d"; fi; done
+          new=$(mktemp)
+          printf '# Managed by the deploy workflow: mrc.sa is the main address\nmrc.sa {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n\n%s {\n    redir https://mrc.sa{uri} permanent\n}\n' "$aliases" > "$new"
+          if sudo cmp -s "$new" "$F"; then
+            echo "Proxy already up to date"
           else
-            echo "No Caddy or nginx found on the host — can't add short domains automatically."
-            sudo ss -ltnp 2>/dev/null | grep -E ':(80|443) ' | sed -E 's/users:.*//' || true
+            if ! sudo caddy validate --config "$new" --adapter caddyfile >/dev/null 2>&1; then echo "new proxy config invalid — not applied"; exit 0; fi
+            sudo cp "$F" "$F.bak-primary"
+            sudo cp "$new" "$F" && sudo systemctl reload caddy
+            ok=0; code=000
+            for i in $(seq 1 24); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 --resolve mrc.sa:443:127.0.0.1 https://mrc.sa/ar || echo 000)
+              [ "$code" = 200 ] && { ok=1; break; }; sleep 5
+            done
+            if [ "$ok" != 1 ]; then
+              echo "mrc.sa didn't come up (last HTTP $code) — restoring the previous proxy config"
+              sudo cp "$F.bak-primary" "$F"; sudo systemctl reload caddy; exit 0
+            fi
+            echo "mrc.sa is live over HTTPS; forwarding: $aliases"
+          fi
+          cd /home/ubuntu/muktasabat
+          cp .env .env.bak-primary; cp docker-compose.yml docker-compose.yml.bak-primary
+          for k in WEB_BASE_URL APP_PUBLIC_URL API_PUBLIC_BASE_URL; do
+            if grep -q "^$k=" .env; then sed -i -E "s#^$k=.*#$k=https://mrc.sa#" .env; else echo "$k=https://mrc.sa" >> .env; fi
+          done
+          if grep -q '^S3_PUBLIC_BASE_URL=' .env; then sed -i -E 's#^S3_PUBLIC_BASE_URL=.*#S3_PUBLIC_BASE_URL=https://mrc.sa/uploads#' .env; else echo 'S3_PUBLIC_BASE_URL=https://mrc.sa/uploads' >> .env; fi
+          sed -i -E 's#^(      APP_PUBLIC_URL: ).*#\1https://mrc.sa#' docker-compose.yml
+          grep -q 'SITE_URL:' docker-compose.yml || sed -i '0,/^      NODE_ENV: production$/s//      NODE_ENV: production\n      SITE_URL: https:\/\/mrc.sa/' docker-compose.yml
+          if docker compose config -q; then
+            if cmp -s .env .env.bak-primary && cmp -s docker-compose.yml docker-compose.yml.bak-primary; then echo "app settings already use https://mrc.sa"
+            else docker compose up -d && echo "app settings now use https://mrc.sa"; fi
+          else
+            cp .env.bak-primary .env; cp docker-compose.yml.bak-primary docker-compose.yml; echo "compose invalid — settings restored"
           fi
           REMOTE
-          for d in $SHORT_DOMAINS; do
-            echo "$d → $(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 15 https://$d/ar 2>/dev/null || echo 'not reachable over HTTPS yet')"
+          for u in https://mrc.sa/ar https://muktasabat.com/ar https://www.muktasabat.com/ar/login https://mro.com.sa/; do
+            echo "$u → $(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 15 "$u" 2>/dev/null || echo 'no answer')"
           done
 
       - name: Roll back on failure
@@ -306,7 +305,7 @@ jobs:
       - name: Refresh site cache now
         run: |
           SECRET=$($SSH "grep -E '^REVALIDATE_SECRET=' $RUNTIME/.env | cut -d= -f2-")
-          curl -sS -X POST -H "x-revalidate-secret: $SECRET" https://muktasabat.com/api/site/revalidate || true
+          curl -sS -X POST -H "x-revalidate-secret: $SECRET" "$SITE/api/site/revalidate" || true
           echo
 
       - name: Warm the website cache
@@ -315,7 +314,7 @@ jobs:
         run: |
           sleep 310
           for p in /ar /en /ar/about /en/about /ar/services /en/services /ar/projects /en/projects /ar/contact /en/contact /sitemap.xml; do
-            curl -sS -o /dev/null --max-time 30 "https://muktasabat.com$p" || true
+            curl -sS -o /dev/null --max-time 30 "$SITE$p" || true
           done
           sleep 5
-          curl -sS --max-time 30 https://muktasabat.com/ar | grep -q 'mk-service' && echo "CMS content live" || echo "::warning::Homepage has no services yet — check the API logs."
+          curl -sS --max-time 30 "$SITE/ar" | grep -q 'mk-service' && echo "CMS content live" || echo "::warning::Homepage has no services yet — check the API logs."

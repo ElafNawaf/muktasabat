@@ -42,7 +42,7 @@ export default async function WebsiteLayout({ children, params }: { children: Re
       <header className="cms-head">
         <div>
           <h1>{ar ? "الموقع الإلكتروني" : "Website"}</h1>
-          <p>{ar ? "إدارة محتوى موقع muktasabat.com العام." : "Manage the public muktasabat.com website."}</p>
+          <p>{ar ? "إدارة محتوى الموقع العام mrc.sa." : "Manage the public mrc.sa website."}</p>
         </div>
         <a className="cms-btn" href={`/${locale}`} target="_blank" rel="noreferrer">
           <span className="ms">open_in_new</span>

@@ -199,7 +199,7 @@ def _frame(content_rows: str, *, preheader: str = "") -> str:
         # Footer
         f"<tr><td style='background:#FAF7F1;border-top:1px solid #E3DDD2;padding:18px 28px;font-family:{font};font-size:12.5px;color:#5D636B;text-align:center;line-height:1.8'>"
         "<div dir='rtl'><strong style='color:#7B1A1A'>شركة مكتسبات العقارية</strong> · Muktasabat Real Estate</div>"
-        f"<div dir='ltr'><a href='{base}' style='color:#7B1A1A;text-decoration:none'>muktasabat.com</a> &nbsp;|&nbsp; 920007039</div>"
+        f"<div dir='ltr'><a href='{base}' style='color:#7B1A1A;text-decoration:none'>{base.split('//')[-1].rstrip('/') or 'mrc.sa'}</a> &nbsp;|&nbsp; 920007039</div>"
         "<div dir='rtl'>رسالة آلية، يرجى عدم الرد عليها.</div>"
         "<div dir='ltr'>This is an automated message, please do not reply.</div>"
         "</td></tr></table></td></tr></table></body></html>"

@@ -86,7 +86,7 @@ export function CommandPalette() {
       {
         id: "site",
         label: ar ? "فتح الموقع العام" : "Open the public website",
-        hint: "muktasabat.com",
+        hint: "mrc.sa",
         icon: "open_in_new",
         run: () => {
           setPaletteOpen(false);
