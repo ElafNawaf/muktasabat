@@ -252,20 +252,41 @@ jobs:
           F=/etc/caddy/Caddyfile
           here() { [ "$(getent ahostsv4 "$1" | awk 'NR==1{print $1}')" = "$HOST_IP" ]; }
           if here mrc.sa; then
-            MAIN=mrc.sa; aliases="muktasabat.com, www.muktasabat.com"; extra="www.mrc.sa mro.com.sa www.mro.com.sa"
+            MAIN=mrc.sa; T=mrc.sa; aliases="muktasabat.com, www.muktasabat.com"; extra="www.mrc.sa"
           else
             # Until mrc.sa points here, keep muktasabat.com as the site and forward mro.com.sa to it.
             echo "mrc.sa doesn't point to this server yet — main address stays muktasabat.com"
-            MAIN=""; aliases=""; extra="mro.com.sa www.mro.com.sa"
+            MAIN=""; T=muktasabat.com; aliases=""; extra=""
           fi
           for d in $extra; do if here "$d"; then aliases="${aliases:+$aliases, }$d"; else echo "DNS not pointing here yet: $d"; fi; done
+          # mro.com.sa was the old website: its old page links go to the matching new page, anything else to the home page.
+          legacy=""
+          for d in mro.com.sa www.mro.com.sa; do if here "$d"; then legacy="${legacy:+$legacy, }$d"; else echo "DNS not pointing here yet: $d"; fi; done
           new=$(mktemp)
-          if [ "$MAIN" = mrc.sa ]; then
-            printf '# Managed by the deploy workflow: mrc.sa is the main address\nmrc.sa {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n\n%s {\n    redir https://mrc.sa{uri} permanent\n}\n' "$aliases" > "$new"
-          else
-            [ -z "$aliases" ] && { echo "Nothing to forward yet."; exit 0; }
-            printf '# Managed by the deploy workflow: muktasabat.com is the main address for now\nmuktasabat.com, www.muktasabat.com {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n\n%s {\n    redir https://muktasabat.com{uri} permanent\n}\n' "$aliases" > "$new"
-          fi
+          {
+            if [ "$MAIN" = mrc.sa ]; then
+              printf '# Managed by the deploy workflow: mrc.sa is the main address\nmrc.sa {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n'
+            else
+              printf '# Managed by the deploy workflow: muktasabat.com is the main address for now\nmuktasabat.com, www.muktasabat.com {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n'
+            fi
+            [ -n "$aliases" ] && printf '\n%s {\n    redir https://%s{uri} permanent\n}\n' "$aliases" "$T"
+            if [ -n "$legacy" ]; then
+              printf '\n%s {\n' "$legacy"
+              while read -r name re dest; do
+                printf '    @%s vars_regexp {http.request.uri} %s\n    handle @%s {\n        redir https://%s/ar/%s permanent\n    }\n' "$name" "$re" "$name" "$T" "$dest"
+              done <<'MAP'
+          contact (?i)(contact|call-?us) contact
+          about (?i)(about|who-?we|company) about
+          careers (?i)(job|career|vacanc|employ) careers
+          services (?i)(service) services
+          login (?i)(login|log-in|signin|sign-in|register|signup|account|password) login
+          listings (?i)(propert|listing|estate|search|featured|rent|sale|buy|unit) listings
+          news (?i)(news|blog|article) news
+          MAP
+              printf '    handle {\n        redir https://%s/ar permanent\n    }\n}\n' "$T"
+            fi
+          } > "$new"
+          [ -z "$MAIN$aliases$legacy" ] && { echo "Nothing to forward yet."; exit 0; }
           CHECK_HOST=${MAIN:-muktasabat.com}
           if sudo cmp -s "$new" "$F"; then
             echo "Proxy already up to date"
@@ -282,7 +303,7 @@ jobs:
               echo "$CHECK_HOST didn't come up (last HTTP $code) — restoring the previous proxy config"
               sudo cp "$F.bak-primary" "$F"; sudo systemctl reload caddy; exit 0
             fi
-            echo "$CHECK_HOST is live over HTTPS; forwarding to it: $aliases"
+            echo "$CHECK_HOST is live over HTTPS; forwarding to it: ${aliases:-}${legacy:+ $legacy (old site links → new pages)}"
           fi
           [ "$MAIN" = mrc.sa ] || exit 0
           cd /home/ubuntu/muktasabat
