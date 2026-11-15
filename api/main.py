@@ -194,26 +194,19 @@ async def lifespan(app: FastAPI):
                         "was present. Set DISABLE_BOOTSTRAP_ADMIN=1 in production when appropriate."
                     )
 
-    # Payment-timeline alerts (tenant due / overdue / received, owner payout) —
-    # hourly, in-process; see api/services/payment_alerts.py.
-    from api.services.payment_alerts import alert_loop
-
-    alerts_task = asyncio.create_task(alert_loop())
-    # HR attendance monitor (reminders, left-the-office alerts, auto close) —
-    # every 5 minutes; see api/services/hr_monitor.py.
+    # Background jobs — payment-timeline alerts (hourly), HR attendance monitor
+    # (5 min), approval escalations (15 min). With several API containers only
+    # the advisory-lock leader runs them; see api/leader.py.
+    from api.leader import run_as_leader
     from api.services.hr_monitor import monitor_loop
-
-    hr_task = asyncio.create_task(monitor_loop())
-    # Approval steps past their response time → escalate (every 15 minutes).
+    from api.services.payment_alerts import alert_loop
     from api.services.workflows import escalation_loop
 
-    wf_task = asyncio.create_task(escalation_loop())
+    jobs_task = asyncio.create_task(run_as_leader([alert_loop, monitor_loop, escalation_loop]))
     try:
         yield
     finally:
-        alerts_task.cancel()
-        hr_task.cancel()
-        wf_task.cancel()
+        jobs_task.cancel()
 
 
 from api.services import expense_scope

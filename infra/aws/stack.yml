@@ -1,0 +1,393 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  muktasabat.com on ECS Fargate — one task = Next.js web + FastAPI api (localhost),
+  autoscaled 1..N behind an HTTPS load balancer; RDS PostgreSQL with storage autoscaling.
+  Secrets live in Secrets Manager (muktasabat/app, muktasabat/db), never in this file.
+
+Parameters:
+  ApiImage: { Type: String, Description: "ECR image URI for the API" }
+  WebImage: { Type: String, Description: "ECR image URI for the web app" }
+  DesiredCount: { Type: Number, Default: 0, Description: "0 until the database is copied" }
+  MinTasks: { Type: Number, Default: 1 }
+  MaxTasks: { Type: Number, Default: 4 }
+  HostedZoneId: { Type: AWS::Route53::HostedZone::Id }
+  DomainName: { Type: String, Default: muktasabat.com }
+  TestHost: { Type: String, Default: new.muktasabat.com }
+  VpcId: { Type: AWS::EC2::VPC::Id }
+  SubnetIds: { Type: "List<AWS::EC2::Subnet::Id>" }
+  AppSecretArn: { Type: String, Description: "Secrets Manager ARN of muktasabat/app (JSON)" }
+  UploadsBucket: { Type: String, Default: muktasabat-uploads }
+  LightsailCidr: { Type: String, Default: 172.26.0.0/16, Description: "Peered Lightsail VPC (data copy)" }
+  AlarmEmail: { Type: String, Default: "", NoEcho: true }
+
+Conditions:
+  HasAlarmEmail: !Not [!Equals [!Ref AlarmEmail, ""]]
+
+Resources:
+  # ── Network security ──────────────────────────────────────────────
+  AlbSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: muktasabat ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIpv6: "::/0" }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIpv6: "::/0" }
+  TaskSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: muktasabat tasks (web only reachable from the ALB)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 3000, ToPort: 3000, SourceSecurityGroupId: !Ref AlbSg }
+  DbSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: muktasabat RDS
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 5432, ToPort: 5432, SourceSecurityGroupId: !Ref TaskSg }
+        - { IpProtocol: tcp, FromPort: 5432, ToPort: 5432, CidrIp: !Ref LightsailCidr }
+
+  # ── Database ──────────────────────────────────────────────────────
+  DbSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: muktasabat/db
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"muktasabat"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+  DbSubnets:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: muktasabat
+      SubnetIds: !Ref SubnetIds
+  Db:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: muktasabat-db
+      Engine: postgres
+      EngineVersion: "17"
+      DBInstanceClass: db.t4g.micro
+      DBName: muktasabat
+      MasterUsername: !Sub "{{resolve:secretsmanager:${DbSecret}:SecretString:username}}"
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${DbSecret}:SecretString:password}}"
+      AllocatedStorage: "20"
+      MaxAllocatedStorage: 200
+      StorageType: gp3
+      StorageEncrypted: true
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: "21:00-21:30"
+      PreferredMaintenanceWindow: "fri:22:00-fri:22:30"
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: true
+      PubliclyAccessible: false
+      DBSubnetGroupName: !Ref DbSubnets
+      VPCSecurityGroups: [!Ref DbSg]
+      EnablePerformanceInsights: false
+
+  # ── HTTPS ─────────────────────────────────────────────────────────
+  Cert:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames: [!Sub "www.${DomainName}", !Ref TestHost]
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - { DomainName: !Ref DomainName, HostedZoneId: !Ref HostedZoneId }
+        - { DomainName: !Sub "www.${DomainName}", HostedZoneId: !Ref HostedZoneId }
+        - { DomainName: !Ref TestHost, HostedZoneId: !Ref HostedZoneId }
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: muktasabat
+      Scheme: internet-facing
+      Subnets: !Ref SubnetIds
+      SecurityGroups: [!Ref AlbSg]
+      LoadBalancerAttributes:
+        - { Key: idle_timeout.timeout_seconds, Value: "120" }
+        - { Key: routing.http.drop_invalid_header_fields.enabled, Value: "true" }
+  WebTg:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: muktasabat-web
+      VpcId: !Ref VpcId
+      TargetType: ip
+      Protocol: HTTP
+      Port: 3000
+      HealthCheckPath: /ar/login
+      HealthCheckIntervalSeconds: 15
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher: { HttpCode: "200-399" }
+      TargetGroupAttributes:
+        - { Key: deregistration_delay.timeout_seconds, Value: "20" }
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig: { Protocol: HTTPS, Port: "443", StatusCode: HTTP_301 }
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates: [{ CertificateArn: !Ref Cert }]
+      DefaultActions: [{ Type: forward, TargetGroupArn: !Ref WebTg }]
+  TestRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref TestHost
+      Type: A
+      AliasTarget: { DNSName: !GetAtt Alb.DNSName, HostedZoneId: !GetAtt Alb.CanonicalHostedZoneID }
+
+  # ── Containers ────────────────────────────────────────────────────
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: muktasabat
+      ClusterSettings: [{ Name: containerInsights, Value: disabled }]
+  Logs:
+    Type: AWS::Logs::LogGroup
+    Properties: { LogGroupName: /muktasabat/app, RetentionInDays: 30 }
+  ExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement: [{ Effect: Allow, Principal: { Service: ecs-tasks.amazonaws.com }, Action: sts:AssumeRole }]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy]
+      Policies:
+        - PolicyName: secrets
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: [!Ref AppSecretArn, !Ref DbSecret]
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement: [{ Effect: Allow, Principal: { Service: ecs-tasks.amazonaws.com }, Action: sts:AssumeRole }]
+      Policies:
+        - PolicyName: app
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject, s3:HeadObject]
+                Resource: !Sub "arn:aws:s3:::${UploadsBucket}/*"
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource: !Sub "arn:aws:s3:::${UploadsBucket}"
+              - Effect: Allow
+                Action: [ses:SendEmail, ses:SendRawEmail, ses:GetAccount, ses:GetSendQuota]
+                Resource: "*"
+              - Effect: Allow
+                Action: [translate:TranslateText]
+                Resource: "*"
+  TaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: muktasabat
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: "512"
+      Memory: "1024"
+      RuntimePlatform: { CpuArchitecture: X86_64, OperatingSystemFamily: LINUX }
+      ExecutionRoleArn: !GetAtt ExecRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: api
+          Image: !Ref ApiImage
+          Essential: true
+          MemoryReservation: 512
+          EntryPoint: [sh, -c]
+          Command:
+            - 'export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@$DB_HOST:5432/muktasabat"; exec uvicorn api.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips="*"'
+          Environment:
+            - { Name: DB_HOST, Value: !GetAtt Db.Endpoint.Address }
+            - { Name: S3_BUCKET, Value: !Ref UploadsBucket }
+            - { Name: S3_REGION, Value: !Ref AWS::Region }
+            - { Name: S3_PUBLIC_BASE_URL, Value: !Sub "https://${DomainName}/uploads" }
+            - { Name: SES_REGION, Value: !Ref AWS::Region }
+            - { Name: TRANSLATE_REGION, Value: !Ref AWS::Region }
+            - { Name: WEB_BASE_URL, Value: !Sub "https://${DomainName}" }
+            - { Name: APP_PUBLIC_URL, Value: !Sub "https://${DomainName}" }
+            - { Name: API_PUBLIC_BASE_URL, Value: !Sub "https://${DomainName}" }
+            - { Name: DISABLE_BOOTSTRAP_ADMIN, Value: "1" }
+            - { Name: STORAGE_FALLBACK_LOCAL, Value: "0" }
+          Secrets:
+            - { Name: DB_USER, ValueFrom: !Sub "${DbSecret}:username::" }
+            - { Name: DB_PASS, ValueFrom: !Sub "${DbSecret}:password::" }
+            - { Name: SECRET_KEY, ValueFrom: !Sub "${AppSecretArn}:SECRET_KEY::" }
+            - { Name: REVALIDATE_SECRET, ValueFrom: !Sub "${AppSecretArn}:REVALIDATE_SECRET::" }
+            - { Name: SES_FROM_EMAIL, ValueFrom: !Sub "${AppSecretArn}:SES_FROM_EMAIL::" }
+            - { Name: SUPPORT_EMAIL, ValueFrom: !Sub "${AppSecretArn}:SUPPORT_EMAIL::" }
+            - { Name: PAYMENT_ALERTS_CC, ValueFrom: !Sub "${AppSecretArn}:PAYMENT_ALERTS_CC::" }
+          HealthCheck:
+            Command: [CMD-SHELL, "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=4)\""]
+            Interval: 15
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 40
+          LogConfiguration:
+            LogDriver: awslogs
+            Options: { awslogs-group: !Ref Logs, awslogs-region: !Ref AWS::Region, awslogs-stream-prefix: api }
+        - Name: web
+          Image: !Ref WebImage
+          Essential: true
+          MemoryReservation: 256
+          PortMappings: [{ ContainerPort: 3000, Protocol: tcp }]
+          DependsOn: [{ ContainerName: api, Condition: HEALTHY }]
+          Environment:
+            - { Name: API_URL, Value: "http://127.0.0.1:8000" }
+            - { Name: NODE_ENV, Value: production }
+            - { Name: HOSTNAME, Value: 0.0.0.0 }
+          Secrets:
+            - { Name: REVALIDATE_SECRET, ValueFrom: !Sub "${AppSecretArn}:REVALIDATE_SECRET::" }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options: { awslogs-group: !Ref Logs, awslogs-region: !Ref AWS::Region, awslogs-stream-prefix: web }
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: HttpsListener
+    Properties:
+      ServiceName: muktasabat
+      Cluster: !Ref Cluster
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDef
+      HealthCheckGracePeriodSeconds: 90
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker: { Enable: true, Rollback: true }
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups: [!Ref TaskSg]
+      LoadBalancers: [{ ContainerName: web, ContainerPort: 3000, TargetGroupArn: !Ref WebTg }]
+
+  # ── Autoscaling ───────────────────────────────────────────────────
+  ScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      ServiceNamespace: ecs
+      ScalableDimension: ecs:service:DesiredCount
+      ResourceId: !Sub "service/${Cluster}/${Service.Name}"
+      MinCapacity: !Ref MinTasks
+      MaxCapacity: !Ref MaxTasks
+      SuspendedState:
+        DynamicScalingInSuspended: false
+        DynamicScalingOutSuspended: false
+        ScheduledScalingSuspended: false
+  CpuScaling:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: cpu60
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 60
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification: { PredefinedMetricType: ECSServiceAverageCPUUtilization }
+  MemScaling:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: mem70
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification: { PredefinedMetricType: ECSServiceAverageMemoryUtilization }
+
+  # ── Alarms ────────────────────────────────────────────────────────
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: muktasabat-alarms
+      Subscription: !If [HasAlarmEmail, [{ Protocol: email, Endpoint: !Ref AlarmEmail }], !Ref AWS::NoValue]
+  Alb5xx:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: muktasabat.com returns many server errors
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Dimensions: [{ Name: LoadBalancer, Value: !GetAtt Alb.LoadBalancerFullName }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 20
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+  NoHealthy:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: muktasabat.com has no healthy containers
+      Namespace: AWS/ApplicationELB
+      MetricName: HealthyHostCount
+      Dimensions:
+        - { Name: LoadBalancer, Value: !GetAtt Alb.LoadBalancerFullName }
+        - { Name: TargetGroup, Value: !GetAtt WebTg.TargetGroupFullName }
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlarmTopic]
+  DbStorage:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Database free storage below 2 GB (autoscaling should have grown it)
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions: [{ Name: DBInstanceIdentifier, Value: !Ref Db }]
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 2000000000
+      ComparisonOperator: LessThanThreshold
+      AlarmActions: [!Ref AlarmTopic]
+  DbCpu:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Database CPU above 80% for 15 minutes
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions: [{ Name: DBInstanceIdentifier, Value: !Ref Db }]
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions: [!Ref AlarmTopic]
+
+Outputs:
+  AlbDns: { Value: !GetAtt Alb.DNSName }
+  AlbZone: { Value: !GetAtt Alb.CanonicalHostedZoneID }
+  DbHost: { Value: !GetAtt Db.Endpoint.Address }
+  DbSecretArn: { Value: !Ref DbSecret }
+  TaskSg: { Value: !Ref TaskSg }
+  TaskDefArn: { Value: !Ref TaskDef }
+  ExecRoleArn: { Value: !GetAtt ExecRole.Arn }
+  TaskRoleArn: { Value: !GetAtt TaskRole.Arn }
