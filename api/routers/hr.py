@@ -9,6 +9,7 @@ Management endpoints use the `hr` permission module:
 from __future__ import annotations
 
 import calendar
+import json
 import logging
 import math
 import uuid
@@ -358,6 +359,34 @@ def mode_for(db: Session, p: Optional[HrProfile], user_id: int, d: date) -> tupl
     return "office", None
 
 
+MAX_PERIODS = 6
+
+
+def period_list(att: Optional[Attendance]) -> list[dict]:
+    """Closed periods of the day plus the open one (out=None)."""
+    if not att or not att.check_in:
+        return []
+    try:
+        done = json.loads(att.periods) if att.periods else []
+    except ValueError:
+        done = []
+    if not done and att.check_out and not (att.break_minutes or 0):
+        return [{"in": att.check_in.strftime("%H:%M"), "out": att.check_out.strftime("%H:%M")}]
+    out = list(done)
+    if not att.check_out:
+        out.append({"in": (att.period_in or att.check_in).strftime("%H:%M"), "out": None})
+    return out
+
+
+def close_period(att: Attendance, at: time) -> None:
+    try:
+        done = json.loads(att.periods) if att.periods else []
+    except ValueError:
+        done = []
+    done.append({"in": (att.period_in or att.check_in).strftime("%H:%M"), "out": at.strftime("%H:%M")})
+    att.periods = json.dumps(done)
+
+
 def verified_minutes(att: Attendance, now: datetime) -> Optional[int]:
     """Time we can vouch for. Office days: from check-in until the employee
     left the geofence (if they left without checking out, or checked out far
@@ -375,7 +404,7 @@ def verified_minutes(att: Attendance, now: datetime) -> Optional[int]:
         far_checkout = att.check_out and att.out_distance is not None and att.out_distance > CHECKOUT_TOLERANCE_M
         if (att.outside_since or far_checkout) and att.last_inside_at:
             end = min(end, att.last_inside_at)
-    total = max(0, int((end - start).total_seconds() // 60))
+    total = max(0, int((end - start).total_seconds() // 60) - (att.break_minutes or 0))
     return max(0, total - (att.away_minutes or 0)) if att.mode == "office" else total
 
 
@@ -392,7 +421,7 @@ def _day_status(db: Session, s: HrSettings, p: Optional[HrProfile], user_id: int
                                                      HrRequest.start_date == d, HrRequest.permission_type == "late_arrival"))
             if perm and perm.to_time and att.check_in <= time(perm.to_time.hour, perm.to_time.minute):
                 excused = True
-    worked = _minutes(att.check_in, att.check_out) if att and att.check_in and att.check_out else None
+    worked = max(0, _minutes(att.check_in, att.check_out) - (att.break_minutes or 0)) if att and att.check_in and att.check_out else None
     if lv:
         st = "on_leave"
     elif not att and (d < s.attendance_from or (p and p.employment_status in ("excluded", "resigned", "terminated"))):
@@ -427,7 +456,8 @@ def _day_status(db: Session, s: HrSettings, p: Optional[HrProfile], user_id: int
             "early_leave_minutes": early, "leave_type": lv.leave_type if lv else None,
             "check_in": att.check_in.strftime("%H:%M") if att and att.check_in else None,
             "check_out": att.check_out.strftime("%H:%M") if att and att.check_out else None,
-            "source": att.source if att else None, "note": att.note if att else None}
+            "source": att.source if att else None, "note": att.note if att else None,
+            "periods": period_list(att), "break_minutes": att.break_minutes if att else 0}
 
 
 # ───────────────────────── schemas ─────────────────────────
@@ -625,8 +655,11 @@ def check_in(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
     s = _settings(db)
     n = local_now()
     att = db.scalar(select(Attendance).where(Attendance.user_id == user.id, Attendance.day == n.date()))
-    if att and att.check_in:
-        raise HTTPException(status.HTTP_409_CONFLICT, "You have already checked in today.")
+    if att and att.check_in and not att.check_out:
+        raise HTTPException(status.HTTP_409_CONFLICT, "You're already checked in.")
+    resuming = bool(att and att.check_in and att.check_out)
+    if resuming and len(period_list(att)) >= MAX_PERIODS:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"You can record up to {MAX_PERIODS} periods a day. Ask HR to adjust today's attendance.")
     if _leave_on(db, user.id, n.date()):
         raise HTTPException(status.HTTP_409_CONFLICT, "You're on approved leave today.")
     p = _profile(db, user.id)
@@ -639,10 +672,30 @@ def check_in(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
         st = st if inside else None
         if wl and wl.from_time and n.time() < wl.from_time.replace(second=0) and mode == "field":
             pass  # early start on a field day is allowed; times are informative
+    now_t = time(n.hour, n.minute)
+    if resuming:
+        # Back for another period: the gap since the last check-out is a break.
+        if not att.periods:  # day recorded before periods existed → it was one period
+            att.periods = json.dumps([{"in": att.check_in.strftime("%H:%M"), "out": att.check_out.strftime("%H:%M")}])
+        att.break_minutes = (att.break_minutes or 0) + max(0, _minutes(att.check_out, now_t))
+        att.check_out, att.period_in, att.auto_closed = None, now_t, False
+        att.out_lat = att.out_lng = att.out_accuracy = att.out_distance = None
+        att.out_site_id = None
+        if mode != att.mode and att.mode != "office":
+            att.mode = mode
+        _ping(db, user.id, n, "check_in", loc, d, inside, f"{mode}:resume")
+        att.last_ping_at = n
+        att.last_inside_at = n if (att.mode == "office" and inside is not False) else att.last_inside_at
+        att.outside_since = None
+        db.commit()
+        return {"ok": True, "check_in": now_t.strftime("%H:%M"), "resumed": True, "periods": period_list(att),
+                "break_minutes": att.break_minutes, "mode": att.mode, "distance": d,
+                "site": site_name(st, "ar") if st and inside else None, "site_en": site_name(st, "en") if st and inside else None}
     if att is None:
         att = Attendance(user_id=user.id, day=n.date())
         db.add(att)
-    att.check_in, att.source, att.mode = time(n.hour, n.minute), "web", mode
+    att.check_in, att.source, att.mode = now_t, "web", mode
+    att.period_in, att.periods, att.break_minutes = now_t, None, 0
     att.in_lat, att.in_lng, att.in_accuracy, att.in_distance = loc.lat, loc.lng, loc.accuracy, d
     att.in_site_id = st.id if st and inside else None
     att.last_ping_at = n
@@ -689,12 +742,14 @@ def check_out(db: DbSession, user: CurrentUser, loc: LocIn = LocIn()):
             att.last_inside_at = n
             att.outside_since = None
     att.check_out = time(n.hour, n.minute)
+    close_period(att, att.check_out)
     att.out_lat, att.out_lng, att.out_accuracy, att.out_distance = loc.lat, loc.lng, loc.accuracy, d
     att.out_site_id = st.id if st and inside else None
     att.last_ping_at = n
     _ping(db, user.id, n, "check_out", loc, d, inside)
     db.commit()
     return {"ok": True, "check_out": att.check_out.strftime("%H:%M"), "verified_minutes": verified_minutes(att, n),
+            "periods": period_list(att), "break_minutes": att.break_minutes,
             "away": bool(att.mode == "office" and not anywhere and d is not None and d > CHECKOUT_TOLERANCE_M),
             "site": site_name(st, "ar") if st and inside else None, "site_en": site_name(st, "en") if st and inside else None}
 

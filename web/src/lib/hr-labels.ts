@@ -16,7 +16,7 @@ export type DayStatus = {
   day?: string; status: "present" | "late" | "absent" | "on_leave" | "weekend" | "not_yet" | "untracked";
   late_minutes: number; excused: boolean; worked_minutes: number | null; early_leave_minutes: number; leave_type?: string | null;
   check_in?: string | null; check_out?: string | null; source?: string | null; note?: string | null;
-  verified_minutes?: number | null; away_minutes?: number; mode?: "office" | "remote" | "field"; flags?: string[];
+  verified_minutes?: number | null; away_minutes?: number; periods?: { in: string; out: string | null }[]; break_minutes?: number; mode?: "office" | "remote" | "field"; flags?: string[];
   in_distance?: number | null; out_distance?: number | null; outside_since?: string | null;
 };
 

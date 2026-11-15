@@ -1274,6 +1274,7 @@ SHEETS: list[Sheet] = [
             _enum("source", "Source", "المصدر", "attendance_source", required=True, default="manual"),
             F("note", "Note", "ملاحظة", max_len=300, width=30),
             F("away_minutes", "Minutes away from office", "دقائق خارج المقر", "int", min=0, max=1440, default=0, width=12),
+            F("break_minutes", "Break minutes between periods", "دقائق الاستراحة بين الفترات", "int", min=0, max=1440, default=0, width=12),
         ],
         display="day",
         unique=[("user_id", "day")],

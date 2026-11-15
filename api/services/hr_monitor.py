@@ -72,6 +72,7 @@ def run_once(now: datetime | None = None) -> dict:
             if end.date() != a.day:
                 end = datetime.combine(a.day, time(23, 59))
             a.check_out, a.auto_closed, a.source = end.time().replace(second=0, microsecond=0), True, "auto"
+            hr.close_period(a, a.check_out)
             a.note = ((a.note + " · ") if a.note else "") + "closed automatically"
             db.commit()
             u = db.get(User, a.user_id)

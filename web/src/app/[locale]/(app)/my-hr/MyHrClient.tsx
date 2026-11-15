@@ -101,16 +101,32 @@ export function MyHrClient({ locale, data, days: initialDays, month: m0, meId }:
             </ul>
           )}
           <div className="hr-clock__times">
-            <div><span>{T("الحضور", "Check in")}</span><strong dir="ltr">{t.check_in ?? "--:--"}</strong></div>
-            <div><span>{T("الانصراف", "Check out")}</span><strong dir="ltr">{t.check_out ?? "--:--"}</strong></div>
+            <div><span>{T("أول حضور", "First in")}</span><strong dir="ltr">{t.check_in ?? "--:--"}</strong></div>
+            <div><span>{T("آخر انصراف", "Last out")}</span><strong dir="ltr">{t.check_out ?? "--:--"}</strong></div>
             <div><span>{T("الساعات الفعلية", "Actual hours")}</span><strong>{t.verified_minutes != null ? mins(t.verified_minutes, ar) : "—"}</strong></div>
           </div>
+          {(t.periods?.length ?? 0) > 1 || (t.break_minutes ?? 0) > 0 ? (
+            <ol className="hr-periods" aria-label={T("فترات اليوم", "Today's periods")}>
+              {t.periods!.map((p, i) => (
+                <li key={i} className={p.out ? "" : "is-open"}>
+                  <span>{T(`الفترة ${i + 1}`, `Period ${i + 1}`)}</span>
+                  <b dir="ltr">{p.in} – {p.out ?? T("الآن", "now")}</b>
+                </li>
+              ))}
+              {(t.break_minutes ?? 0) > 0 && <li className="hr-periods__break"><span>{T("استراحة بين الفترات (غير محتسبة)", "Breaks between periods (not counted)")}</span><b>{mins(t.break_minutes!, ar)}</b></li>}
+            </ol>
+          ) : null}
           {t.status !== "on_leave" && (
             !t.check_in
               ? <button className="btn btn-primary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckIn)}><span className="ms">login</span>{locating ? T("جارٍ تحديد موقعك…", "Finding your location…") : T("تسجيل الحضور", "Check in")}</button>
               : !t.check_out
                 ? <button className="btn btn-secondary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckOut)}><span className="ms">logout</span>{locating ? T("جارٍ تحديد موقعك…", "Finding your location…") : T("تسجيل الانصراف", "Check out")}</button>
-                : <p className="text-sec">{T("سُجّل حضورك وانصرافك اليوم.", "You're checked in and out for today.")}</p>
+                : (t.periods?.length ?? 1) < 6
+                  ? <>
+                      <button className="btn btn-primary hr-clock__btn" disabled={pending} onClick={() => clock(hrCheckIn)}><span className="ms">login</span>{locating ? T("جارٍ تحديد موقعك…", "Finding your location…") : T("تسجيل حضور فترة جديدة", "Check in again")}</button>
+                      <p className="text-sec hr-note">{T("انصرفت مؤقتًا؟ سجّل حضورك عند عودتك، ويُحتسب الوقت بين الفترتين استراحة.", "Stepped out? Check in when you're back — the time in between counts as a break.")}</p>
+                    </>
+                  : <p className="text-sec">{T("سُجّلت كل فترات اليوم.", "All of today's periods are recorded.")}</p>
           )}
           {(t.flags ?? []).map((f) => <p key={f} className="hr-flag"><span className="ms ms-sm" aria-hidden>warning</span>{hl(ar, HR.flag, f)}{f === "left_area" && t.outside_since ? T(` منذ ${t.outside_since}`, ` since ${t.outside_since}`) : ""}</p>)}
           {!!t.away_minutes && <p className="text-sec hr-note">{T(`وقت خارج المكتب اليوم: ${mins(t.away_minutes, true)} (غير محتسب)`, `Time away from the office today: ${mins(t.away_minutes, false)} (not counted)`)}</p>}

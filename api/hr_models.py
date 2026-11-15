@@ -136,6 +136,12 @@ class Attendance(Base):
     last_inside_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     outside_since: Mapped[Optional[datetime]] = mapped_column(DateTime)
     away_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Several periods a day: check_in = first arrival, check_out = last departure;
+    # gaps between periods add up in break_minutes. periods = JSON list of closed
+    # periods [{"in": "HH:MM", "out": "HH:MM"}]; period_in = start of the open one.
+    break_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    period_in: Mapped[Optional[time]] = mapped_column(Time)
+    periods: Mapped[Optional[str]] = mapped_column(Text)
     auto_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     edited_by: Mapped[Optional[str]] = mapped_column(String(160))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

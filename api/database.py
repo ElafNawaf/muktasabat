@@ -514,6 +514,7 @@ def ensure_hr_location_columns(engine) -> None:
         ("last_ping_at", ts), ("last_inside_at", ts), ("outside_since", ts),
         ("away_minutes", "INTEGER DEFAULT 0 NOT NULL"), ("auto_closed", f"BOOLEAN DEFAULT {f} NOT NULL"),
         ("in_site_id", "INTEGER"), ("out_site_id", "INTEGER"),
+        ("break_minutes", "INTEGER DEFAULT 0 NOT NULL"), ("period_in", "TIME"), ("periods", "TEXT"),
     ])
     _add_missing_columns(engine, "hr_settings", [
         ("office_lat", "FLOAT DEFAULT 24.8138003 NOT NULL"), ("office_lng", "FLOAT DEFAULT 46.7242436 NOT NULL"),
