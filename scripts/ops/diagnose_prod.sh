@@ -1,56 +1,27 @@
-#!/bin/bash
-# Seed employee test data for Elaf (idempotent). Prints counts/ids only.
-docker exec -i muktasabat-api-1 python - <<'PY' 2>&1 | grep -v '"ts":' | tail -20
-"""Seed employee test data for Elaf's account (idempotent). Prints counts/ids only — the repo is public."""
-from datetime import date, timedelta
-from sqlalchemy import func, or_, select
-from api.database import SessionLocal
-from api.models import User
-from api.hr_people_models import HrAsset, HrContract
-from api.routers import hr_people as hp
-from api.services.hr_contract_docs import seed_templates, template_for
-
-TAG = "بيانات تجريبية للاختبار — TEST DATA"
-db = SessionLocal()
-cands = db.scalars(select(User).where(User.is_active_user.is_(True), or_(func.lower(User.username).like("elaf%"), func.lower(User.full_name).like("elaf%")))).all()
-print("candidates:", len(cands))
-if len(cands) != 1:
-    raise SystemExit("expected exactly one Elaf account — stopping")
-me = cands[0]
-actor = db.scalar(select(User).where(User.username == "admin", User.is_active_user.is_(True))) or \
-        db.scalar(select(User).where(User.role == "admin", User.id != me.id, User.is_active_user.is_(True)))
-if actor is None:
-    raise SystemExit("no admin actor — stopping")
-print("employee id:", me.id, "role:", me.role, "| actor id:", actor.id)
-hp.seed_companies(db); seed_templates(db)
-prof = hp._profile(db, me.id); db.commit()
-
-# 1) Employment contract waiting for acceptance (from the default template)
-c = db.scalar(select(HrContract).where(HrContract.user_id == me.id, HrContract.terms == TAG))
-if c is None:
-    t = template_for(db, prof.company_id, "fixed")
-    start = date.today().replace(day=1) + timedelta(days=32)
-    start = start.replace(day=1)
-    payload = hp.ContractIn(user_id=me.id, company_id=prof.company_id, contract_type="fixed", job_title=None,
-        start_date=start, end_date=date(start.year + 1, start.month, 1) - timedelta(days=1), probation_end=start + timedelta(days=89),
-        basic_salary=15000, housing_allowance=3750, transport_allowance=1500, other_allowance=500, other_allowance_label="بدل اتصال",
-        working_hours_week=48, annual_leave_days=21, notice_days=60, terms=TAG, template_id=t.id if t else None)
-    out = hp.create_contract(payload, db, actor, "ar")
-    hp.send_contract(out["id"], db, actor, "ar")
-    c = db.get(HrContract, out["id"])
-    print("contract created:", c.id, c.number, c.status, "template:", c.template_id)
-else:
-    print("contract exists:", c.id, c.number, c.status)
-
-# 2) Assets waiting for receipt confirmation
-for kind, name, model, serial, value in (("laptop", "حاسب محمول (تجريبي)", "MacBook Pro 14 M3", "TEST-LAP-001", 9500),
-                                          ("phone", "جوال العمل (تجريبي)", "iPhone 15", "TEST-PH-001", 4200),
-                                          ("cash", "عهدة نقدية للمصروفات (تجريبية)", None, None, 1000)):
-    a = db.scalar(select(HrAsset).where(HrAsset.name == name, HrAsset.assigned_user_id == me.id))
-    if a:
-        print("asset exists:", a.id, a.tag); continue
-    out = hp.create_asset(hp.AssetIn(kind=kind, name=name, brand_model=model, serial=serial, value=value, notes=TAG), db, actor, "ar")
-    hp.assign_asset(out["id"], hp.AssignIn(user_id=me.id, note=TAG), db, actor, "ar")
-    print("asset assigned:", out["id"], out["tag"])
-print("done")
-PY
+#!/usr/bin/env bash
+# Read-only health check: containers, resources, response times. Public-safe output (no personal data, no IPs).
+set -u
+strip() { sed -E 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g; s/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+/<email>/g; s/(token|password|secret|key)=[^ &"]*/\1=<redacted>/gI' | cut -c1-220; }
+echo "== time"; date -u
+echo "== uptime / load"; uptime
+echo "== memory"; free -m
+echo "== swap"; swapon --show 2>/dev/null || echo none
+echo "== disk"; df -h / | tail -1
+echo "== containers"; docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+echo "== restarts / OOM"; for c in $(docker ps -aq); do docker inspect "$c" --format '{{.Name}} restarts={{.RestartCount}} oom={{.State.OOMKilled}} started={{.State.StartedAt}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}'; done
+echo "== container stats"; docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
+echo "== kernel OOM (last 24h)"; sudo journalctl -k --since "24 hours ago" 2>/dev/null | grep -ci "out of memory\|oom-kill" || true
+echo "== response times (from the server)"
+for u in "http://127.0.0.1:8000/api/docs" "http://127.0.0.1:3000/ar/login" "https://muktasabat.com/ar/login" "https://muktasabat.com/api/v1/auth/me"; do
+  curl -sk -o /dev/null -m 30 -w "$u -> %{http_code} in %{time_total}s\n" "$u" || echo "$u -> failed"
+done
+echo "== login endpoint timing (bad credentials, expect 401)"
+curl -sk -o /dev/null -m 30 -w "login -> %{http_code} in %{time_total}s\n" -X POST -d 'username=__healthcheck__&password=x' https://muktasabat.com/api/v1/auth/login || echo "login -> failed"
+echo "== nginx/proxy"; systemctl is-active nginx 2>/dev/null; docker ps --format '{{.Names}}' | grep -i -E "nginx|caddy|proxy" || true
+echo "== api log: error lines last 2h (count)"; docker logs --since 2h muktasabat-api-1 2>&1 | grep -ciE "error|traceback|exception|timeout" || true
+echo "== api log: last error lines"; docker logs --since 2h muktasabat-api-1 2>&1 | grep -iE "error|traceback|exception|timeout" | tail -15 | strip
+echo "== api log: slow/ status codes last 2h"; docker logs --since 2h muktasabat-api-1 2>&1 | grep -oE '" [1-5][0-9]{2}' | sort | uniq -c | sort -rn | head
+echo "== web log: last error lines"; docker logs --since 2h muktasabat-web-1 2>&1 | grep -iE "error|timeout|ECONN|fail" | tail -15 | strip
+echo "== db"; docker ps --format '{{.Names}}' | grep -i db && docker exec $(docker ps --format '{{.Names}}' | grep -i db | head -1) pg_isready 2>&1 | strip
+echo "== db connections"; docker exec $(docker ps --format '{{.Names}}' | grep -i db | head -1) psql -U muktasbat -d muktasbat -tAc "select state, count(*) from pg_stat_activity group by 1" 2>&1 | strip
+echo "== top processes by memory"; ps -eo rss,comm --sort=-rss | head -8
