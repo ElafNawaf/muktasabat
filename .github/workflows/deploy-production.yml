@@ -251,11 +251,22 @@ jobs:
           set -u
           F=/etc/caddy/Caddyfile
           here() { [ "$(getent ahostsv4 "$1" | awk 'NR==1{print $1}')" = "$HOST_IP" ]; }
-          if ! here mrc.sa; then echo "mrc.sa doesn't point to this server yet — staying on muktasabat.com"; exit 0; fi
-          aliases="muktasabat.com, www.muktasabat.com"
-          for d in www.mrc.sa mro.com.sa www.mro.com.sa; do if here "$d"; then aliases="$aliases, $d"; else echo "DNS not pointing here yet: $d"; fi; done
+          if here mrc.sa; then
+            MAIN=mrc.sa; aliases="muktasabat.com, www.muktasabat.com"; extra="www.mrc.sa mro.com.sa www.mro.com.sa"
+          else
+            # Until mrc.sa points here, keep muktasabat.com as the site and forward mro.com.sa to it.
+            echo "mrc.sa doesn't point to this server yet — main address stays muktasabat.com"
+            MAIN=""; aliases=""; extra="mro.com.sa www.mro.com.sa"
+          fi
+          for d in $extra; do if here "$d"; then aliases="${aliases:+$aliases, }$d"; else echo "DNS not pointing here yet: $d"; fi; done
           new=$(mktemp)
-          printf '# Managed by the deploy workflow: mrc.sa is the main address\nmrc.sa {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n\n%s {\n    redir https://mrc.sa{uri} permanent\n}\n' "$aliases" > "$new"
+          if [ "$MAIN" = mrc.sa ]; then
+            printf '# Managed by the deploy workflow: mrc.sa is the main address\nmrc.sa {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n\n%s {\n    redir https://mrc.sa{uri} permanent\n}\n' "$aliases" > "$new"
+          else
+            [ -z "$aliases" ] && { echo "Nothing to forward yet."; exit 0; }
+            printf '# Managed by the deploy workflow: muktasabat.com is the main address for now\nmuktasabat.com, www.muktasabat.com {\n    encode gzip\n    reverse_proxy 127.0.0.1:3000\n}\n\n%s {\n    redir https://muktasabat.com{uri} permanent\n}\n' "$aliases" > "$new"
+          fi
+          CHECK_HOST=${MAIN:-muktasabat.com}
           if sudo cmp -s "$new" "$F"; then
             echo "Proxy already up to date"
           else
@@ -264,15 +275,16 @@ jobs:
             sudo cp "$new" "$F" && sudo systemctl reload caddy
             ok=0; code=000
             for i in $(seq 1 24); do
-              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 --resolve mrc.sa:443:127.0.0.1 https://mrc.sa/ar || echo 000)
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 --resolve $CHECK_HOST:443:127.0.0.1 https://$CHECK_HOST/ar || echo 000)
               [ "$code" = 200 ] && { ok=1; break; }; sleep 5
             done
             if [ "$ok" != 1 ]; then
-              echo "mrc.sa didn't come up (last HTTP $code) — restoring the previous proxy config"
+              echo "$CHECK_HOST didn't come up (last HTTP $code) — restoring the previous proxy config"
               sudo cp "$F.bak-primary" "$F"; sudo systemctl reload caddy; exit 0
             fi
-            echo "mrc.sa is live over HTTPS; forwarding: $aliases"
+            echo "$CHECK_HOST is live over HTTPS; forwarding to it: $aliases"
           fi
+          [ "$MAIN" = mrc.sa ] || exit 0
           cd /home/ubuntu/muktasabat
           cp .env .env.bak-primary; cp docker-compose.yml docker-compose.yml.bak-primary
           for k in WEB_BASE_URL APP_PUBLIC_URL API_PUBLIC_BASE_URL; do
