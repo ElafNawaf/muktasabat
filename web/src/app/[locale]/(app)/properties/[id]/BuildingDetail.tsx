@@ -15,6 +15,7 @@ import { money } from "../BuildingCards";
 import { BuildingFormModal } from "../BuildingFormModal";
 import type { UserPick } from "../page";
 import { UnitFormModal } from "../UnitFormModal";
+import { Portal } from "@/components/Portal";
 
 type PayState = "paid" | "overdue" | "due_soon" | "upcoming";
 type OvUnit = {
@@ -339,6 +340,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
 
       {/* ── Unit drawer ── */}
       {open && (
+        <Portal>
         <div className="bd-drawer" role="dialog" aria-modal="true" aria-label={`${t("وحدة", "Unit")} ${open.number}`}>
           <div className="bd-drawer__bg" onClick={() => setOpen(null)} />
           <aside className={`bd-drawer__panel bd-unit--${UNIT_STATUS[open.status].tone}`}>
@@ -398,6 +400,7 @@ export function BuildingDetail({ ov, building, owners, users, units, locale }: {
             </footer>
           </aside>
         </div>
+        </Portal>
       )}
 
       {editB && <BuildingFormModal open onClose={() => setEditB(false)} building={building} owners={owners} users={users} />}

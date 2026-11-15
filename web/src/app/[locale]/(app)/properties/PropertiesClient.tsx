@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Portal } from "@/components/Portal";
 import { useMemo, useState, useTransition } from "react";
 
 import {
@@ -1192,7 +1193,7 @@ export function PropertiesClient({
             lightbox.kind === "building" ? lightbox.building.images : lightbox.unit.images;
           const [activeImage, ...rest] = imgs;
           return (
-            <div className="lightbox" onClick={() => setLightbox(null)}>
+            <Portal><div className="lightbox" onClick={() => setLightbox(null)}>
               <div className="lightbox-card" onClick={(e) => e.stopPropagation()}>
                 <div className="lightbox-img">
                   {activeImage ? (
@@ -1244,7 +1245,7 @@ export function PropertiesClient({
                   <span className="ms">close</span>
                 </button>
               </div>
-            </div>
+            </div></Portal>
           );
         })()}
     </div>
