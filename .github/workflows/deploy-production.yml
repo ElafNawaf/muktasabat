@@ -220,6 +220,22 @@ jobs:
           [ "$RESTARTS" = 0 ] || { echo "API container restarted $RESTARTS time(s)"; FAIL=1; }
           [ $FAIL = 0 ]
 
+      - name: Domain readiness (read-only)
+        continue-on-error: true
+        run: |
+          $SSH 'bash -s' <<'REMOTE'
+          echo "== Caddyfile (secrets redacted)"
+          sudo sed -E 's/((basicauth|basic_auth|hash|token|secret|password|key|api_key)[^ ]*)[[:space:]]+[^ {}]+/\1 ***REDACTED***/I' /etc/caddy/Caddyfile 2>/dev/null || echo "(none)"
+          ls /etc/caddy 2>/dev/null
+          echo "== web service environment keys"
+          cd /home/ubuntu/muktasabat && awk '/^  web:/{w=1} w&&/^  [a-z]/&&!/^  web:/{w=0} w' docker-compose.yml | sed -E 's/(:[[:space:]]*).*/\1…/' 
+          echo "== URL keys in .env (names only)"
+          grep -oE '^(WEB_BASE_URL|APP_PUBLIC_URL|API_PUBLIC_BASE_URL|S3_PUBLIC_BASE_URL|SITE_URL|CORS[A-Z_]*|ALLOWED[A-Z_]*)=' .env || true
+          grep -E '^(WEB_BASE_URL|APP_PUBLIC_URL|API_PUBLIC_BASE_URL|S3_PUBLIC_BASE_URL|SITE_URL)=' .env | sed -E 's#=(https?://[^/]+).*#=\1#'
+          echo "== DNS seen by the server"
+          for d in mrc.sa www.mrc.sa muktasabat.com www.muktasabat.com mro.com.sa www.mro.com.sa; do echo "$d → $(getent ahostsv4 $d | awk 'NR==1{print $1}')"; done
+          REMOTE
+
       - name: Short domains (mrc.sa → muktasabat.com)
         # Forwards each short domain to https://muktasabat.com, keeping the path.
         # A domain is only added once its DNS points at this server, so nothing
