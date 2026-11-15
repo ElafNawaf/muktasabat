@@ -10,10 +10,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Reachability from outside
+        run: |
+          for u in https://muktasabat.com/ar/login https://muktasabat.com/api/docs; do
+            curl -s -o /dev/null -m 40 -w "$u -> %{http_code} connect=%{time_connect}s total=%{time_total}s\n" "$u" || echo "$u -> no response"
+          done
+          for p in 22 80 443; do timeout 10 bash -c "</dev/tcp/13.232.25.224/$p" && echo "port $p open" || echo "port $p no answer"; done
       - name: Run diagnostic on the instance
         env:
           KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/k && chmod 600 ~/.ssh/k
-          ssh-keyscan -T 15 -H 13.232.25.224 >> ~/.ssh/known_hosts 2>/dev/null
-          set -o pipefail; (ssh -i ~/.ssh/k ubuntu@13.232.25.224 'bash -s' < scripts/ops/diagnose_prod.sh 2>&1 || echo "(diagnostic finished with non-zero status; report above is still valid)") | sed -E 's/([A-Za-z0-9])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+)/\1***@\2/g' || true
+          ssh-keyscan -T 40 -H 13.232.25.224 >> ~/.ssh/known_hosts 2>/dev/null || echo 'ssh-keyscan: no answer from the server'
+          set -o pipefail; (ssh -o ConnectTimeout=60 -i ~/.ssh/k ubuntu@13.232.25.224 'bash -s' < scripts/ops/diagnose_prod.sh 2>&1 || echo "(diagnostic finished with non-zero status; report above is still valid)") | sed -E 's/([A-Za-z0-9])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+)/\1***@\2/g' || true
