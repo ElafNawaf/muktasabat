@@ -56,7 +56,8 @@ jobs:
           fi
           # Decrypt on the server (hybrid: RSA-OAEP-wrapped AES key + AES-256-CBC body) and import.
           $SSH "set -e; d=\$(mktemp -d); trap 'rm -rf \$d' EXIT; cd \$d; base64 -d > p.tar; tar -xf p.tar;
-            sudo openssl pkeyutl -decrypt -inkey /etc/ssh/ssh_host_rsa_key -pkeyopt rsa_padding_mode:oaep -in key.bin -out key.txt;
-            sudo chown \$(id -u) key.txt;
+            sudo cp /etc/ssh/ssh_host_rsa_key hk; sudo ssh-keygen -q -p -N '' -m PEM -f hk >/dev/null;
+            sudo openssl pkeyutl -decrypt -inkey hk -pkeyopt rsa_padding_mode:oaep -in key.bin -out key.txt;
+            sudo rm -f hk; sudo chown \$(id -u) key.txt;
             openssl enc -d -aes-256-cbc -pbkdf2 -pass file:key.txt -in data.bin |
               (cd $RUNTIME && docker compose exec -T api python -m $CMD $DRY)" < <(base64 -w0 ops/staff-import.enc)
