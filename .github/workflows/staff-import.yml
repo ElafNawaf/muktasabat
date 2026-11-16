@@ -1,0 +1,57 @@
+# One-off staff import on production: adds/updates staff accounts as employees
+# of a group company (see api/scripts/import_staff.py for the list format).
+# The list holds names, emails and phones and this repo is public, so it is
+# committed only as ops/staff-import.enc, encrypted to the server's own SSH host
+# key: only the production server can read it. The log shows counts only.
+# Without the .enc file the run just prints the host public key to encrypt to.
+#
+# Run: push to the ops/staff-import branch (or "Run workflow" once on master).
+
+name: Staff import (production)
+
+on:
+  push:
+    branches: [ops/staff-import]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report what would change"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  HOST: 13.232.25.224
+  USER: ubuntu
+  RUNTIME: /home/ubuntu/muktasabat
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import staff
+        env:
+          KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: |
+          [ -n "$KEY" ] || { echo "::error::LIGHTSAIL_SSH_KEY secret missing"; exit 1; }
+          mkdir -p ~/.ssh; printf '%s\n' "$KEY" > ~/.ssh/k.pem; chmod 600 ~/.ssh/k.pem
+          ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          SSH="ssh -i $HOME/.ssh/k.pem -o ConnectTimeout=20 $USER@$HOST"
+          if [ ! -f ops/staff-import.enc ]; then
+            echo "No encrypted list yet. Server host public key (RSA):"
+            $SSH "cat /etc/ssh/ssh_host_rsa_key.pub"
+            exit 0
+          fi
+          # Decrypt on the server (hybrid: RSA-OAEP-wrapped AES key + AES-256-CBC body) and import.
+          $SSH "set -e; d=\$(mktemp -d); trap 'rm -rf \$d' EXIT; cd \$d; base64 -d > p.tar; tar -xf p.tar;
+            sudo openssl pkeyutl -decrypt -inkey /etc/ssh/ssh_host_rsa_key -pkeyopt rsa_padding_mode:oaep -in key.bin -out key.txt;
+            sudo chown \$(id -u) key.txt;
+            openssl enc -d -aes-256-cbc -pbkdf2 -pass file:key.txt -in data.bin |
+              (cd $RUNTIME && docker compose exec -T api python -m api.scripts.import_staff $DRY)" < <(base64 -w0 ops/staff-import.enc)
