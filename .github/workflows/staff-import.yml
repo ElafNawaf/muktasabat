@@ -44,6 +44,11 @@ jobs:
           mkdir -p ~/.ssh; printf '%s\n' "$KEY" > ~/.ssh/k.pem; chmod 600 ~/.ssh/k.pem
           ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
           SSH="ssh -i $HOME/.ssh/k.pem -o ConnectTimeout=20 $USER@$HOST"
+          # Optional ops/staff-import.cmd picks another script reading the same list,
+          # e.g. "api.scripts.backfill_attendance --from 2026-01-01 --to 2026-11-15".
+          CMD=$(cat ops/staff-import.cmd 2>/dev/null || echo api.scripts.import_staff)
+          [[ "$CMD" =~ ^api\.scripts\.[a-z_]+([[:space:]]+--[a-z-]+([[:space:]]+[0-9.-]+)?)*$ ]] || { echo "::error::bad command"; exit 1; }
+          echo "running: $CMD $DRY"
           if [ ! -f ops/staff-import.enc ]; then
             echo "No encrypted list yet. Server host public key (RSA):"
             $SSH "cat /etc/ssh/ssh_host_rsa_key.pub"
@@ -54,4 +59,4 @@ jobs:
             sudo openssl pkeyutl -decrypt -inkey /etc/ssh/ssh_host_rsa_key -pkeyopt rsa_padding_mode:oaep -in key.bin -out key.txt;
             sudo chown \$(id -u) key.txt;
             openssl enc -d -aes-256-cbc -pbkdf2 -pass file:key.txt -in data.bin |
-              (cd $RUNTIME && docker compose exec -T api python -m api.scripts.import_staff $DRY)" < <(base64 -w0 ops/staff-import.enc)
+              (cd $RUNTIME && docker compose exec -T api python -m $CMD $DRY)" < <(base64 -w0 ops/staff-import.enc)
