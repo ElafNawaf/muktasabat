@@ -12,7 +12,7 @@ class ProfileRead(BaseModel):
 
     id: int
     username: str
-    email: EmailStr
+    email: str  # read model: placeholder addresses of no-email staff must not fail
     role: str
     email_verified: bool = False
     created_at: datetime

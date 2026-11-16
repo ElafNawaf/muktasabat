@@ -11,7 +11,9 @@ class UserRead(BaseModel):
 
     id: int
     username: str
-    email: EmailStr
+    # Plain str on output: accounts imported without an email carry a placeholder
+    # on the reserved .invalid domain, which strict validation would reject (500).
+    email: str
     # Plain str (not the Role literal): custom roles created in the roles
     # matrix (e.g. content_editor) must still be able to sign in.
     role: str

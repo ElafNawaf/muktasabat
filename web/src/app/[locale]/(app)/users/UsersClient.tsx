@@ -389,7 +389,7 @@ export function UsersClient({
                 {superCandidates.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.username}
-                    {u.id === meId ? ` (${t("you")})` : ""} — {u.email}
+                    {u.id === meId ? ` (${t("you")})` : ""} — {u.email.endsWith(".invalid") ? "—" : u.email}
                   </option>
                 ))}
               </select>
@@ -565,7 +565,7 @@ export function UsersClient({
                                   </span>
                                 )}
                               </strong>
-                              <small dir="ltr">{u.email}</small>
+                              <small dir="ltr">{u.email.endsWith(".invalid") ? (locale === "ar" ? "بدون بريد — أضفه لدعوته" : "No email yet — add one to invite") : u.email}</small>
                             </span>
                           </div>
                         </td>

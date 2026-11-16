@@ -94,7 +94,10 @@ def send_email(msg: EmailMessage) -> bool:
     # Mailboxes are case-insensitive in practice, but SES's sandbox recipient
     # check is not: "Elaf.x@gmail.com" fails when "elaf.x@gmail.com" is verified.
     msg.to = (msg.to or "").strip().lower()
-    msg.cc = [c for c in dict.fromkeys((c or "").strip().lower() for c in (msg.cc or [])) if c and c != msg.to] or None
+    msg.cc = [c for c in dict.fromkeys((c or "").strip().lower() for c in (msg.cc or [])) if c and c != msg.to and not c.endswith(".invalid")] or None
+    if msg.to.endswith(".invalid"):  # staff imported without an email: nothing to send
+        logger.info("[email:skipped] no real address for this recipient (subject=%r)", msg.subject)
+        return False
     if not settings.ses_region or not settings.ses_from_email:
         logger.info(
             "[email:console] to=%s cc=%s subject=%r\n%s",
