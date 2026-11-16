@@ -1518,7 +1518,7 @@
     "colProblem": "Problem",
     "errorsTitle": "{n} errors to fix",
     "allSheets": "All sheets",
-    "downloadErrors": "Error report (CSV)",
+    "downloadErrors": "Error report (Excel)",
     "truncated": "Showing the first {n} errors. Fix these and validate again to see the rest.",
     "showingFirst": "Showing the first {n} matching errors.",
     "empty": "(empty)",

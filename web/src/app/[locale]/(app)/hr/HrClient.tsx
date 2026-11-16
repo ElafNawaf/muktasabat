@@ -319,17 +319,6 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
     loadRange(f(start), f(end));
   };
 
-  function csv() {
-    const head = ["Employee", "Working days", "Present", "Late", "Late minutes", "Absent", "On leave", "Remote days", "Field days", "Early leave minutes", "Permission minutes", "Recorded hours", "Actual hours", "Away minutes", "Exceptions", "Refused check-ins", "Attendance %"];
-    const lines = [head, ...report.rows.map((r) => [r.name, r.working_days, r.present, r.late, r.late_minutes, r.absent, r.on_leave, r.remote_days, r.field_days, r.early_leave_minutes, r.permission_minutes, r.worked_hours, r.verified_hours, r.away_minutes, r.exceptions, r.refused_checkins, r.attendance_pct])]
-      .map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","));
-    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `attendance-${report.month}${report.to_month && report.to_month !== report.month ? `_to_${report.to_month}` : ""}.csv`;
-    a.click();
-  }
-
   return (
     <>
       <div className="hr-att-bar">
@@ -347,7 +336,7 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
                 <button className="btn btn-ghost btn-sm" onClick={() => presetRange(3)}>{T("٣ أشهر", "3 months")}</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => { const y = new Date().getFullYear(); loadRange(`${y}-01`, `${y}-${String(new Date().getMonth() + 1).padStart(2, "0")}`); }}>{T("منذ بداية السنة", "Year to date")}</button>
               </div>
-              <a className="btn btn-primary btn-sm" href={`/api/hr/attendance-report?month=${report.month}&to_month=${report.to_month || report.month}&locale=${locale}`} download><span className="ms ms-sm">table_view</span>{T("تصدير Excel", "Export Excel")}</a><button className="btn btn-secondary btn-sm" onClick={csv}><span className="ms ms-sm">download</span>CSV</button></div>}
+              <a className="btn btn-primary btn-sm" href={`/api/hr/attendance-report?month=${report.month}&to_month=${report.to_month || report.month}&locale=${locale}`} download><span className="ms ms-sm">table_view</span>{T("تصدير Excel", "Export Excel")}</a></div>}
       </div>
 
       {view === "day" ? (

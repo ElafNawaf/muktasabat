@@ -17,9 +17,9 @@ export async function GET(req: Request) {
     const v = src.get(k);
     if (v && /^[a-z0-9]{1,8}$/i.test(v)) p.set(k, v);
   }
-  const res = await fetch(`${API_BASE}/api/v1/owner-portal/export/${kind}.csv?${p}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  const res = await fetch(`${API_BASE}/api/v1/owner-portal/export/${kind}.xlsx?${p}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   if (!res.ok) return NextResponse.json({ detail: "Not available" }, { status: res.status });
   return new NextResponse(res.body, {
-    headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="muktasabat-${kind}.csv"`, "Cache-Control": "no-store" },
+    headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Content-Disposition": res.headers.get("content-disposition") || `attachment; filename="muktasabat-${kind}.xlsx"`, "Cache-Control": "no-store" },
   });
 }

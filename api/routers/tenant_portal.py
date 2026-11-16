@@ -838,17 +838,24 @@ def reject_report(report_id: int, payload: ReviewIn, db: DbSession, user: Curren
     return {"ok": True}
 
 
+@router.get("/export/{kind}.xlsx")
 @router.get("/export/{kind}.csv")
 def export(kind: str, scope: ScopeDep, db: DbSession, locale: LocaleDep):
-    import csv
-    import io
+    """Tenant-portal exports as Muktasabat-branded Excel files."""
+    from api.services.branded_xlsx import details_line, table_workbook, xlsx_response
+
+    class _Rows:  # collects what used to be CSV rows
+        def __init__(self):
+            self.rows = []
+
+        def writerow(self, r):
+            self.rows.append(list(r))
 
     ar = locale == "ar"
     H = lambda a, e: a if ar else e  # noqa: E731
     today = date.today()
     reports = _reports(db, scope.tenant.id)
-    buf = io.StringIO()
-    w = csv.writer(buf)
+    w = _Rows()
     ST = {"paid": H("مدفوعة", "Paid"), "reported": H("قيد التأكيد", "Being confirmed"), "overdue": H("متأخرة", "Overdue"),
           "due_soon": H("مستحقة قريباً", "Due soon"), "upcoming": H("قادمة", "Upcoming")}
     MT = {"bank_transfer": H("تحويل بنكي", "Bank transfer"), "cash": H("نقداً", "Cash"), "cheque": H("شيك", "Cheque")}
@@ -870,5 +877,8 @@ def export(kind: str, scope: ScopeDep, db: DbSession, locale: LocaleDep):
                         j["annual_rent"], j["total_amount"], j["paid_amount"], j["remaining_amount"]])
     else:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown export")
-    return Response("﻿" + buf.getvalue(), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="{kind}.csv"'})
+    who = localized_value(scope.tenant, "name", locale)
+    title = {"payments": H("الدفعات", "Payments"), "leases": H("عقود الإيجار", "Leases")}[kind]
+    data = table_workbook(title, w.rows[0], w.rows[1:], locale,
+                          details=details_line(locale, extra=[H(f"المستأجر: {who}", f"Tenant: {who}")] if who else []))
+    return xlsx_response(data, f"muktasabat-{kind}-{today:%Y-%m-%d}")

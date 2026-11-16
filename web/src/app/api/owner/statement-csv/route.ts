@@ -13,15 +13,15 @@ export async function GET(req: Request) {
     const v = src.get(k);
     if (v && /^[a-z0-9]{1,6}$/i.test(v)) p.set(k, v);
   }
-  const res = await fetch(`${API_BASE}/api/v1/owner-portal/statement.csv?${p}`, {
+  const res = await fetch(`${API_BASE}/api/v1/owner-portal/statement.xlsx?${p}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   if (!res.ok) return NextResponse.json({ detail: "Not available" }, { status: res.status });
   return new NextResponse(res.body, {
     headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": res.headers.get("content-disposition") || "attachment; filename=statement.csv",
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": res.headers.get("content-disposition") || "attachment; filename=statement.xlsx",
       "Cache-Control": "no-store",
     },
   });

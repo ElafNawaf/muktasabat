@@ -463,25 +463,20 @@ def list_leads(
     return db.scalars(q.order_by(CmsLead.id.desc()).limit(limit)).all()
 
 
+@admin.get("/leads.xlsx")
 @admin.get("/leads.csv")
-def export_leads(db: DbSession, _u: Perm("website", "view")):
-    buf = io.StringIO()
-    buf.write("﻿")  # BOM so Excel opens Arabic correctly
-    w = csv.writer(buf)
-    w.writerow(["id", "created_at", "kind", "status", "name", "phone", "email", "city", "message", "page", "notes"])
+def export_leads(db: DbSession, _u: Perm("website", "view"), locale: str = Query(default="ar", pattern="^(ar|en)$")):
+    """Website leads as a Muktasabat-branded Excel file."""
+    from api.services.branded_xlsx import details_line, table_workbook, xlsx_response
 
-    def safe(v):  # neutralise spreadsheet formula injection
-        s = "" if v is None else str(v)
-        return "'" + s if s[:1] in ("=", "+", "-", "@") else s
-
-    for r in db.scalars(select(CmsLead).order_by(CmsLead.id.desc())).all():
-        w.writerow([safe(x) for x in (r.id, r.created_at.isoformat(), r.kind, r.status, r.name, r.phone, r.email, r.city, r.message, r.source_page, r.notes)])
-    buf.seek(0)
-    return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": "attachment; filename=muktasabat-leads.csv"},
-    )
+    ar = locale == "ar"
+    head = (["#", "التاريخ", "النوع", "الحالة", "الاسم", "الجوال", "البريد", "المدينة", "الرسالة", "الصفحة", "ملاحظات"] if ar
+            else ["#", "Received", "Kind", "Status", "Name", "Phone", "Email", "City", "Message", "Page", "Notes"])
+    rows = [[r.id, r.created_at.strftime("%Y-%m-%d %H:%M"), r.kind, r.status, r.name, r.phone, r.email, r.city, r.message, r.source_page, r.notes]
+            for r in db.scalars(select(CmsLead).order_by(CmsLead.id.desc())).all()]
+    data = table_workbook("طلبات الموقع الإلكتروني" if ar else "Website leads", head, rows, locale,
+                          details=details_line(locale, extra=[(f"عدد الطلبات: {len(rows)}" if ar else f"Leads: {len(rows)}")]))
+    return xlsx_response(data, "muktasabat-leads")
 
 
 @admin.put("/leads/{lead_id}", response_model=LeadOut)

@@ -51,7 +51,7 @@ export default async function OwnerStatements({ params, searchParams }: { params
             <p className="ow-muted">{day(locale, s.period_start)} – {day(locale, s.period_end)}</p>
           </div>
           <div className="ow-statement__actions ow-noprint">
-            <a className="ow-btn ow-btn--ghost" href={`/api/owner/statement-csv?${csvQ}`}><span className="ms">download</span>CSV / Excel</a>
+            <a className="ow-btn ow-btn--ghost" href={`/api/owner/statement-csv?${csvQ}`}><span className="ms">table_view</span>Excel</a>
             <PrintButton label={t("طباعة / PDF", "Print / PDF")} />
           </div>
         </header>

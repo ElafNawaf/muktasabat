@@ -23,8 +23,6 @@ the existing staff owner statement (`/analytics/owner-statement`).
 """
 from __future__ import annotations
 
-import csv
-import io
 import logging
 import re
 import secrets
@@ -35,7 +33,6 @@ from typing import Annotated, Optional
 
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -570,6 +567,7 @@ def statement(
     return _statement(db, owner, locale, s, e)
 
 
+@router.get("/statement.xlsx")
 @router.get("/statement.csv")
 def statement_csv(
     owner: ScopedOwner,
@@ -580,44 +578,30 @@ def statement_csv(
 ):
     s, e = _period(year, month)
     st = _statement(db, owner, locale, s, e)
+    from api.services.branded_xlsx import details_line, table_workbook, xlsx_response
+
     ar = locale == "ar"
-    buf = io.StringIO()
-    buf.write("﻿")
-    w = csv.writer(buf)
-
-    def safe(v):
-        v = "" if v is None else str(v)
-        return "'" + v if v[:1] in ("=", "+", "-", "@") else v
-
-    w.writerow(["كشف حساب المالك" if ar else "Owner statement", st["owner"]["name"], f'{st["period_start"]} → {st["period_end"]}'])
-    w.writerow([])
-    w.writerow(
-        ["التاريخ", "العقار", "الوحدة", "المستأجر", "رقم السند", "الإجمالي", "أتعاب الإدارة", "عمولة الوسيط", "رسوم إيجار", "الصافي"]
-        if ar
-        else ["Date", "Property", "Unit", "Tenant", "Receipt", "Gross", "Management fee", "Agent fee", "Ejar fee", "Net"]
-    )
-    for x in st["income"]:
-        w.writerow([safe(x[k]) for k in ("date", "building", "unit", "tenant", "receipt", "gross", "management_fee", "agent_fee", "ejar_fee", "net")])
-    w.writerow([])
-    w.writerow(["المصروفات" if ar else "Expenses"])
-    w.writerow(["التاريخ", "الفئة", "الوصف", "العقار", "المورد", "المبلغ", "مخصوم"] if ar else ["Date", "Category", "Description", "Property", "Vendor", "Amount", "Deducted"])
-    for x in st["expenses"]:
-        w.writerow([safe(x["date"]), safe(x["category"]), safe(x["description"]), safe(x["building"]), safe(x["vendor"]), x["amount"], "✓" if x["deducted"] else ""])
-    w.writerow([])
+    income_h = (["التاريخ", "العقار", "الوحدة", "المستأجر", "رقم السند", "الإجمالي", "أتعاب الإدارة", "عمولة الوسيط", "رسوم إيجار", "الصافي"] if ar
+                else ["Date", "Property", "Unit", "Tenant", "Receipt", "Gross", "Management fee", "Agent fee", "Ejar fee", "Net"])
+    income = [[x[k] for k in ("date", "building", "unit", "tenant", "receipt", "gross", "management_fee", "agent_fee", "ejar_fee", "net")] for x in st["income"]]
+    exp_h = ["التاريخ", "الفئة", "الوصف", "العقار", "المورد", "المبلغ", "مخصوم"] if ar else ["Date", "Category", "Description", "Property", "Vendor", "Amount", "Deducted"]
+    exps = [[x["date"], x["category"], x["description"], x["building"], x["vendor"], x["amount"], "✓" if x["deducted"] else ""] for x in st["expenses"]]
     t = st["totals"]
     labels = (
         [("إجمالي المحصّل", "gross"), ("أتعاب الإدارة", "management_fee"), ("عمولة الوسيط", "agent_fee"), ("رسوم إيجار", "ejar_fee"), ("المصروفات المخصومة", "expenses"), ("الصافي المستحق للمالك", "net_payable")]
         if ar
         else [("Gross collected", "gross"), ("Management fees", "management_fee"), ("Agent fees", "agent_fee"), ("Ejar fees", "ejar_fee"), ("Deducted expenses", "expenses"), ("Net payable to owner", "net_payable")]
     )
-    for label, key in labels:
-        w.writerow([label, t[key]])
-    fname = f"muktasabat-statement-{st['period_start'][:7] if month else year}.csv"
-    return StreamingResponse(
-        iter([buf.getvalue()]),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename={fname}"},
+    period = f'{st["period_start"]} → {st["period_end"]}'
+    data = table_workbook(
+        ("كشف حساب المالك — " if ar else "Owner statement — ") + st["owner"]["name"], [], [], locale,
+        details=details_line(locale, extra=[(f"الفترة: {period}" if ar else f"Period: {period}")]),
+        sheet=("كشف الحساب" if ar else "Statement"),
+        sections=[{"title": "الإيرادات" if ar else "Income", "header": income_h, "rows": income, "sum_cols": [6, 7, 8, 9, 10]},
+                  {"title": "المصروفات" if ar else "Expenses", "header": exp_h, "rows": exps, "sum_cols": [6]}],
+        summary=[(label, t[key]) for label, key in labels],
     )
+    return xlsx_response(data, f"muktasabat-statement-{st['period_start'][:7] if month else year}")
 
 
 # ═══════════════════════════ staff: portal access ═══════════════════════════

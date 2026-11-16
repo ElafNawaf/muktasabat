@@ -73,7 +73,7 @@ from api.routers import (
 )
 from api.bootstrap_roles import seed_default_roles
 from api.cms_seed import migrate_cms, migrate_cms_v2, migrate_cms_v3, migrate_cms_v4, migrate_cms_v5, migrate_cms_v6, seed_cms
-from api.routers import cms, files, owner_portal
+from api.routers import cms, exports, files, owner_portal
 
 
 # Configure JSON logging before anything else grabs a handler.
@@ -249,6 +249,7 @@ app.include_router(people_overview.router, prefix=API_V1)
 app.include_router(previews.router, prefix=API_V1)
 app.include_router(forms.router, prefix=API_V1)
 app.include_router(notifications.router, prefix=API_V1)
+app.include_router(exports.router, prefix=API_V1)
 app.include_router(auth.router, prefix=API_V1)
 # Self-service profile / credentials / sessions + support tickets
 app.include_router(account.router, prefix=API_V1)

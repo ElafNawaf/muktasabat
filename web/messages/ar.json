@@ -1518,7 +1518,7 @@
     "colProblem": "المشكلة",
     "errorsTitle": "{n} خطأ يجب تصحيحه",
     "allSheets": "كل الأوراق",
-    "downloadErrors": "تقرير الأخطاء (CSV)",
+    "downloadErrors": "تقرير الأخطاء (Excel)",
     "truncated": "يتم عرض أول {n} خطأ. صحّحها ثم تحقق مرة أخرى لعرض البقية.",
     "showingFirst": "يتم عرض أول {n} خطأ مطابق.",
     "empty": "(فارغ)",

@@ -365,45 +365,26 @@ def wps_file(rid: int, db: DbSession, user: Perm("hr", "approve")):
 
 @router.get("/runs/{rid}/register.xlsx")
 def register(rid: int, db: DbSession, user: Perm("hr", "approve")):
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    """Payroll register as a Muktasabat-branded Excel file."""
+    from api.services.branded_xlsx import details_line, table_workbook, xlsx_response
 
     r = _run(db, rid)
     c = db.get(HrCompany, r.company_id)
     lines = db.scalars(select(Payslip).where(Payslip.run_id == r.id).order_by(Payslip.name)).all()
-    wb = Workbook()
-    ws = wb.active
-    ws.title = r.month
-    ws.sheet_view.rightToLeft = True
-    ws.append([f"مسير رواتب {c.name_ar if c else ''} — {r.month}"])
-    ws["A1"].font = Font(bold=True, size=14)
-    ws.append([f"الحالة: {r.status} · أعدّه: {r.created_by or ''} · رفعه: {r.submitted_by or ''} · اعتمده: {r.approved_by or ''}"])
     head = ["الموظف", "الرقم الوظيفي", "الهوية", "الآيبان", "الأساسي", "السكن", "النقل", "بدلات أخرى", "ساعات إضافية", "أجر إضافي", "إضافات",
             "الإجمالي", "أيام مستحقة", "غياب (يوم)", "خصم أيام خارج العقد", "خصم غياب", "خصم إجازة بدون راتب", "خصم تأخير", "التأمينات (موظف)",
             "قسط سلفة/قرض", "خصومات أخرى", "إجمالي الخصومات", "الصافي", "التأمينات (صاحب العمل)", "ملاحظات"]
-    ws.append(head)
-    fill = PatternFill("solid", fgColor="7B1A1A")
-    for cell in ws[3]:
-        cell.font, cell.fill, cell.alignment = Font(bold=True, color="FFFFFF"), fill, Alignment(wrap_text=True, vertical="center")
-    for l in lines:
-        if l.excluded:
-            continue
-        ws.append([l.name, l.employee_no, l.id_number, l.iban, l.basic, l.housing, l.transport, l.other_allowance, l.overtime_hours, l.overtime_amount,
-                   l.additions, l.gross, l.payable_days, l.absent_days, l.proration_deduction, l.absence_deduction, l.unpaid_deduction, l.late_deduction,
-                   l.gosi_employee, l.loan_deduction, l.other_deductions, l.total_deductions, l.net, l.gosi_employer,
-                   " ; ".join(f"{a['label']}: {a['amount']}" for a in _j(l.adjustments, []))])
-    t = P.totals(lines)
-    ws.append(["الإجمالي", "", "", "", t["basic"], "", "", "", "", t["overtime"], t["additions"], t["gross"], "", "", "", "", "", "", t["gosi_employee"],
-               t["loans"], "", t["deductions"], t["net"], t["gosi_employer"]])
-    for cell in ws[ws.max_row]:
-        cell.font = Font(bold=True)
-    for i, wdt in enumerate([24, 12, 13, 28] + [12] * 21, start=1):
-        ws.column_dimensions[ws.cell(row=3, column=i).column_letter].width = wdt
-    out = io.BytesIO()
-    wb.save(out)
-    name = f"Payroll-{(c.short_code if c else 'CO')}-{r.month}.xlsx"
-    return Response(out.getvalue(), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+    rows = [[l.name, l.employee_no, l.id_number, l.iban, l.basic, l.housing, l.transport, l.other_allowance, l.overtime_hours, l.overtime_amount,
+             l.additions, l.gross, l.payable_days, l.absent_days, l.proration_deduction, l.absence_deduction, l.unpaid_deduction, l.late_deduction,
+             l.gosi_employee, l.loan_deduction, l.other_deductions, l.total_deductions, l.net, l.gosi_employer,
+             " ; ".join(f"{a['label']}: {a['amount']}" for a in _j(l.adjustments, []))]
+            for l in lines if not l.excluded]
+    data = table_workbook(
+        f"مسير رواتب {c.name_ar if c else ''} — {r.month}", head, rows, "ar",
+        details=details_line("ar", extra=[f"الحالة: {r.status}", f"أعدّه: {r.created_by or '—'}", f"رفعه: {r.submitted_by or '—'}", f"اعتمده: {r.approved_by or '—'}"]),
+        sheet=r.month, sum_cols=[5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+    )
+    return xlsx_response(data, f"Payroll-{(c.short_code if c else 'CO')}-{r.month}")
 
 
 # ───────────────────────── payslips ─────────────────────────

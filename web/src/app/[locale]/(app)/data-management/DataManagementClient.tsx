@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { downloadBrandedTable } from "@/lib/branded-export";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 
@@ -185,20 +186,14 @@ export function DataManagementClient({ summary, locale }: { summary: DataSummary
 
   function downloadErrorsCsv() {
     if (!report) return;
-    const header = ["sheet", "row", "column", "column_label", "value", "message_en", "message_ar"];
-    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const lines = report.errors.map((e) =>
-      [e.sheet_title ?? "", e.row ?? "", e.column ?? "", ar ? e.column_ar : e.column_en, e.value, e.message_en, e.message_ar]
-        .map(esc)
-        .join(","),
-    );
-    const blob = new Blob(["﻿" + [header.join(","), ...lines].join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(file?.name ?? "import").replace(/\.xlsx$/i, "")}-errors.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    void downloadBrandedTable({
+      title: ar ? "أخطاء ملف الاستيراد" : "Import file errors",
+      filename: `${(file?.name ?? "import").replace(/\.xlsx$/i, "")}-errors`,
+      locale: ar ? "ar" : "en",
+      details: file?.name,
+      header: ar ? ["الورقة", "الصف", "العمود", "الحقل", "القيمة", "الخطأ"] : ["Sheet", "Row", "Column", "Field", "Value", "Error"],
+      rows: report.errors.map((e) => [ar ? e.sheet_ar ?? e.sheet_title : e.sheet_title, e.row, e.column, ar ? e.column_ar : e.column_en, e.value as string, ar ? e.message_ar : e.message_en]),
+    });
   }
 
   const busy = phase === "validating" || phase === "applying";

@@ -73,7 +73,7 @@ export function LeadsInbox({ rows, locale, canEdit, canDelete }: { rows: Lead[];
     <div className="cms-panel">
       <div className="cms-toolbar">
         <Filter statuses={LEAD_STATUS} value={filter} onChange={setFilter} counts={counts} locale={locale} />
-        <a className="cms-btn" href="/api/cms/leads-csv"><span className="ms">download</span>{tx(locale, ["Export CSV", "تصدير CSV"])}</a>
+        <a className="cms-btn" href={`/api/cms/leads-csv?locale=${locale}`}><span className="ms">table_view</span>{tx(locale, ["Export Excel", "تصدير Excel"])}</a>
       </div>
       {ib.error && <p className="cms-err">{ib.error}</p>}
       {shown.length === 0 ? (

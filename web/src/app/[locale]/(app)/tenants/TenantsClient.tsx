@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { downloadBrandedTable } from "@/lib/branded-export";
 import { useMemo, useState, useTransition } from "react";
 
 import { ConfirmDialog } from "@/components/Modal";
@@ -103,57 +104,20 @@ export function TenantsClient({
   };
 
   const doExport = () => {
-    const headers = [
-      "id",
-      "tenant_type",
-      "name",
-      "name_en",
-      "name_ar",
-      "phone",
-      "national_id",
-      "date_of_birth",
-      "cr_number",
-      "cr_date",
-      "absher_phone",
-      "representative_name",
-      "representative_national_id",
-      "representative_date_of_birth",
-      "tax_number",
-      "email",
-      "companions",
-    ];
-    const rows = filtered.map((tn) =>
-      [
-        tn.id,
-        tn.tenant_type,
-        tn.name,
-        tn.name_en,
-        tn.name_ar,
-        tn.phone,
-        tn.national_id,
-        tn.date_of_birth,
-        tn.cr_number,
-        tn.cr_date,
-        tn.absher_phone,
-        tn.representative_name,
-        tn.representative_national_id,
-        tn.representative_date_of_birth,
-        tn.tax_number,
-        tn.email,
-        JSON.stringify(tn.companions ?? []),
-      ]
-        .map((v) => (v == null ? "" : String(v).replace(/"/g, '""')))
-        .map((v) => `"${v}"`)
-        .join(","),
-    );
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tenants-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const ar = locale === "ar";
+    const kind = (k?: string | null) => (k === "company" ? (ar ? "منشأة" : "Company") : ar ? "فرد" : "Individual");
+    void downloadBrandedTable({
+      title: ar ? "قائمة المستأجرين" : "Tenants",
+      filename: `tenants-${new Date().toISOString().slice(0, 10)}`,
+      locale,
+      header: ar
+        ? ["#", "الاسم", "النوع", "الجوال", "رقم الهوية", "تاريخ الميلاد", "السجل التجاري", "تاريخ السجل", "جوال أبشر", "اسم الممثل", "هوية الممثل", "الرقم الضريبي", "البريد", "المرافقون"]
+        : ["#", "Name", "Type", "Phone", "National ID", "Date of birth", "CR number", "CR date", "Absher phone", "Representative", "Representative ID", "VAT number", "Email", "Companions"],
+      rows: filtered.map((tn) => [
+        tn.id, (ar ? tn.name_ar : tn.name_en) || tn.name, kind(tn.tenant_type), tn.phone, tn.national_id, tn.date_of_birth, tn.cr_number, tn.cr_date,
+        tn.absher_phone, tn.representative_name, tn.representative_national_id, tn.tax_number, tn.email, (tn.companions ?? []).length || "",
+      ]),
+    });
   };
 
   const summaries = useMemo(() => {

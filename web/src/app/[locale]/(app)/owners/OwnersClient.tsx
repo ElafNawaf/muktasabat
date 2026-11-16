@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { downloadBrandedTable } from "@/lib/branded-export";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 
@@ -176,21 +177,16 @@ export function OwnersClient({
   };
 
   const doExport = () => {
-    const headers = ["id", "name", "name_en", "name_ar", "phone", "email", "national_id", "bank_name", "iban"];
-    const rows = filtered.map((o) =>
-      [o.id, o.name, o.name_en, o.name_ar, o.phone, o.email, o.national_id, o.bank_name, o.iban]
-        .map((v) => (v == null ? "" : String(v).replace(/"/g, '""')))
-        .map((v) => `"${v}"`)
-        .join(","),
-    );
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `owners-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const ar = locale === "ar";
+    void downloadBrandedTable({
+      title: ar ? "قائمة الملاك" : "Owners",
+      filename: `owners-${new Date().toISOString().slice(0, 10)}`,
+      locale,
+      header: ar
+        ? ["#", "الاسم", "الاسم (عربي)", "الاسم (إنجليزي)", "الجوال", "البريد", "رقم الهوية", "البنك", "الآيبان"]
+        : ["#", "Name", "Name (Arabic)", "Name (English)", "Phone", "Email", "National ID", "Bank", "IBAN"],
+      rows: filtered.map((o) => [o.id, o.name, o.name_ar, o.name_en, o.phone, o.email, o.national_id, o.bank_name, o.iban]),
+    });
   };
 
   const doDelete = () => {

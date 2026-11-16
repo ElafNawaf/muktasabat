@@ -410,6 +410,12 @@ def _write_readme(ws, data_rows: dict[str, list[Any]], template: bool, sheets: O
     ws.column_dimensions["C"].width = 34
     ws.column_dimensions["D"].width = 12
     ws.column_dimensions["E"].width = 70
+    from api.services.branded_xlsx import LOGO
+    if LOGO.exists():  # Muktasabat logo, same as every other export
+        from openpyxl.drawing.image import Image as XLImage
+        img = XLImage(str(LOGO))
+        img.width = img.height = 56
+        ws.add_image(img, "E2")
     ws["B2"] = "Muktasabat — Data management workbook"
     ws["B2"].font = Font(bold=True, size=16, color=BRAND)
     ws["B3"] = "شركة مكتسبات العقارية — ملف إدارة البيانات"

@@ -360,16 +360,22 @@ import io as _io
 from fastapi.responses import Response as _Response
 
 
-def _csv_response(name: str, header: list[str], rows: list[list]) -> _Response:
-    buf = _io.StringIO()
-    w = _csv.writer(buf)
-    w.writerow(header)
-    w.writerows(rows)
-    # UTF-8 BOM so Excel opens Arabic text correctly.
-    return _Response("﻿" + buf.getvalue(), media_type="text/csv; charset=utf-8",
-                     headers={"Content-Disposition": f'attachment; filename="{name}.csv"'})
+_EXPORT_TITLES = {"payments": ("الدفعات والتحصيل", "Payments & collection"), "units": ("الوحدات", "Units"), "expenses": ("المصروفات", "Expenses")}
 
 
+def _csv_response(owner, locale: str, name: str, header: list[str], rows: list[list]) -> _Response:
+    """Owner-portal export as a Muktasabat-branded Excel file (kept the old name; the URL still ends in .csv for old links)."""
+    from api.services.branded_xlsx import details_line, table_workbook, xlsx_response
+
+    ar = locale == "ar"
+    t = _EXPORT_TITLES.get(name, (name, name))
+    who = localized_value(owner, "name", locale) if owner else ""
+    data = table_workbook(t[0] if ar else t[1], header, rows, locale,
+                          details=details_line(locale, extra=[(f"المالك: {who}" if ar else f"Owner: {who}")] if who else []))
+    return xlsx_response(data, f"muktasabat-{name}-{date.today():%Y-%m-%d}")
+
+
+@router.get("/export/{kind}.xlsx")
 @router.get("/export/{kind}.csv")
 def export(kind: str, owner: ScopedOwner, db: DbSession, locale: LocaleDep):
     ar = locale == "ar"
@@ -382,7 +388,7 @@ def export(kind: str, owner: ScopedOwner, db: DbSession, locale: LocaleDep):
         rows = _rows(owner)
         reported = _reported_ids(db, [r.payment.id for r in rows])
         items = sorted((_row_json(r, today, reported, locale) for r in rows), key=lambda x: x["due_date"])
-        return _csv_response("payments", [
+        return _csv_response(owner, locale, "payments", [
             H("تاريخ الاستحقاق", "Due date"), H("العقار", "Property"), H("الوحدة", "Unit"), H("المستأجر", "Tenant"), H("رقم العقد", "Lease"),
             H("المبلغ", "Amount"), H("حالة التحصيل", "Collection"), H("تاريخ السداد", "Paid on"), H("رقم الإيصال", "Receipt"),
             H("أتعاب الإدارة", "Management fee"), H("الوساطة", "Brokerage"), H("رسوم إيجار", "Ejar fee"), H("حصتك", "Your share"),
@@ -398,11 +404,11 @@ def export(kind: str, owner: ScopedOwner, db: DbSession, locale: LocaleDep):
                 out.append([_name(b, locale), u.number, u.unit_type or "", u.area_sqm or "", H("مؤجرة", "Leased") if cur else H("شاغرة", "Vacant"),
                             localized_value(cur.tenant, "name", locale) if cur and cur.tenant else "", cur.contract_number if cur else "",
                             cur.start_date.isoformat() if cur else "", cur.end_date.isoformat() if cur else "", r2(cur.rent_amount) if cur else r2(u.rent_amount)])
-        return _csv_response("units", [H("العقار", "Property"), H("الوحدة", "Unit"), H("النوع", "Type"), H("المساحة م²", "Area m²"), H("الحالة", "Status"),
+        return _csv_response(owner, locale, "units", [H("العقار", "Property"), H("الوحدة", "Unit"), H("النوع", "Type"), H("المساحة م²", "Area m²"), H("الحالة", "Status"),
                                        H("المستأجر", "Tenant"), H("رقم العقد", "Lease"), H("بداية العقد", "Lease start"), H("نهاية العقد", "Lease end"), H("الإيجار السنوي", "Annual rent")], out)
     if kind == "expenses":
         exps = _owner_expenses(db, owner, date(2000, 1, 1), today)
-        return _csv_response("expenses", [H("التاريخ", "Date"), H("العقار", "Property"), H("البند", "Category"), H("الوصف", "Description"), H("المورد", "Vendor"),
+        return _csv_response(owner, locale, "expenses", [H("التاريخ", "Date"), H("العقار", "Property"), H("البند", "Category"), H("الوصف", "Description"), H("المورد", "Vendor"),
                                           H("المبلغ", "Amount"), H("يُخصم من حصتك", "Deducted from you"), H("رقم الإيصال", "Receipt")],
                              [[e.expense_date.isoformat(), _name(e.building, locale) if e.building else "", e.category, localized_value(e, "description", locale) or "",
                                e.vendor_name or "", r2(e.amount), H("نعم", "Yes") if _deductible(e) else H("لا", "No"), e.receipt_number or ""]
