@@ -44,7 +44,7 @@ export async function hrBook(id: number, body: { booking_ref: string; actual_cos
 }
 export async function hrSaveEmployee(userId: number, body: Record<string, unknown>) { return call(() => api.put(`${B}/employees/${userId}`, body)); }
 export async function hrAttendanceDay(day: string, locale: string) { return call(() => api.get(`${B}/attendance?day=${day}&locale=${locale}`), false); }
-export async function hrAttendanceReport(month: string, locale: string) { return call(() => api.get(`${B}/attendance/report?month=${month}&locale=${locale}`), false); }
+export async function hrAttendanceReport(month: string, locale: string, toMonth?: string) { return call(() => api.get(`${B}/attendance/report?month=${month}${toMonth ? `&to_month=${toMonth}` : ""}&locale=${locale}`), false); }
 export async function hrAttendanceUser(userId: number, month: string) { return call(() => api.get(`${B}/attendance/${userId}?month=${month}`), false); }
 export async function hrSetAttendance(body: Record<string, unknown>) { return call(() => api.put(`${B}/attendance`, body)); }
 export async function hrSaveSettings(body: Record<string, unknown>) { return call(() => api.put(`${B}/settings`, body)); }

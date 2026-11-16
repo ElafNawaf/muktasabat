@@ -1173,16 +1173,31 @@ def employee_month(db: Session, s: HrSettings, u: User, first: date, last: date,
     return row, days
 
 
-@router.get("/attendance/report")
-def attendance_report(db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None, locale: str = Query("ar", pattern="^(ar|en)$")):
-    s = _settings(db)
+def _month_range(month: Optional[str], to_month: Optional[str]) -> tuple[date, date]:
+    """From the first day of `month` to the last day of `to_month` (same month when empty); at most 24 months."""
     first, last = _month(month)
+    if to_month:
+        a, b = _month(to_month)
+        if a < first:  # given backwards: swap
+            first = a
+        else:
+            last = b
+        if (last.year - first.year) * 12 + last.month - first.month >= 24:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "The range can be at most 24 months.")
+    return first, last
+
+
+@router.get("/attendance/report")
+def attendance_report(db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None, to_month: Optional[str] = None,
+                      locale: str = Query("ar", pattern="^(ar|en)$")):
+    s = _settings(db)
+    first, last = _month_range(month, to_month)
     rows = [employee_month(db, s, u, first, last, locale)[0] for u in _staff(db, working_only=True)]
-    return {"month": first.strftime("%Y-%m"), "from": first.isoformat(), "to": last.isoformat(), "rows": rows}
+    return {"month": first.strftime("%Y-%m"), "to_month": last.strftime("%Y-%m"), "from": first.isoformat(), "to": last.isoformat(), "rows": rows}
 
 
 @router.get("/attendance/report.xlsx")
-def attendance_report_xlsx(db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None, locale: str = Query("ar", pattern="^(ar|en)$")):
+def attendance_report_xlsx(db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None, to_month: Optional[str] = None, locale: str = Query("ar", pattern="^(ar|en)$")):
     """The monthly report as a branded Excel file (Muktasabat letterhead)."""
     from fastapi.responses import Response
 
@@ -1190,7 +1205,7 @@ def attendance_report_xlsx(db: DbSession, user: Perm("hr", "view"), month: Optio
     from api.services.attendance_xlsx import build
 
     s = _settings(db)
-    first, last = _month(month)
+    first, last = _month_range(month, to_month)
     comps = {c.id: c for c in db.scalars(select(HrCompany)).all()}
     prof = {p.user_id: p for p in db.scalars(select(HrProfile)).all()}
 
@@ -1208,7 +1223,7 @@ def attendance_report_xlsx(db: DbSession, user: Perm("hr", "view"), month: Optio
     company = cname(hold) or ("شركة مكتسبات العقارية" if locale == "ar" else "Muktasabat Real Estate")
     data = build(rows, first, last, locale, company, _uname(user, locale), now=now_riyadh().replace(tzinfo=None))
     return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": f'attachment; filename="Attendance-{first:%Y-%m}.xlsx"', "Cache-Control": "no-store"})
+                    headers={"Content-Disposition": f'attachment; filename="Attendance-{first:%Y-%m}' + (f'_to_{last:%Y-%m}' if (first.year, first.month) != (last.year, last.month) else '') + '.xlsx"', "Cache-Control": "no-store"})
 
 
 @router.get("/attendance/{user_id}")

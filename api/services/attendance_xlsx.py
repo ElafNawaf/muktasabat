@@ -49,7 +49,7 @@ def build(rows: list[dict], month_first: date, month_last: date, locale: str,
     now = now or datetime.now()
     wb = Workbook()
     ws = wb.active
-    ws.title = month_first.strftime("%Y-%m")
+    ws.title = month_first.strftime("%Y-%m") if month_first.strftime("%Y-%m") == month_last.strftime("%Y-%m") else f"{month_first:%Y-%m} to {month_last:%Y-%m}"
     ws.sheet_view.rightToLeft = ar
     ws.sheet_view.showGridLines = False
     ncol = len(COLUMNS)
@@ -65,10 +65,14 @@ def build(rows: list[dict], month_first: date, month_last: date, locale: str,
         img = XLImage(str(LOGO))
         img.width = img.height = 64
         ws.add_image(img, "A1")
-    month_label = f"{AR_MONTHS[month_first.month - 1]} {month_first.year}" if ar else month_first.strftime("%B %Y")
+    def mlabel(d: date) -> str:
+        return f"{AR_MONTHS[d.month - 1]} {d.year}" if ar else d.strftime("%B %Y")
+
+    same = (month_first.year, month_first.month) == (month_last.year, month_last.month)
+    month_label = mlabel(month_first) if same else f"{mlabel(month_first)} – {mlabel(month_last)}"
     lines = [
         (company_name, Font(bold=True, size=16, color=BRAND)),
-        (("تقرير الحضور الشهري — " if ar else "Monthly attendance report — ") + month_label, Font(bold=True, size=12, color="1F2937")),
+        ((("تقرير الحضور الشهري — " if same else "تقرير الحضور — ") if ar else ("Monthly attendance report — " if same else "Attendance report — ")) + month_label, Font(bold=True, size=12, color="1F2937")),
         ((f"الفترة: {month_first.isoformat()} إلى {month_last.isoformat()}   ·   تاريخ الإصدار: {now:%Y-%m-%d %H:%M}   ·   أصدره: {issued_by}")
          if ar else f"Period: {month_first.isoformat()} to {month_last.isoformat()}   ·   Issued: {now:%Y-%m-%d %H:%M}   ·   By: {issued_by}",
          Font(size=10, color="6B7280")),

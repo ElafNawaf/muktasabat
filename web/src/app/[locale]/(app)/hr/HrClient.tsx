@@ -35,7 +35,7 @@ export type Emp = {
 };
 export type ReportRow = { user_id: number; name: string; working_days: number; present: number; late: number; late_minutes: number; absent: number; on_leave: number; early_leave_minutes: number; permission_minutes: number; worked_hours: number; attendance_pct: number;
   verified_hours: number; away_minutes: number; remote_days: number; field_days: number; exceptions: number; refused_checkins: number };
-export type Report = { month: string; from: string; to: string; rows: ReportRow[] };
+export type Report = { month: string; to_month?: string; from: string; to: string; rows: ReportRow[] };
 export type HrSettings = {
   approver_user_id?: number | null; cc_emails: string; default_cc: string; work_start: string; work_end: string; grace_minutes: number;
   weekend_days: number[]; monthly_permission_minutes: number; attendance_from: string; effective_approvers: string[]; users: { id: number; name: string; role: string }[];
@@ -303,10 +303,21 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
   const [day, setDay] = useState(new Date().toISOString().slice(0, 10));
   const [board, setBoard] = useState(initial);
   const [month, setMonth] = useState(m0);
+  const [toMonth, setToMonth] = useState(m0);
   const [report, setReport] = useState(r0);
   const [edit, setEdit] = useState<BoardRow | null>(null);
   const loadDay = (d: string) => { setDay(d); hrAttendanceDay(d, locale).then((x) => x.ok && setBoard(x.data as BoardRow[])); };
-  const loadMonth = (m: string) => { setMonth(m); hrAttendanceReport(m, locale).then((x) => x.ok && setReport(x.data as Report)); };
+  // Range filter: from month → to month (to month follows when it would end up before from)
+  const loadRange = (from: string, to: string) => {
+    if (to < from) to = from;
+    setMonth(from); setToMonth(to);
+    hrAttendanceReport(from, locale, to).then((x) => x.ok && setReport(x.data as Report));
+  };
+  const presetRange = (n: number) => {
+    const end = new Date(); const start = new Date(end.getFullYear(), end.getMonth() - (n - 1), 1);
+    const f = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    loadRange(f(start), f(end));
+  };
 
   function csv() {
     const head = ["Employee", "Working days", "Present", "Late", "Late minutes", "Absent", "On leave", "Remote days", "Field days", "Early leave minutes", "Permission minutes", "Recorded hours", "Actual hours", "Away minutes", "Exceptions", "Refused check-ins", "Attendance %"];
@@ -315,7 +326,7 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
     const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `attendance-${report.month}.csv`;
+    a.download = `attendance-${report.month}${report.to_month && report.to_month !== report.month ? `_to_${report.to_month}` : ""}.csv`;
     a.click();
   }
 
@@ -328,7 +339,15 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
         </div>
         {view === "day"
           ? <input className="input hr-month" type="date" value={day} onChange={(e) => e.target.value && loadDay(e.target.value)} />
-          : <div className="hr-row"><input className="input hr-month" type="month" value={month} onChange={(e) => e.target.value && loadMonth(e.target.value)} /><a className="btn btn-primary btn-sm" href={`/api/hr/attendance-report?month=${report.month}&locale=${locale}`} download><span className="ms ms-sm">table_view</span>{T("تصدير Excel", "Export Excel")}</a><button className="btn btn-secondary btn-sm" onClick={csv}><span className="ms ms-sm">download</span>CSV</button></div>}
+          : <div className="hr-row hr-range">
+              <label className="hr-range-f"><span>{T("من شهر", "From")}</span><input className="input hr-month" type="month" value={month} onChange={(e) => e.target.value && loadRange(e.target.value, toMonth)} /></label>
+              <label className="hr-range-f"><span>{T("إلى شهر", "To")}</span><input className="input hr-month" type="month" value={toMonth} min={month} onChange={(e) => e.target.value && loadRange(month, e.target.value)} /></label>
+              <div className="hr-range-presets" role="group" aria-label={T("فترات سريعة", "Quick ranges")}>
+                <button className="btn btn-ghost btn-sm" onClick={() => presetRange(1)}>{T("هذا الشهر", "This month")}</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => presetRange(3)}>{T("٣ أشهر", "3 months")}</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { const y = new Date().getFullYear(); loadRange(`${y}-01`, `${y}-${String(new Date().getMonth() + 1).padStart(2, "0")}`); }}>{T("منذ بداية السنة", "Year to date")}</button>
+              </div>
+              <a className="btn btn-primary btn-sm" href={`/api/hr/attendance-report?month=${report.month}&to_month=${report.to_month || report.month}&locale=${locale}`} download><span className="ms ms-sm">table_view</span>{T("تصدير Excel", "Export Excel")}</a><button className="btn btn-secondary btn-sm" onClick={csv}><span className="ms ms-sm">download</span>CSV</button></div>}
       </div>
 
       {view === "day" ? (

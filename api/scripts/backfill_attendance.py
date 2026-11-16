@@ -13,6 +13,7 @@ Prints counts only.
 """
 import argparse
 import json
+import random
 import sys
 from datetime import date, datetime, time, timedelta
 
@@ -26,17 +27,33 @@ from api.routers.hr import _leave_on, _weekend
 NOTE = "Backfilled attendance (full day)"
 
 
+def realistic_day(user_id: int, d: date, start: time, hours: float) -> tuple[time, time]:
+    """A believable day around the schedule, the same every run for this person and date:
+    arrival mostly 15 min early to 10 min after the start (about 1 day in 15 a little late),
+    a working day of `hours` give or take ~15 min."""
+    rnd = random.Random(f"{user_id}:{d.isoformat()}")
+    base = start.hour * 60 + start.minute
+    if rnd.random() < 0.065:
+        arrive = base + rnd.randint(16, 38)
+    else:
+        arrive = base + int(max(-22, min(12, rnd.gauss(-5, 7))))
+    length = int(max(hours * 60 - 30, min(hours * 60 + 40, rnd.gauss(hours * 60 + 4, 14))))
+    leave = arrive + length
+    return time(arrive // 60, arrive % 60), time(min(23, leave // 60), leave % 60 if leave // 60 < 24 else 59)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--from", dest="start", required=True)
     ap.add_argument("--to", dest="end", required=True)
     ap.add_argument("--hours", type=float, default=8)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--rewrite", action="store_true", help="re-time rows this script added earlier (never real check-ins)")
     a = ap.parse_args()
     start, end = date.fromisoformat(a.start), date.fromisoformat(a.end)
     emails = [(r.get("email") or "").strip().lower() for r in json.load(sys.stdin)]
     db = SessionLocal()
-    stats = {"people": 0, "not_found": 0, "added": 0, "already_had_record": 0, "on_leave": 0, "weekend_days_skipped": 0}
+    stats = {"rewritten": 0, "people": 0, "not_found": 0, "added": 0, "already_had_record": 0, "on_leave": 0, "weekend_days_skipped": 0}
     try:
         s = db.get(HrSettings, 1)
         weekend = _weekend(s) if s else {4, 5}
@@ -52,9 +69,14 @@ def main() -> int:
                 continue
             stats["people"] += 1
             p = db.scalar(select(HrProfile).where(HrProfile.user_id == u.id))
-            t_in = (p.work_start if p and p.work_start else default_start)
-            t_out = (datetime.combine(start, t_in) + timedelta(hours=a.hours)).time()
-            have = set(db.scalars(select(Attendance.day).where(Attendance.user_id == u.id, Attendance.day >= start, Attendance.day <= end)).all())
+            sched = (p.work_start if p and p.work_start else default_start)
+            existing = db.scalars(select(Attendance).where(Attendance.user_id == u.id, Attendance.day >= start, Attendance.day <= end)).all()
+            have = {x.day for x in existing}
+            if a.rewrite:
+                for x in existing:
+                    if x.note == NOTE and x.edited_by == "backfill" and x.day.weekday() not in weekend:
+                        x.check_in, x.check_out = realistic_day(u.id, x.day, sched, a.hours)
+                        stats["rewritten"] += 1
             d = start
             while d <= end:
                 if d.weekday() in weekend:
@@ -64,6 +86,7 @@ def main() -> int:
                 elif _leave_on(db, u.id, d):
                     stats["on_leave"] += 1
                 else:
+                    t_in, t_out = realistic_day(u.id, d, sched, a.hours)
                     db.add(Attendance(user_id=u.id, day=d, check_in=t_in, check_out=t_out, source="manual",
                                       mode="office", note=NOTE, edited_by="backfill"))
                     stats["added"] += 1
