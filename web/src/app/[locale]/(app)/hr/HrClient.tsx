@@ -328,7 +328,7 @@ function AttendanceTab({ locale, board: initial, report: r0, month: m0, canEdit 
         </div>
         {view === "day"
           ? <input className="input hr-month" type="date" value={day} onChange={(e) => e.target.value && loadDay(e.target.value)} />
-          : <div className="hr-row"><input className="input hr-month" type="month" value={month} onChange={(e) => e.target.value && loadMonth(e.target.value)} /><button className="btn btn-secondary btn-sm" onClick={csv}><span className="ms ms-sm">download</span>{T("تصدير CSV", "Export CSV")}</button></div>}
+          : <div className="hr-row"><input className="input hr-month" type="month" value={month} onChange={(e) => e.target.value && loadMonth(e.target.value)} /><a className="btn btn-primary btn-sm" href={`/api/hr/attendance-report?month=${report.month}&locale=${locale}`} download><span className="ms ms-sm">table_view</span>{T("تصدير Excel", "Export Excel")}</a><button className="btn btn-secondary btn-sm" onClick={csv}><span className="ms ms-sm">download</span>CSV</button></div>}
       </div>
 
       {view === "day" ? (

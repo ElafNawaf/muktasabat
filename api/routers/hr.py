@@ -1181,6 +1181,36 @@ def attendance_report(db: DbSession, user: Perm("hr", "view"), month: Optional[s
     return {"month": first.strftime("%Y-%m"), "from": first.isoformat(), "to": last.isoformat(), "rows": rows}
 
 
+@router.get("/attendance/report.xlsx")
+def attendance_report_xlsx(db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None, locale: str = Query("ar", pattern="^(ar|en)$")):
+    """The monthly report as a branded Excel file (Muktasabat letterhead)."""
+    from fastapi.responses import Response
+
+    from api.hr_people_models import HrCompany
+    from api.services.attendance_xlsx import build
+
+    s = _settings(db)
+    first, last = _month(month)
+    comps = {c.id: c for c in db.scalars(select(HrCompany)).all()}
+    prof = {p.user_id: p for p in db.scalars(select(HrProfile)).all()}
+
+    def cname(c) -> str:
+        return (c.name_ar if locale == "ar" else (c.name_en or c.name_ar)) if c else ""
+
+    rows = []
+    for u in _staff(db, working_only=True):
+        row = employee_month(db, s, u, first, last, locale)[0]
+        p = prof.get(u.id)
+        row["company"] = cname(comps.get(p.company_id)) if p and p.company_id else ""
+        rows.append(row)
+    rows.sort(key=lambda r: (r["company"], r["name"]))
+    hold = next((c for c in comps.values() if c.is_holding), None)
+    company = cname(hold) or ("شركة مكتسبات العقارية" if locale == "ar" else "Muktasabat Real Estate")
+    data = build(rows, first, last, locale, company, _uname(user, locale), now=now_riyadh().replace(tzinfo=None))
+    return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="Attendance-{first:%Y-%m}.xlsx"', "Cache-Control": "no-store"})
+
+
 @router.get("/attendance/{user_id}")
 def attendance_user(user_id: int, db: DbSession, user: Perm("hr", "view"), month: Optional[str] = None):
     first, last = _month(month)
