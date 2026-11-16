@@ -41,10 +41,14 @@ def main() -> int:
         s = db.get(HrSettings, 1)
         weekend = _weekend(s) if s else {4, 5}
         default_start = s.work_start if s else time(9, 0)
-        for email in filter(None, emails):
+        missing_rows = []
+        for i, email in enumerate(emails, 1):
+            if not email:
+                continue
             u = db.scalar(select(User).where(func.lower(User.email) == email))
             if u is None:
                 stats["not_found"] += 1
+                missing_rows.append(i)  # list position only — no personal data in the log
                 continue
             stats["people"] += 1
             p = db.scalar(select(HrProfile).where(HrProfile.user_id == u.id))
@@ -69,7 +73,7 @@ def main() -> int:
         else:
             db.commit()
         print(("DRY RUN — nothing saved. " if a.dry_run else "Saved. ") + json.dumps(
-            {**stats, "range": f"{start}..{end}", "hours": a.hours, "weekend": sorted(weekend), "work_start_default": default_start.strftime("%H:%M")}))
+            {**stats, "missing_list_rows": missing_rows, "range": f"{start}..{end}", "hours": a.hours, "weekend": sorted(weekend), "work_start_default": default_start.strftime("%H:%M")}))
         return 0
     finally:
         db.close()
