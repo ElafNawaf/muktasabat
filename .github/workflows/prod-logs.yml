@@ -1,0 +1,71 @@
+# Read-only look at production errors (push to ops/logs). The Actions log is
+# public, so only problems are printed and personal data is masked: emails,
+# long numbers (IDs, phones), Arabic text, and SQL parameter lines.
+name: Production logs (errors only)
+
+on:
+  push:
+    branches: [ops/logs]
+
+env:
+  HOST: 13.232.25.224
+  USER: ubuntu
+  RUNTIME: /home/ubuntu/muktasabat
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Errors and failed requests (last 24 h)
+        env:
+          KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh; printf '%s\n' "$KEY" > ~/.ssh/k.pem; chmod 600 ~/.ssh/k.pem
+          ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/k.pem -o ConnectTimeout=20 $USER@$HOST "cd $RUNTIME && docker compose logs --no-color --since 24h api web 2>&1" > raw.log || true
+          wc -l raw.log
+          python3 - <<'PY'
+          import re, json, collections
+          lines = open("raw.log", encoding="utf-8", errors="replace").read().splitlines()
+          def mask(s):
+              s = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[email]", s)
+              s = re.sub(r"\d{7,}", "[num]", s)
+              s = re.sub(r"[؀-ۿ][؀-ۿ\s]*", "[ar]", s)
+              s = re.sub(r"(?i)(token|password|secret|authorization|cookie)\S*\s*[=:]\s*\S+", r"\1=[hidden]", s)
+              return s[:400]
+          fails = collections.Counter(); errs = []; tb = []
+          in_tb = False
+          for ln in lines:
+              body = ln.split("|", 1)[-1].strip()
+              if "[parameters:" in body or body.startswith("[SQL"):
+                  continue
+              m = re.search(r'\{.*\}', body)
+              if m:
+                  try:
+                      j = json.loads(m.group(0))
+                      st = j.get("status")
+                      if isinstance(st, int) and st >= 400:
+                          path = re.sub(r"/\d+", "/{id}", j.get("path") or "")
+                          fails[(st, j.get("method"), path)] += 1
+                      if j.get("level") in ("ERROR", "CRITICAL", "WARNING") and j.get("logger") != "muktasabat.request":
+                          errs.append(mask(f'{j.get("ts","")[:19]} {j.get("level")} {j.get("logger")}: {j.get("message")} {j.get("exc_info","") or j.get("error","")}'))
+                      continue
+                  except Exception:
+                      pass
+              if "Traceback" in body:
+                  in_tb = True; tb.append("----"); 
+              if in_tb:
+                  tb.append(mask(body))
+                  if re.match(r"^\w*(Error|Exception)\b", body) or re.match(r"^[\w.]+(Error|Exception):", body):
+                      in_tb = False
+              elif re.search(r"(?i)\b(error|exception|failed|unhandled)\b", body):
+                  errs.append(mask(body))
+          print("== Failed requests (status, method, path) × count ==")
+          for (st, me, p), n in sorted(fails.items(), key=lambda x: (-x[1])):
+              print(f"{st} {me} {p} × {n}")
+          print("\n== Errors / warnings (last 80) ==")
+          for e in errs[-80:]: print(e)
+          print("\n== Tracebacks (last 200 lines) ==")
+          for t in tb[-200:]: print(t)
+          PY
