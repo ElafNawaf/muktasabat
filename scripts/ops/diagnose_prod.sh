@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Read-only: users per role; viewer accounts by id/created/verified (no names or emails).
+# Requested: move user #66 (self-registered "viewer") to "pending" and sign it out everywhere.
 set -eu
 docker exec -i muktasabat-api-1 python - <<'PY'
-from collections import Counter
 from sqlalchemy import select
 from api.database import SessionLocal
 from api.models import User
 db = SessionLocal()
-us = db.scalars(select(User)).all()
-print("roles:", dict(Counter(u.role for u in us)))
-print("pending role exists:", db.execute(__import__("sqlalchemy").text("select count(*) from roles where code='pending'")).scalar())
-for u in us:
-    if u.role == "viewer":
-        print(f"  viewer id={u.id} created={u.created_at:%Y-%m-%d} verified={u.email_verified} active={u.is_active_user} last_login={getattr(u,'last_login_at',None)}")
+u = db.get(User, 66)
+assert u is not None and u.role == "viewer", "user 66 is not a viewer any more — nothing changed"
+u.role = "pending"
+if hasattr(u, "token_version"):
+    u.token_version = (u.token_version or 0) + 1  # existing sessions stop working
+db.commit()
+print("user 66 role:", db.get(User, 66).role, "| sessions revoked:", hasattr(u, "token_version"))
 PY
