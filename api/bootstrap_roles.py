@@ -235,6 +235,16 @@ DEFAULT_ROLES: list[dict] = [
         "permissions": _build({}),
     },
     {
+        "code": "pending",
+        "label_en": "Awaiting role",
+        "label_ar": "بانتظار تحديد الصلاحية",
+        "description_en": "New sign-ups. No access to any data or screen until an administrator assigns a real role.",
+        "description_ar": "الحسابات المسجّلة حديثًا. لا وصول لأي بيانات أو شاشة حتى يحدد المسؤول دورًا فعليًا.",
+        "color": "#B45309",
+        "system": True,
+        "permissions": _build({}),
+    },
+    {
         "code": "owner",
         "label_en": "Property Owner",
         "label_ar": "مالك",

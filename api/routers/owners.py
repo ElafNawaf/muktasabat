@@ -5,6 +5,9 @@ from api.deps import CurrentUser, DbSession
 from api.permissions import Perm
 from api.models import Agent, Owner
 from api.schemas.owner import OwnerCreate, OwnerRead, OwnerUpdate
+from api.permissions import PermAny
+
+ReadOwners = PermAny("owners.view", "properties.view", "management_contracts.view", "payments.view", "expenses.view", "contracts.view")
 
 router = APIRouter(prefix="/owners", tags=["owners"])
 
@@ -15,12 +18,12 @@ def _validate_agent_id(db: DbSession, agent_id: int | None) -> None:
 
 
 @router.get("", response_model=list[OwnerRead])
-def list_owners(db: DbSession, _user: CurrentUser):
+def list_owners(db: DbSession, _user: ReadOwners):
     return db.scalars(select(Owner).order_by(Owner.name)).all()
 
 
 @router.get("/{owner_id}", response_model=OwnerRead)
-def get_owner(owner_id: int, db: DbSession, _user: CurrentUser):
+def get_owner(owner_id: int, db: DbSession, _user: ReadOwners):
     owner = db.get(Owner, owner_id)
     if owner is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Owner not found")

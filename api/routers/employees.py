@@ -5,6 +5,9 @@ from api.permissions import Perm
 from api.deps import AdminUser, CurrentUser, DbSession
 from api.models import Employee, Owner, User
 from api.schemas.employee import EmployeeCreate, EmployeeRead, EmployeeUpdate
+from api.permissions import PermAny
+
+ReadEmployees = PermAny("hr.view", "users.view")
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -23,13 +26,13 @@ def _to_read(employee: Employee) -> EmployeeRead:
 
 
 @router.get("", response_model=list[EmployeeRead])
-def list_employees(db: DbSession, _user: CurrentUser):
+def list_employees(db: DbSession, _user: ReadEmployees):
     employees = db.scalars(select(Employee).order_by(Employee.name)).all()
     return [_to_read(e) for e in employees]
 
 
 @router.get("/{employee_id}", response_model=EmployeeRead)
-def get_employee(employee_id: int, db: DbSession, _user: CurrentUser):
+def get_employee(employee_id: int, db: DbSession, _user: ReadEmployees):
     employee = db.get(Employee, employee_id)
     if employee is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Employee not found")

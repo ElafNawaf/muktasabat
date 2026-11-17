@@ -206,7 +206,7 @@
     "failed": "Registration failed",
     "manualSignIn": "Account created. Please sign in with your new credentials.",
     "checkEmailTitle": "Check your email",
-    "checkEmailHint": "We sent a verification link to {email}. Click it to activate your account, then sign in.",
+    "checkEmailHint": "We sent a verification link to {email}. After you confirm it, an administrator reviews your account and assigns your role — you won't see any data until then.",
     "resend": "Resend verification email",
     "resentOk": "Sent. If your account exists and is unverified, a new email is on the way."
   },

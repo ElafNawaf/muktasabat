@@ -218,11 +218,24 @@ def inbox(db: DbSession, user: CurrentUser, locale: str = Query("ar", pattern="^
                 "waiting_on": "company", "urgent": False, "href": "hr?tab=payroll",
             })
 
+    # New sign-ups waiting for a role (no access until an admin assigns one).
+    if has_permission(db, user, "users", "edit"):
+        from api.models import User as _U3
+
+        for u in db.scalars(select(_U3).where(_U3.role == "pending", _U3.is_active_user.is_(True)).order_by(_U3.id)).all():
+            items.append({
+                "kind": "account", "id": u.id, "ref": u.username, "title": u.full_name or u.username,
+                "where": u.email + ("" if u.email_verified else (" · لم يُؤكَّد البريد" if locale == "ar" else " · email not confirmed")),
+                "owner": None, "owner_id": None, "amount": None, "reason": None,
+                "since": _iso(u.created_at), "waiting_on": "company", "urgent": bool(u.email_verified),
+                "href": f"users?q={u.username}",
+            })
+
     def sort_key(i: dict):
         return (not i["urgent"], i.get("since") or "")
 
     items.sort(key=sort_key)
-    kinds = list(can) + ["payroll", "loan"]
+    kinds = list(can) + ["payroll", "loan", "account"]
     return {"items": items, "can": can, "counts": {k: sum(1 for i in items if i["kind"] == k) for k in kinds}}
 
 

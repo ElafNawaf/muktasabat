@@ -44,6 +44,22 @@ def Perm(module: str, action: str) -> type:
     return Annotated[User, Depends(require_permission(module, action))]
 
 
+def PermAny(*rules: str) -> type:
+    """Allowed if the user has ANY of the given "module.action" permissions.
+
+    For shared lists (properties, units, leases, owners, tenants, agents) that other
+    modules use as pickers: a maintenance coordinator needs the building list to log
+    a work order, but someone with no relevant permission gets nothing."""
+    pairs = [tuple(r.split(".", 1)) for r in rules]
+
+    def checker(user: Annotated[User, Depends(get_current_user)], db: DbSession) -> User:
+        if any(has_permission(db, user, m, a) for m, a in pairs):
+            return user
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"Permission denied: {pairs[0][0]}.{pairs[0][1]}")
+
+    return Annotated[User, Depends(checker)]
+
+
 ACTIONS = ("view", "create", "edit", "delete", "approve")
 
 

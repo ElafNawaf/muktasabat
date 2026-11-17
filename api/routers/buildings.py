@@ -12,17 +12,20 @@ from api.schemas.building import (
     BuildingUpdate,
 )
 from api.storage import StorageNotConfigured, delete_object, upload_document, upload_image
+from api.permissions import PermAny
+
+ReadProps = PermAny("properties.view", "contracts.view", "payments.view", "expenses.view", "maintenance.view", "management_contracts.view", "owners.view", "tenants.view", "dashboard.view")
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
 
 
 @router.get("", response_model=list[BuildingRead])
-def list_buildings(db: DbSession, _user: CurrentUser):
+def list_buildings(db: DbSession, _user: ReadProps):
     return db.scalars(select(Building).order_by(Building.name)).all()
 
 
 @router.get("/{building_id}", response_model=BuildingRead)
-def get_building(building_id: int, db: DbSession, _user: CurrentUser):
+def get_building(building_id: int, db: DbSession, _user: ReadProps):
     building = db.get(Building, building_id)
     if building is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Building not found")

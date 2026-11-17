@@ -5,17 +5,20 @@ from api.deps import CurrentUser, DbSession
 from api.models import Agent
 from api.permissions import Perm
 from api.schemas.agent import AgentCreate, AgentRead, AgentUpdate
+from api.permissions import PermAny
+
+ReadAgents = PermAny("agents.view", "contracts.view", "management_contracts.view", "payments.view")
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
 @router.get("", response_model=list[AgentRead])
-def list_agents(db: DbSession, _user: CurrentUser):
+def list_agents(db: DbSession, _user: ReadAgents):
     return db.scalars(select(Agent).order_by(Agent.name)).all()
 
 
 @router.get("/{agent_id}", response_model=AgentRead)
-def get_agent(agent_id: int, db: DbSession, _user: CurrentUser):
+def get_agent(agent_id: int, db: DbSession, _user: ReadAgents):
     agent = db.get(Agent, agent_id)
     if agent is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Agent not found")

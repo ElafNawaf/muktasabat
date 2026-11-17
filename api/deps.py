@@ -37,6 +37,16 @@ TENANT_ALLOWED_PREFIXES = (
 )
 
 
+# Self-registered accounts (role "pending") have no access until an administrator
+# assigns a role — they can only see who they are, manage their own account and sign out.
+PENDING_ROLE = "pending"
+PENDING_ALLOWED_PREFIXES = (
+    "/api/v1/auth/me",
+    "/api/v1/auth/logout",
+    "/api/v1/account/",
+)
+
+
 def get_current_user(
     db: DbSession,
     token: Annotated[str, Depends(oauth2_scheme)],
@@ -65,6 +75,11 @@ def get_current_user(
         path = request.url.path
         if not path.startswith(OWNER_ALLOWED_PREFIXES) or path.startswith("/api/v1/owner-portal/admin"):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Owner accounts can only use the owner portal")
+    if user.role == PENDING_ROLE and not request.url.path.startswith(PENDING_ALLOWED_PREFIXES):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Your account is waiting for an administrator to assign a role.",
+        )
     if user.role == "tenant":
         path = request.url.path
         if not path.startswith(TENANT_ALLOWED_PREFIXES) or path.startswith("/api/v1/tenant-portal/admin"):

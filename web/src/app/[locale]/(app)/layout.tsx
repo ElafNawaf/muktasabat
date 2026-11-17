@@ -24,6 +24,8 @@ export default async function AppLayout({
   // Property owners have their own scoped portal; staff screens are not for them.
   if (user.role === "owner") redirect(`/${locale}/owner`);
   if (user.role === "tenant") redirect(`/${locale}/tenant`);
+  // Self-registered, no role yet: nothing to see until an administrator assigns one.
+  if (user.role === "pending") redirect(`/${locale}/pending`);
   // /auth/me carries the effective matrix (role + per-user overrides);
   // fall back to the role's matrix for older API builds.
   const myPermissions = user.permissions

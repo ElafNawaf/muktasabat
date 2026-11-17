@@ -6,6 +6,9 @@ from api.deps import CurrentUser, DbSession
 from api.permissions import Perm
 from api.models import Tenant, TenantCompanion
 from api.schemas.tenant import TenantCompanionBase, TenantCreate, TenantRead, TenantUpdate
+from api.permissions import PermAny
+
+ReadTenants = PermAny("tenants.view", "contracts.view", "payments.view", "maintenance.view", "properties.view", "support.edit")
 
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 
@@ -39,7 +42,7 @@ def _sync_companions(
 
 
 @router.get("", response_model=list[TenantRead])
-def list_tenants(db: DbSession, _user: CurrentUser):
+def list_tenants(db: DbSession, _user: ReadTenants):
     return db.scalars(
         select(Tenant)
         .options(selectinload(Tenant.companions))
@@ -48,7 +51,7 @@ def list_tenants(db: DbSession, _user: CurrentUser):
 
 
 @router.get("/{tenant_id}", response_model=TenantRead)
-def get_tenant(tenant_id: int, db: DbSession, _user: CurrentUser):
+def get_tenant(tenant_id: int, db: DbSession, _user: ReadTenants):
     tenant = _load_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tenant not found")

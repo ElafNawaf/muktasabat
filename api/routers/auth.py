@@ -197,7 +197,8 @@ def register(payload: RegisterRequest, db: DbSession):
     if db.scalar(select(User).where(User.email == payload.email)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already exists")
 
-    user = User(username=payload.username, email=payload.email, role="viewer")
+    # No access until an administrator assigns a role (see api/deps.PENDING_ROLE).
+    user = User(username=payload.username, email=payload.email, role="pending")
     user.set_password(payload.password)
 
     raw = secrets.token_urlsafe(32)
@@ -225,6 +226,17 @@ def verify_email(payload: VerifyEmailRequest, db: DbSession):
     user.email_verification_expires = None
     db.add(user)
     db.commit()
+    if user.role == "pending":
+        # Tell the administrators someone is waiting for a role.
+        from api.email import send_account_awaiting_role
+
+        url = _absolute(f"/ar/users?q={user.username}")
+        for a in db.scalars(select(User).where(User.role == "admin", User.is_active_user.is_(True))).all():
+            if a.email:
+                try:
+                    send_account_awaiting_role(a.email, user.username, user.email, url)
+                except Exception:  # noqa: BLE001 — never fail verification over a notice
+                    pass
     return VerifyEmailResponse(ok=True, user_id=user.id)
 
 

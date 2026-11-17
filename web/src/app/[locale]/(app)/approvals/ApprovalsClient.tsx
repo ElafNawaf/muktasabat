@@ -10,7 +10,7 @@ import { payDecideLoan } from "@/lib/payroll-actions";
 import { decideApproval } from "@/lib/workflow-actions";
 import { ClickRow } from "@/components/ClickRow";
 
-type Kind = "work_order" | "renewal" | "payout" | "hr" | "bank" | "expense" | "form" | "payroll" | "loan";
+type Kind = "work_order" | "renewal" | "payout" | "hr" | "bank" | "expense" | "form" | "payroll" | "loan" | "account";
 export type ChainStep = { step: number; label: string; approver: string; status: string; decided_by?: string | null; on_behalf?: boolean; decided_at?: string | null; overdue?: boolean; escalated?: boolean };
 export type Item = {
   kind: Kind; id: number; ref?: string | null; title?: string | null; where: string; owner?: string | null;
@@ -37,6 +37,7 @@ const KIND: Record<Kind, { icon: string; ar: string; en: string }> = {
   form: { icon: "dynamic_form", ar: "تعديل نموذج", en: "Form change" },
   payroll: { icon: "payments", ar: "مسير رواتب", en: "Payroll run" },
   loan: { icon: "savings", ar: "سلفة / قرض موظف", en: "Staff advance / loan" },
+  account: { icon: "person_add", ar: "حساب جديد بلا صلاحية", en: "New account — no role yet" },
 };
 const HR_KIND: Record<string, [string, string, string]> = {
   leave: ["beach_access", "طلب إجازة", "Leave request"], permission: ["schedule", "طلب استئذان", "Permission request"], ticket: ["flight", "طلب تذكرة سفر", "Travel ticket request"],
@@ -206,6 +207,7 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
           {i.kind === "expense" && <>{T("المبلغ", "Amount")} <strong>{sar(i.amount)}</strong> {i.vendor && <span className="text-sec">· {i.vendor}</span>}</>}
           {i.kind === "payout" && <>{T("صافي المالك ≈", "Owner net ≈")} <strong>{sar(i.amount)}</strong> <span className="text-sec">· {T("من دفعة", "from")} {sar(i.gross)} · {T("الاستحقاق", "due")} {i.due}</span></>}
         </div>
+        {i.kind === "account" && <p className="ap-hint text-sec">{T("سجّل بنفسه ولا يرى أي بيانات حتى تحدد له دورًا. إن لم تعرفه علّق الحساب أو احذفه.", "Signed up on their own and sees no data until you give them a role. Don't recognise them? Suspend or delete the account.")}</p>}
         {i.kind === "payroll" && i.reason && <p className="ap-hint text-sec">{T(`رفعه ${i.reason}`, `Submitted by ${i.reason}`)}</p>}
         {(i.kind === "hr" || i.kind === "form" || i.kind === "loan") && i.reason && <p className="ap-hint text-sec">{i.kind === "form" && i.requested_by ? `${i.requested_by}: ` : ""}{i.reason}</p>}
         {i.chain && i.chain.length > 1 && (
@@ -223,6 +225,8 @@ function Row({ i, locale, sar, onDone }: { i: Item; locale: string; sar: (n?: nu
       <div className="ap-act">
         {done ? (
           <span className="mx-status mx-status--completed">{done}</span>
+        ) : i.kind === "account" ? (
+          <Link className="btn btn-primary btn-sm" href={`/${locale}/${i.href}`}>{T("تحديد الصلاحية", "Assign a role")}</Link>
         ) : i.kind === "payroll" ? (
           <Link className="btn btn-primary btn-sm" href={`/${locale}/${i.href}`}>{T("مراجعة واعتماد", "Review & approve")}</Link>
         ) : i.kind === "payout" ? (

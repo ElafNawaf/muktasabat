@@ -408,6 +408,22 @@ def send_password_changed_notice(to: str, username: str, locale: str | None = No
     )
 
 
+def send_account_awaiting_role(to: str, username: str, email: str, url: str) -> bool:
+    """To administrators: a self-registered account is waiting for a role."""
+    u, e = _esc(username), _esc(email)
+    return _notice(
+        to,
+        subject_ar="حساب جديد بانتظار تحديد الصلاحية",
+        subject_en="New account waiting for a role",
+        ar=f"<p>سجّل <strong dir='ltr'>{u}</strong> (<span dir='ltr'>{e}</span>) حسابًا جديدًا وأكّد بريده. لا يستطيع الوصول إلى أي بيانات حتى تحدد له دورًا.</p>"
+        + _MUTED.format("إن لم تتعرّف على هذا الشخص، علّق الحساب أو احذفه."),
+        en=f"<p><strong>{u}</strong> ({e}) signed up and confirmed their email. They can't see any data until you give them a role.</p>"
+        + _MUTED.format("If you don't recognise this person, suspend or delete the account."),
+        button=(url, "تحديد الصلاحية", "Assign a role"),
+        preheader="New sign-up · حساب جديد",
+    )
+
+
 def send_email_change_confirmation(to: str, confirm_url: str, username: str, locale: str | None = None) -> bool:
     """Sent to the NEW address — the change only applies once confirmed."""
     u = _esc(username)

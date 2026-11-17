@@ -5425,3 +5425,19 @@ li.py-req { display: grid; gap: 6px; }
 .hr-range-f .hr-month { min-width: 150px; }
 .hr-range-presets { display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.04)); }
 .hr-range-presets .btn { padding-inline: 10px; }
+
+/* ── Account awaiting a role ─────────────────────────────────────── */
+.pend-card { text-align: center; display: grid; gap: 12px; }
+.pend-card h2 { margin: 4px 0 0; font-size: 1.25rem; }
+.pend-card p { margin: 0; font-size: 14px; line-height: 1.7; }
+.pend-icon { font-size: 44px !important; color: var(--color-warning); }
+.pend-who { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0; text-align: start; }
+.pend-who div { padding: 10px 12px; border-radius: 10px; background: var(--color-bg); }
+.pend-who dt { font-size: 12px; color: var(--color-text-secondary); }
+.pend-who dd { margin: 2px 0 0; font-weight: 600; font-size: 13px; overflow-wrap: anywhere; }
+.pend-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.pend-help { font-size: 12px !important; }
+.us-pending { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 12px; border-radius: 12px; background: var(--color-warning-soft); color: var(--color-warning); }
+.us-pending > .ms { font-size: 26px; }
+.us-pending > div { flex: 1; display: grid; gap: 2px; }
+.us-pending span { color: var(--color-text-secondary); font-size: 13px; }

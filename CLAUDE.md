@@ -47,7 +47,7 @@ Unless `DISABLE_BOOTSTRAP_ADMIN` is set, the API ensures **at least one user wit
 | **Username** | `admin` |
 | **Password** | `admin123` |
 
-Set `DISABLE_BOOTSTRAP_ADMIN=1` once you manage admins yourself, and **change this password** before any production use. New accounts from **POST** `/api/v1/auth/register` get role `viewer` ([API docs](http://localhost:8000/api/docs)).
+Set `DISABLE_BOOTSTRAP_ADMIN=1` once you manage admins yourself, and **change this password** before any production use. New accounts from **POST** `/api/v1/auth/register` get role `pending` (no access to any data until an administrator assigns a role; they only see a waiting screen) ([API docs](http://localhost:8000/api/docs)).
 
 ### Password reset
 

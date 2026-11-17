@@ -41,6 +41,7 @@ import { loadRecommendedRoles, type PermMatrix, type RecommendedRole } from "@/l
 import { RoleRecommendation } from "./RoleRecommendation";
 import { UserPermissionsModal } from "./UserPermissionsModal";
 import { WorkflowsAdmin } from "./WorkflowsAdmin";
+import { useQuery } from "@/lib/use-query";
 
 export type AdminUserRow = {
   id: number;
@@ -166,10 +167,15 @@ export function UsersClient({
     const q = search.toLowerCase();
     return (
       u.username.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
+      (u.email ?? "").toLowerCase().includes(q) ||
       u.role.toLowerCase().includes(q)
     );
   });
+
+  // Deep link from Approvals / the sign-up email: /users?q=<username> or ?q=pending
+  const qs = useQuery();
+  useEffect(() => { if (qs.q) setSearch(qs.q); }, [qs.q]);
+  const pendingCount = users.filter((u) => u.role === "pending" && u.is_active_user).length;
 
   const filtersActive = search.trim() !== "";
   const clearFilters = () => setSearch("");
@@ -453,6 +459,17 @@ export function UsersClient({
               variant={counts.inactive > 0 ? "warning" : undefined}
             />
           </div>
+
+          {pendingCount > 0 && (
+            <div className="us-pending" role="status">
+              <span className="ms" aria-hidden>person_alert</span>
+              <div>
+                <b>{locale === "ar" ? `${pendingCount} حساب جديد بانتظار تحديد الصلاحية` : `${pendingCount} new account${pendingCount > 1 ? "s" : ""} waiting for a role`}</b>
+                <span>{locale === "ar" ? "لا يرى هؤلاء أي بيانات حتى تختار لهم دورًا من عمود الدور." : "They can't see any data until you pick a role for them in the Role column."}</span>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => setSearch("pending")}>{locale === "ar" ? "عرضهم" : "Show them"}</button>
+            </div>
+          )}
 
           <FilterBar
             trailing={

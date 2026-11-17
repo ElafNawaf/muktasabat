@@ -6,6 +6,9 @@ from api.permissions import Perm
 from api.models import Building, Unit, UnitImage
 from api.schemas.unit import UnitCreate, UnitImageRead, UnitRead, UnitUpdate
 from api.storage import StorageNotConfigured, delete_object, upload_image
+from api.permissions import PermAny
+
+ReadProps = PermAny("properties.view", "contracts.view", "payments.view", "expenses.view", "maintenance.view", "management_contracts.view", "owners.view", "tenants.view", "dashboard.view")
 
 router = APIRouter(prefix="/units", tags=["units"])
 
@@ -13,7 +16,7 @@ router = APIRouter(prefix="/units", tags=["units"])
 @router.get("", response_model=list[UnitRead])
 def list_units(
     db: DbSession,
-    _user: CurrentUser,
+    _user: ReadProps,
     building_id: int | None = Query(default=None),
     available_only: bool = Query(default=False),
 ):
@@ -26,7 +29,7 @@ def list_units(
 
 
 @router.get("/{unit_id}", response_model=UnitRead)
-def get_unit(unit_id: int, db: DbSession, _user: CurrentUser):
+def get_unit(unit_id: int, db: DbSession, _user: ReadProps):
     unit = db.get(Unit, unit_id)
     if unit is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unit not found")

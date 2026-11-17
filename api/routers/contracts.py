@@ -33,6 +33,9 @@ from api.services.ejar_mapping import (
 )
 from api.services.ejar_sync import sync_contracts
 from api.storage import StorageNotConfigured, delete_object, upload_document
+from api.permissions import PermAny
+
+ReadLeases = PermAny("contracts.view", "payments.view", "maintenance.view", "tenants.view", "owners.view", "properties.view")
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -92,12 +95,12 @@ def _apply_contract_totals(contract: Contract, payload) -> None:
 
 
 @router.get("", response_model=list[ContractRead])
-def list_contracts(db: DbSession, _user: CurrentUser):
+def list_contracts(db: DbSession, _user: ReadLeases):
     return db.scalars(select(Contract).order_by(Contract.created_at.desc())).all()
 
 
 @router.get("/{contract_id}", response_model=ContractRead)
-def get_contract(contract_id: int, db: DbSession, _user: CurrentUser):
+def get_contract(contract_id: int, db: DbSession, _user: ReadLeases):
     contract = db.get(Contract, contract_id)
     if contract is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Contract not found")
