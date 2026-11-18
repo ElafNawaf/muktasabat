@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
-# Read-only: role/permission edit requests and their timing (last 6h). Public-safe.
+# Read-only: data scope per role, property managers and their assigned properties (ids/counts only).
 set -u
-docker ps --format '{{.Names}} {{.Image}} {{.Status}}'
-echo "== role-related API requests (6h)"
-docker logs --since 6h muktasabat-api-1 2>&1 | grep -E '"/api/v1/(roles|auth/admin/users|permissions|workflows)' | python3 -c '
-import sys, json
-for line in sys.stdin:
-    try: j = json.loads(line)
-    except Exception: continue
-    print(j.get("ts","")[11:19], j.get("method"), j.get("path"), j.get("status"), j.get("duration_ms"), j.get("error_type") or "")
-' | tail -40
-echo "== slow requests > 5s (6h)"
-docker logs --since 6h muktasabat-api-1 2>&1 | python3 -c '
-import sys, json
-for line in sys.stdin:
-    try: j = json.loads(line)
-    except Exception: continue
-    d = j.get("duration_ms") or 0
-    if d > 5000: print(j.get("ts","")[11:19], j.get("method"), j.get("path"), j.get("status"), d)
-' | tail -20
-echo "== web errors (6h)"; docker logs --since 6h muktasabat-web-1 2>&1 | grep -iE "error|fail|timeout" | grep -v "^\s*at " | tail -15 | cut -c1-200
+docker exec -i muktasabat-api-1 python - <<'PY'
+from collections import Counter
+from sqlalchemy import select, func
+from api.database import SessionLocal
+from api.models import Building, Role, User
+db = SessionLocal()
+print("roles with scope 'assigned':", [r.code for r in db.scalars(select(Role).where(Role.data_scope == "assigned"))])
+print("buildings total:", db.scalar(select(func.count()).select_from(Building)), "| without a responsible employee:", db.scalar(select(func.count()).select_from(Building).where(Building.assignee_id.is_(None))))
+for u in db.scalars(select(User).where(User.role == "manager")).all():
+    n = db.scalar(select(func.count()).select_from(Building).where(Building.assignee_id == u.id))
+    print(f"  manager user id={u.id} active={u.is_active_user} assigned_properties={n}")
+by = Counter(db.scalars(select(Building.assignee_id)).all())
+print("properties per responsible user id:", dict(by))
+print("roles of those users:", {uid: db.get(User, uid).role for uid in by if uid})
+PY
