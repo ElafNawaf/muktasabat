@@ -298,6 +298,9 @@ app.include_router(cms.public, prefix=API_V1)
 app.include_router(cms.admin, prefix=API_V1)
 # Owner portal — owner-scoped reporting + staff invite management
 app.include_router(owner_portal.router, prefix=API_V1)
+from api.routers import bulk as _bulk  # noqa: E402
+
+app.include_router(_bulk.router, prefix=API_V1)
 
 # Uploaded files: local volume first, then the private S3 bucket (api/routers/files.py).
 app.include_router(files.router)

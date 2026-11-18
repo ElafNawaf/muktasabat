@@ -65,7 +65,7 @@ export function AgentProfile({ ov, agent, locale }: { ov: AgentOverview; agent: 
           <span className={`tc-state tc-state--${st.tone}`}><span className="ms ms-sm">{st.icon}</span>{t(st.ar, st.en)}</span>
           <h1>{name}</h1>
           <p>
-            {t("وسيط عقاري", "Real-estate agent")}
+            {t("وكيل عقاري", "Real-estate agent")}
             {ov.national_id ? <> · <span dir="ltr">{ov.national_id}</span></> : null}
             {ov.created_at ? ` · ${t("منذ", "since")} ${fmtD(ov.created_at)}` : ""}
           </p>
@@ -113,7 +113,7 @@ export function AgentProfile({ ov, agent, locale }: { ov: AgentOverview; agent: 
 
           {tab === "leases" && (
             <section className="card tp2-card" key="leases">
-              {ov.leases.length === 0 ? <p className="text-sec">{t("لم يُربط بهذا الوسيط أي عقد بعد. اختره في حقل الوسيط عند إنشاء العقد.", "No leases are linked to this agent yet. Pick them in the agent field when creating a lease.")}</p> : (
+              {ov.leases.length === 0 ? <p className="text-sec">{t("لم يُربط بهذا الوكيل أي عقد بعد. اختره في حقل الوكيل عند إنشاء العقد.", "No leases are linked to this agent yet. Pick them in the agent field when creating a lease.")}</p> : (
                 <ul className="bd-list">
                   {ov.leases.map((l) => (
                     <li key={l.id} className={l.active ? undefined : "is-dim"}>
@@ -144,7 +144,7 @@ export function AgentProfile({ ov, agent, locale }: { ov: AgentOverview; agent: 
 
           {tab === "owners" && (
             <section className="card tp2-card" key="owners">
-              {ov.owners_detail.length === 0 ? <p className="text-sec">{t("لا يوجد ملاك مرتبطون. اربط الوسيط من ملف المالك.", "No linked owners. Link the agent from an owner's profile.")}</p> : (
+              {ov.owners_detail.length === 0 ? <p className="text-sec">{t("لا يوجد ملاك مرتبطون. اربط الوكيل من ملف المالك.", "No linked owners. Link the agent from an owner's profile.")}</p> : (
                 <ul className="bd-list">
                   {ov.owners_detail.map((o) => (
                     <li key={o.id}>

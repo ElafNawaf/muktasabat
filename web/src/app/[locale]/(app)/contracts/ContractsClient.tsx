@@ -41,6 +41,8 @@ import { PreviewButton, RowPreview, type PreviewTarget } from "@/components/prev
 
 import { ContractFormModal } from "./ContractFormModal";
 import { useRowLink } from "@/lib/row-link";
+import { BulkBar, SelCell, SelHead } from "@/components/BulkBar";
+import { useSelection } from "@/lib/use-selection";
 
 type StatusFilter = "all" | "active" | "expired" | "terminated";
 
@@ -271,6 +273,7 @@ export function ContractsClient({
     });
   };
 
+  const sel = useSelection(filtered.map((x) => x.id));
   return (
     <div className="page screen-enter">
       <div className="page-header">
@@ -467,11 +470,13 @@ export function ContractsClient({
         </div>
       )}
 
+      <BulkBar sel={sel} locale={locale} entity="contracts" canDelete={canDelete} noun={["عقد", "lease(s)"]} nameOf={(id) => contracts.find((x) => x.id === id)?.contract_number ?? `#${id}`} />
       <div className="card card-tight">
         <div className="tbl-wrap">
           <table className="tbl">
             <thead>
               <tr>
+                  <SelHead sel={sel} locale={locale} />
                 <th>{t("contractNumber")}</th>
                 <th>{t("tenant")}</th>
                 <th>{t("unit")}</th>
@@ -491,6 +496,7 @@ export function ContractsClient({
                 const b = u ? buildingOf(u.building_id) : null;
                 return (
                   <tr key={c.id} {...rowLink(`/${locale}/contracts/${c.id}`, "pv-row")}>
+                    <SelCell sel={sel} id={c.id} locale={locale} label={c.contract_number} />
                     <td className="mono" style={{ fontSize: 12 }}>
                       {c.contract_number}
                     </td>
@@ -592,7 +598,7 @@ export function ContractsClient({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>
+                  <td colSpan={10} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>
                     {tCommon("noResults")}
                   </td>
                 </tr>

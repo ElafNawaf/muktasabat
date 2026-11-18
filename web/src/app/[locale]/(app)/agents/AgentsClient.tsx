@@ -21,6 +21,8 @@ import { localized, type Agent, type Owner } from "@/lib/types";
 import { AgentCards, AgentKpis, type AgentSummary } from "./AgentCards";
 import { AgentFormModal } from "./AgentFormModal";
 import { useRowLink } from "@/lib/row-link";
+import { BulkBar, SelCell, SelHead } from "@/components/BulkBar";
+import { useSelection } from "@/lib/use-selection";
 
 type View = "grid" | "list";
 
@@ -106,6 +108,7 @@ export function AgentsClient({
     });
   };
 
+  const sel = useSelection(filtered.map((x) => x.id));
   return (
     <div className="page screen-enter">
       <div className="page-header">
@@ -190,10 +193,12 @@ export function AgentsClient({
         />
       </FilterBar>
 
-      {filtered.length === 0 ? (
+<BulkBar sel={sel} locale={locale} entity="agents" canDelete={canDelete} noun={["وكيل", "agent(s)"]} nameOf={(id) => agents.find((x) => x.id === id)?.name ?? `#${id}`} />
+            {filtered.length === 0 ? (
         <Empty icon="support_agent" title={t("noAgents")} subtitle={t("noAgentsHint")} />
       ) : view === "grid" && summary.length > 0 ? (
         <AgentCards
+          sel={sel}
           rows={(() => { const m = new Map(summary.map((x) => [x.id, x])); return filtered.map((a) => m.get(a.id)).filter((x): x is AgentSummary => !!x); })()}
           locale={locale}
           onEdit={(id) => { const a = agents.find((x) => x.id === id); if (a) { setEditing(a); setFormOpen(true); } }}
@@ -287,6 +292,7 @@ export function AgentsClient({
             <table className="tbl">
               <thead>
                 <tr>
+                  <SelHead sel={sel} locale={locale} />
                   <th>{tCommon("name")}</th>
                   <th>{tCommon("phone")}</th>
                   <th>{tCommon("email")}</th>
@@ -297,6 +303,7 @@ export function AgentsClient({
               <tbody>
                 {filtered.map((a) => (
                   <tr key={a.id} {...rowLink(`/${locale}/agents/${a.id}`)}>
+                    <SelCell sel={sel} id={a.id} locale={locale} label={a.name} />
                     <td><Link href={`/${locale}/agents/${a.id}`} style={{ fontWeight: 600, color: "inherit" }}>{localized(a, "name", locale)}</Link></td>
                     <td className="mono text-sec">{a.phone ?? "—"}</td>
                     <td className="text-sec">{a.email ?? "—"}</td>

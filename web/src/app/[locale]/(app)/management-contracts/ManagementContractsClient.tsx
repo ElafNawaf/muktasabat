@@ -36,6 +36,8 @@ import {
 
 import { CompanyProfileModal } from "./CompanyProfileModal";
 import { ManagementContractFormModal } from "./ManagementContractFormModal";
+import { BulkBar, SelCell, SelHead } from "@/components/BulkBar";
+import { useSelection } from "@/lib/use-selection";
 
 type StatusFilter = "all" | "draft" | "active" | "expired" | "terminated";
 
@@ -217,6 +219,7 @@ export function ManagementContractsClient({
       ? `${c.fee_percentage}%`
       : `${tCurrency("sar")} ${formatSAR(c.fee_fixed_amount, locale)}`;
 
+  const sel = useSelection(filtered.map((x) => x.id));
   return (
     <div className="page screen-enter">
       <div className="page-header">
@@ -355,11 +358,13 @@ export function ManagementContractsClient({
         />
       </FilterBar>
 
+      <BulkBar sel={sel} locale={locale} entity="management_contracts" canDelete={canDelete} noun={["عقد إدارة", "management contract(s)"]} nameOf={(id) => contracts.find((x) => x.id === id)?.contract_number ?? `#${id}`} />
       <div className="card card-tight">
         <div className="tbl-wrap">
           <table className="tbl">
             <thead>
               <tr>
+                  <SelHead sel={sel} locale={locale} />
                 <th>{t("contractNumber")}</th>
                 <th>{t("owner")}</th>
                 <th className="num">{t("propertiesUnderManagement")}</th>
@@ -377,6 +382,7 @@ export function ManagementContractsClient({
                 const owner = ownerOf(c.owner_id);
                 return (
                   <tr key={c.id} className="tr-link" tabIndex={0} onClick={(ev) => { if (!(ev.target as HTMLElement).closest("a,button,input,select")) { setEditing(c); setFormOpen(true); } }} onKeyDown={(ev) => { if (ev.key === "Enter" && ev.target === ev.currentTarget) { setEditing(c); setFormOpen(true); } }}>
+                    <SelCell sel={sel} id={c.id} locale={locale} label={c.contract_number} />
                     <td className="mono" style={{ fontSize: 12 }}>
                       {c.contract_number}
                       {c.ejar_contract_number && (
@@ -498,7 +504,7 @@ export function ManagementContractsClient({
               {filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     style={{
                       textAlign: "center",
                       padding: 32,

@@ -527,7 +527,7 @@ def build_email(payment: Payment, kind: str, offset: int, rcpt: Recipients, toda
             ("أتعاب الإدارة", f"<span dir='ltr'>− {_sar(split.management_fee)}</span>", f"Management fee ({split.management_pct:g}%)"),
         ]
         if split.agent_fee:
-            rows.append(("عمولة الوسيط", f"<span dir='ltr'>− {_sar(split.agent_fee)}</span>", f"Agent fee ({split.agent_pct:g}%)"))
+            rows.append(("عمولة الوكيل", f"<span dir='ltr'>− {_sar(split.agent_fee)}</span>", f"Agent fee ({split.agent_pct:g}%)"))
         if split.ejar_fee:
             rows.append(("رسوم إيجار", f"<span dir='ltr'>− {_sar(split.ejar_fee)}</span>", "Ejar fee"))
         rows += [

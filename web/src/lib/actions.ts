@@ -1020,3 +1020,18 @@ export async function reinviteAllUsers(): Promise<ActionResult<ReinviteResult>> 
     return err(e);
   }
 }
+
+// ---------- Bulk (select many rows on a list) ----------
+
+export type BulkEntity = "tenants" | "owners" | "agents" | "contracts" | "management_contracts" | "expenses" | "buildings";
+export type BulkResult = { deleted: number[]; failed: { id: number; error: string }[] };
+
+export async function bulkDelete(entity: BulkEntity, ids: number[], locale = "ar"): Promise<ActionResult<BulkResult>> {
+  try {
+    const data = await api.post<BulkResult>(`/api/v1/bulk/${entity}/delete?locale=${locale}`, { ids });
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e, locale);
+  }
+}

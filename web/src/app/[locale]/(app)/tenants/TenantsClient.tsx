@@ -38,6 +38,8 @@ type LeaseSummary = {
 
 import { TenantCards, TenantKpis, type TenantSummary } from "./TenantCards";
 import { useRowLink } from "@/lib/row-link";
+import { BulkBar, SelCell, SelHead } from "@/components/BulkBar";
+import { useSelection } from "@/lib/use-selection";
 
 export function TenantsClient({
   tenants,
@@ -103,7 +105,7 @@ export function TenantsClient({
     });
   };
 
-  const doExport = () => {
+  const doExport = (only?: number[]) => {
     const ar = locale === "ar";
     const kind = (k?: string | null) => (k === "company" ? (ar ? "منشأة" : "Company") : ar ? "فرد" : "Individual");
     void downloadBrandedTable({
@@ -113,7 +115,7 @@ export function TenantsClient({
       header: ar
         ? ["#", "الاسم", "النوع", "الجوال", "رقم الهوية", "تاريخ الميلاد", "السجل التجاري", "تاريخ السجل", "جوال أبشر", "اسم الممثل", "هوية الممثل", "الرقم الضريبي", "البريد", "المرافقون"]
         : ["#", "Name", "Type", "Phone", "National ID", "Date of birth", "CR number", "CR date", "Absher phone", "Representative", "Representative ID", "VAT number", "Email", "Companions"],
-      rows: filtered.map((tn) => [
+      rows: (only ? filtered.filter((x) => only.includes(x.id)) : filtered).map((tn) => [
         tn.id, (ar ? tn.name_ar : tn.name_en) || tn.name, kind(tn.tenant_type), tn.phone, tn.national_id, tn.date_of_birth, tn.cr_number, tn.cr_date,
         tn.absher_phone, tn.representative_name, tn.representative_national_id, tn.tax_number, tn.email, (tn.companions ?? []).length || "",
       ]),
@@ -233,6 +235,7 @@ export function TenantsClient({
       return s + (u ? u.rent_amount : 0);
     }, 0);
 
+  const sel = useSelection(filtered.map((x) => x.id));
   return (
     <div className="page screen-enter">
       <div className="page-header">
@@ -241,7 +244,7 @@ export function TenantsClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-secondary" onClick={doExport}>
+          <button className="btn btn-secondary" onClick={() => doExport()}>
             <span className="ms">file_download</span> {tCommon("export")}
           </button>
           {canCreate && (
@@ -346,10 +349,12 @@ export function TenantsClient({
         />
       </FilterBar>
 
-      {filtered.length === 0 ? (
+<BulkBar sel={sel} locale={locale} entity="tenants" canDelete={canDelete} noun={["مستأجر", "tenant(s)"]} nameOf={(id) => tenants.find((x) => x.id === id)?.name ?? `#${id}`} onExport={(ids) => doExport(ids)} />
+            {filtered.length === 0 ? (
         <Empty icon="person" title={t("noTenants")} subtitle={t("noTenantsHint")} />
       ) : view === "grid" && summary.length > 0 ? (
         <TenantCards
+          sel={sel}
           rows={(() => { const m = new Map(summary.map((x) => [x.id, x])); return filtered.map((tn) => m.get(tn.id)).filter((x): x is TenantSummary => !!x); })()}
           locale={locale}
           onEdit={(id) => { const tn = tenants.find((x) => x.id === id); if (tn) openEdit(tn); }}
@@ -509,6 +514,7 @@ export function TenantsClient({
             <table className="tbl">
               <thead>
                 <tr>
+                  <SelHead sel={sel} locale={locale} />
                   <th>{tCommon("name")}</th>
                   <th>{tForm("tenantType")}</th>
                   <th>{tCommon("nationalId")}</th>
@@ -525,6 +531,7 @@ export function TenantsClient({
                   const tenantType = tn.tenant_type ?? "individual";
                   return (
                     <tr key={tn.id} {...rowLink(`/${locale}/tenants/${tn.id}`)}>
+                    <SelCell sel={sel} id={tn.id} locale={locale} label={tn.name} />
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div

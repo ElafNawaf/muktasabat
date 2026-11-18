@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { sar, wa } from "../tenants/TenantCards";
+import type { Selection } from "@/lib/use-selection";
 
 type Counts = { occupied: number; expiring: number; overdue: number; vacant: number; reserved: number };
 export type OwnerSummary = {
@@ -86,7 +87,7 @@ export function OwnerKpis({ rows, locale }: { rows: OwnerSummary[]; locale: stri
   );
 }
 
-export function OwnerCards({ rows, locale, onEdit, onDelete }: { rows: OwnerSummary[]; locale: string; onEdit: (id: number) => void; onDelete?: (id: number) => void }) {
+export function OwnerCards({ rows, locale, onEdit, onDelete, sel }: { rows: OwnerSummary[]; locale: string; onEdit: (id: number) => void; onDelete?: (id: number) => void; sel?: Selection }) {
   const fmtD = (iso: string) => new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "medium" }).format(new Date(iso));
   return (
     <div className="tc-grid">
@@ -96,7 +97,8 @@ export function OwnerCards({ rows, locale, onEdit, onDelete }: { rows: OwnerSumm
         const name = ownerName(r, locale);
         const href = `/${locale}/owners/${r.id}`;
         return (
-          <article key={r.id} className={`tc-card tc-card--${st.tone}`} style={{ ["--hue" as string]: hue, ["--i" as string]: i % 12 }}>
+          <article key={r.id} className={`tc-card tc-card--${st.tone}`} style={{ ["--hue" as string]: hue, ["--i" as string]: i % 12 }} data-picked={sel?.has(r.id) || undefined}>
+            {sel && <label className="tc-pick" onClick={(e) => e.stopPropagation()}><input type="checkbox" className="sel-box" checked={sel.has(r.id)} onChange={() => sel.toggle(r.id)} aria-label={locale === "ar" ? "تحديد" : "Select"} /></label>}
             <header className="tc-card__head">
               <Link href={href} className="tc-avatar">{initials(name)}</Link>
               <div className="tc-card__id">

@@ -75,7 +75,7 @@ export function OwnerProfile({ ov, owner, agents, locale }: { ov: OwnerOverview;
           <p>
             {ov.type === "company" ? t("منشأة", "Company") : t("مالك فرد", "Individual owner")}
             {` · ${num(ov.buildings)} ${t("عقار", "properties")} · ${num(ov.units)} ${t("وحدة", "units")}`}
-            {ov.agent ? <> · {t("الوسيط", "Agent")}: <Link href={`/${locale}/agents/${ov.agent.id}`} className="tp2-hero__link">{ov.agent.name}</Link></> : null}
+            {ov.agent ? <> · {t("الوكيل", "Agent")}: <Link href={`/${locale}/agents/${ov.agent.id}`} className="tp2-hero__link">{ov.agent.name}</Link></> : null}
           </p>
         </div>
         <div className="tp2-hero__actions">

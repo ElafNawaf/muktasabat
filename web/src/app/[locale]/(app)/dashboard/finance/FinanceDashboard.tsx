@@ -57,7 +57,7 @@ export function FinanceDashboard({ data, locale }: { data: Finance; locale: stri
 
   // Waterfall: invisible base + visible step.
   const wfLabels: Record<string, [string, string]> = {
-    gross: ["إجمالي المحصّل", "Rent collected"], owner_share: ["حصص الملاك", "Owners' share"], pass_through: ["رسوم إيجار والوسطاء", "Ejar & agent fees"],
+    gross: ["إجمالي المحصّل", "Rent collected"], owner_share: ["حصص الملاك", "Owners' share"], pass_through: ["رسوم إيجار والوكلاء", "Ejar & agent fees"],
     revenue: ["إيراد الشركة", "Company revenue"], company_costs: ["مصروفات الشركة", "Company costs"], payroll: ["الرواتب", "Payroll"], net_profit: ["صافي الربح", "Net profit"],
   };
   const wf = useMemo(() => {
@@ -158,7 +158,7 @@ export function FinanceDashboard({ data, locale }: { data: Finance; locale: stri
                   <YAxis tick={{ fill: ch.axis, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => f.cf(v)} width={48} orientation={f.ar ? "right" : "left"} />
                   <Tooltip {...ch.tip} formatter={(v: number) => f.nf(v)} />
                   <Bar {...ch.anim} dataKey="owner_share" stackId="g" name={T("حصص الملاك", "Owners' share")} fill={C.sand} maxBarSize={26} />
-                  <Bar {...ch.anim} dataKey="pass_through" stackId="g" name={T("رسوم إيجار والوسطاء", "Ejar & agent fees")} fill={C.grey} maxBarSize={26} />
+                  <Bar {...ch.anim} dataKey="pass_through" stackId="g" name={T("رسوم إيجار والوكلاء", "Ejar & agent fees")} fill={C.grey} maxBarSize={26} />
                   <Bar {...ch.anim} dataKey="revenue" stackId="g" name={T("إيراد الشركة", "Company revenue")} fill={ch.maroon} radius={[5, 5, 0, 0]} maxBarSize={26} />
                 </BarChart>
               </ResponsiveContainer>
@@ -267,13 +267,13 @@ export function FinanceDashboard({ data, locale }: { data: Finance; locale: stri
             <dl className="bi-facts">
               <div><dt>{T("حصص الملاك", "Owners' share")}</dt><dd>{sar(k.owner_share_ytd)}</dd></div>
               <div><dt>{T("مصروفات على الملاك", "Costs charged to owners")}</dt><dd>{sar(k.owner_costs_ytd)}</dd></div>
-              <div><dt>{T("رسوم إيجار والوسطاء", "Ejar & agent fees")}</dt><dd>{sar(k.pass_through_ytd)}</dd></div>
+              <div><dt>{T("رسوم إيجار والوكلاء", "Ejar & agent fees")}</dt><dd>{sar(k.pass_through_ytd)}</dd></div>
             </dl>
           </Card>
         )}
       </section>
 
-      <p className="bi-asof">{T("التحصيل على أساس تاريخ السداد. الإيراد = أتعاب الإدارة. حصص الملاك ورسوم إيجار والوسطاء أموال تمر عبر الشركة وليست إيرادًا.", "Collections are counted on the paid date. Revenue = management fees. Owners' shares, Ejar and agent fees pass through the company and are not revenue.")}</p>
+      <p className="bi-asof">{T("التحصيل على أساس تاريخ السداد. الإيراد = أتعاب الإدارة. حصص الملاك ورسوم إيجار والوكلاء أموال تمر عبر الشركة وليست إيرادًا.", "Collections are counted on the paid date. Revenue = management fees. Owners' shares, Ejar and agent fees pass through the company and are not revenue.")}</p>
     </div>
   );
 }

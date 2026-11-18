@@ -21,6 +21,8 @@ import { localized, type Building, type Owner, type Unit } from "@/lib/types";
 
 import { ExpenseFormModal } from "./ExpenseFormModal";
 import { useRowLink } from "@/lib/row-link";
+import { BulkBar, SelCell, SelHead } from "@/components/BulkBar";
+import { useSelection } from "@/lib/use-selection";
 
 export type ExpenseRow = {
   id: number;
@@ -171,6 +173,7 @@ export function ExpensesClient({
     clearQuery(["building", "owner", "unit", "category", "q"]);
   };
 
+  const sel = useSelection(filtered.map((x) => x.id));
   return (
     <div className="page screen-enter">
       <div className="page-header">
@@ -282,11 +285,13 @@ export function ExpensesClient({
         </div>
       )}
 
+      <BulkBar sel={sel} locale={locale} entity="expenses" canDelete={canDelete} noun={["مصروف", "expense(s)"]} nameOf={(id) => { const x = expenses.find((y) => y.id === id); return x ? `${x.expense_date} · ${x.description || x.category}` : `#${id}`; }} />
       <div className="card card-tight">
         <div className="tbl-wrap">
           <table className="tbl">
             <thead>
               <tr>
+                  <SelHead sel={sel} locale={locale} />
                 <th>{t("date")}</th>
                 <th>{t("category")}</th>
                 <th>{t("description")}</th>
@@ -311,6 +316,7 @@ export function ExpensesClient({
                       : t("scopeAll");
                 return (
                   <tr key={e.id} {...(workOrders[e.id] ? rowLink(`/${locale}/maintenance?open=${workOrders[e.id].id}`) : canEdit ? { className: "tr-link", tabIndex: 0, onClick: (ev: React.MouseEvent) => { if (!(ev.target as HTMLElement).closest("a,button,input,select")) { setEditing(e); setFormOpen(true); } }, onKeyDown: (ev: React.KeyboardEvent) => { if (ev.key === "Enter") { setEditing(e); setFormOpen(true); } } } : {})}>
+                    <SelCell sel={sel} id={e.id} locale={locale} label={e.description || e.category} />
                     <td className="text-sec" style={{ fontSize: 12 }}>
                       {fmtDate(e.expense_date)}
                     </td>
@@ -371,7 +377,7 @@ export function ExpensesClient({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>
+                  <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--color-text-secondary)" }}>
                     {tCommon("noResults")}
                   </td>
                 </tr>

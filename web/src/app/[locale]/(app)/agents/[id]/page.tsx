@@ -15,7 +15,7 @@ export default async function AgentPage({ params }: { params: Promise<{ locale: 
   const { locale, id } = await params;
   if (!/^\d+$/.test(id)) notFound();
   const me = await requireAuth(locale);
-  if (!(await canServer(locale, "agents", "view"))) return <NoAccess locale={locale} title={locale === "ar" ? "الوسطاء" : "Agents"} user={me} />;
+  if (!(await canServer(locale, "agents", "view"))) return <NoAccess locale={locale} title={locale === "ar" ? "الوكلاء" : "Agents"} user={me} />;
   let ov: AgentOverview;
   let agent: Agent;
   try {

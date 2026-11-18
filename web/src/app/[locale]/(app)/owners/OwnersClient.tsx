@@ -23,6 +23,8 @@ import { localized, type Agent, type Building, type Contract, type Owner, type U
 import { OwnerCards, OwnerKpis, type OwnerSummary } from "./OwnerCards";
 import { OwnerFormModal } from "./OwnerFormModal";
 import { useRowLink } from "@/lib/row-link";
+import { BulkBar, SelCell, SelHead } from "@/components/BulkBar";
+import { useSelection } from "@/lib/use-selection";
 
 type View = "grid" | "list";
 
@@ -176,7 +178,7 @@ export function OwnersClient({
     setEditing(null);
   };
 
-  const doExport = () => {
+  const doExport = (only?: number[]) => {
     const ar = locale === "ar";
     void downloadBrandedTable({
       title: ar ? "قائمة الملاك" : "Owners",
@@ -185,7 +187,7 @@ export function OwnersClient({
       header: ar
         ? ["#", "الاسم", "الاسم (عربي)", "الاسم (إنجليزي)", "الجوال", "البريد", "رقم الهوية", "البنك", "الآيبان"]
         : ["#", "Name", "Name (Arabic)", "Name (English)", "Phone", "Email", "National ID", "Bank", "IBAN"],
-      rows: filtered.map((o) => [o.id, o.name, o.name_ar, o.name_en, o.phone, o.email, o.national_id, o.bank_name, o.iban]),
+      rows: (only ? filtered.filter((x) => only.includes(x.id)) : filtered).map((o) => [o.id, o.name, o.name_ar, o.name_en, o.phone, o.email, o.national_id, o.bank_name, o.iban]),
     });
   };
 
@@ -203,6 +205,7 @@ export function OwnersClient({
     });
   };
 
+  const sel = useSelection(filtered.map((x) => x.id));
   return (
     <div className="page screen-enter">
       <div className="page-header">
@@ -211,7 +214,7 @@ export function OwnersClient({
           <div className="page-subtitle">{t("subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-secondary" onClick={doExport}>
+          <button className="btn btn-secondary" onClick={() => doExport()}>
             <span className="ms">file_download</span> {tCommon("export")}
           </button>
           {canCreate && (
@@ -333,7 +336,8 @@ export function OwnersClient({
         />
       </FilterBar>
 
-      {filtered.length === 0 ? (
+<BulkBar sel={sel} locale={locale} entity="owners" canDelete={canDelete} noun={["مالك", "owner(s)"]} nameOf={(id) => owners.find((x) => x.id === id)?.name ?? `#${id}`} onExport={(ids) => doExport(ids)} />
+            {filtered.length === 0 ? (
         <Empty
           icon="group"
           title={t("noOwners")}
@@ -341,6 +345,7 @@ export function OwnersClient({
         />
       ) : view === "grid" && summary.length > 0 ? (
         <OwnerCards
+          sel={sel}
           rows={(() => { const m = new Map(summary.map((x) => [x.id, x])); return filtered.map((o) => m.get(o.id)).filter((x): x is OwnerSummary => !!x); })()}
           locale={locale}
           onEdit={(id) => { const o = owners.find((x) => x.id === id); if (o) openEdit(o); }}
@@ -492,6 +497,7 @@ export function OwnersClient({
             <table className="tbl">
               <thead>
                 <tr>
+                  <SelHead sel={sel} locale={locale} />
                   <th>{tCommon("name")}</th>
                   <th>{tCommon("nationalId")}</th>
                   <th>{tCommon("phone")}</th>
@@ -508,6 +514,7 @@ export function OwnersClient({
                   const agent = agentOf(o.agent_id);
                   return (
                     <tr key={o.id} {...rowLink(`/${locale}/owners/${o.id}`)}>
+                    <SelCell sel={sel} id={o.id} locale={locale} label={o.name} />
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div

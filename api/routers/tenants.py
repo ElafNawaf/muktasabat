@@ -90,5 +90,11 @@ def delete_tenant(tenant_id: int, db: DbSession, _user: Perm("tenants", "delete"
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tenant not found")
+    if tenant.contracts:
+        # Deleting would silently leave these leases without a tenant.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"This tenant has {len(tenant.contracts)} lease(s). Delete or reassign the leases first.",
+        )
     db.delete(tenant)
     db.commit()

@@ -302,8 +302,8 @@
     "photosOf": "صور",
     "setLocation": "تحديد الموقع",
     "approxLocation": "تقريبي",
-    "agentPct": "نسبة الوسيط",
-    "agentName": "الوسيط"
+    "agentPct": "نسبة الوكيل",
+    "agentName": "الوكيل"
   },
   "mapPicker": {
     "label": "الموقع على الخريطة",
@@ -567,8 +567,8 @@
     "electricInvoice": "رقم فاتورة الكهرباء",
     "waterInvoice": "رقم فاتورة المياه",
     "mgmtPct": "نسبة الإدارة %",
-    "agentPct": "نسبة الوسيط %",
-    "agentName": "اسم الوسيط",
+    "agentPct": "نسبة الوكيل %",
+    "agentName": "اسم الوكيل",
     "notes": "ملاحظات",
     "nameRequired": "اسم الوحدة مطلوب",
     "numberRequired": "رقم الوحدة مطلوب",
@@ -717,7 +717,7 @@
       "full": "دفعة واحدة"
     },
     "paymentCount": "عدد الدفعات",
-    "agentPct": "نسبة الوسيط %",
+    "agentPct": "نسبة الوكيل %",
     "servicesAmount": "الخدمات",
     "insuranceAmount": "التأمين",
     "electricityAmount": "مبلغ الكهرباء",

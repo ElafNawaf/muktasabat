@@ -100,7 +100,7 @@ type H = {
 
 function Parties({ c, t, locale }: { c: Head } & Pick<H, "t" | "locale">) {
   const rows: [string, string, Party, string][] = [
-    ["person", t("المستأجر", "Tenant"), c.tenant, "tenants"], ["real_estate_agent", t("المالك", "Owner"), c.owner, "owners"], ["handshake", t("الوسيط", "Agent"), c.agent, "agents"],
+    ["person", t("المستأجر", "Tenant"), c.tenant, "tenants"], ["real_estate_agent", t("المالك", "Owner"), c.owner, "owners"], ["handshake", t("الوكيل", "Agent"), c.agent, "agents"],
   ];
   return (
     <div className="pv-parties">
@@ -138,7 +138,7 @@ function PaymentBody({ d, t, fmt, money, lb, go, locale }: { d: PaymentP } & H) 
   const parts: [string, string, number, string][] = [
     ["owner_share", t("حصة المالك", "Owner share"), Number(sp.owner_share || 0), "ok"],
     ["management_fee", t("أتعاب الإدارة", "Management fee"), Number(sp.management_fee || 0), "a"],
-    ["agent_fee", t("عمولة الوسيط", "Agent fee"), Number(sp.agent_fee || 0), "info"],
+    ["agent_fee", t("عمولة الوكيل", "Agent fee"), Number(sp.agent_fee || 0), "info"],
     ["ejar_fee", t("رسوم إيجار", "Ejar fee"), Number(sp.ejar_fee || 0), "soon"],
   ];
   const po = PAYOUT[d.payout.state];
@@ -251,7 +251,7 @@ function ContractBody({ d, t, fmt, money, lb, go, locale }: { d: ContractP } & H
           {a.vat > 0 && <div><dt>{t(`الضريبة ${a.vat_rate}%`, `VAT ${a.vat_rate}%`)}</dt><dd>{money(a.vat)}</dd></div>}
           <div className="is-total"><dt>{t("إجمالي العقد", "Contract total")}</dt><dd>{money(a.total)}</dd></div>
           <div><dt>{t("أتعاب الإدارة", "Management fee")}</dt><dd>{a.management_pct}%</dd></div>
-          <div><dt>{t("عمولة الوسيط", "Agent fee")}</dt><dd>{a.agent_pct}%</dd></div>
+          <div><dt>{t("عمولة الوكيل", "Agent fee")}</dt><dd>{a.agent_pct}%</dd></div>
           {a.ejar_fee > 0 && <div><dt>{t("رسوم إيجار", "Ejar fee")}</dt><dd>{money(a.ejar_fee)}</dd></div>}
           <div><dt>{t("الكهرباء", "Electricity")}</dt><dd>{a.electricity_on_tenant ? t("على المستأجر", "Tenant pays") : t("على المالك", "Owner pays")}{d.meters.electricity ? ` · ${d.meters.electricity}` : ""}</dd></div>
           <div><dt>{t("المياه", "Water")}</dt><dd>{a.water_on_tenant ? t("على المستأجر", "Tenant pays") : t("على المالك", "Owner pays")}{d.meters.water ? ` · ${d.meters.water}` : ""}</dd></div>

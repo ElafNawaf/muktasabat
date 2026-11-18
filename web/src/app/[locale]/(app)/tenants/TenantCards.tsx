@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { sarText } from "@/lib/format";
+import type { Selection } from "@/lib/use-selection";
 
 export type TenantSummary = {
   id: number;
@@ -64,7 +65,7 @@ export function TenantKpis({ rows, locale }: { rows: TenantSummary[]; locale: st
   );
 }
 
-export function TenantCards({ rows, locale, onEdit, onDelete }: { rows: TenantSummary[]; locale: string; onEdit: (id: number) => void; onDelete?: (id: number) => void }) {
+export function TenantCards({ rows, locale, onEdit, onDelete, sel }: { rows: TenantSummary[]; locale: string; onEdit: (id: number) => void; onDelete?: (id: number) => void; sel?: Selection }) {
   const fmtD = (iso: string) => new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "medium" }).format(new Date(iso));
   return (
     <div className="tc-grid">
@@ -74,7 +75,8 @@ export function TenantCards({ rows, locale, onEdit, onDelete }: { rows: TenantSu
         const name = locale === "ar" ? r.name : r.name_en || r.name;
         const href = `/${locale}/tenants/${r.id}`;
         return (
-          <article key={r.id} className={`tc-card tc-card--${st.tone}`} style={{ ["--hue" as string]: hue, ["--i" as string]: i % 12 }}>
+          <article key={r.id} className={`tc-card tc-card--${st.tone}`} style={{ ["--hue" as string]: hue, ["--i" as string]: i % 12 }} data-picked={sel?.has(r.id) || undefined}>
+            {sel && <label className="tc-pick" onClick={(e) => e.stopPropagation()}><input type="checkbox" className="sel-box" checked={sel.has(r.id)} onChange={() => sel.toggle(r.id)} aria-label={locale === "ar" ? "تحديد" : "Select"} /></label>}
             <header className="tc-card__head">
               <Link href={href} className="tc-avatar">{initials(name)}</Link>
               <div className="tc-card__id">

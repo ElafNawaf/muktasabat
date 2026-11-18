@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { sar, wa } from "../tenants/TenantCards";
+import type { Selection } from "@/lib/use-selection";
 
 export type AgentSummary = {
   id: number;
@@ -42,7 +43,7 @@ export const agentName = (r: { name: string; name_en?: string | null; name_ar?: 
 export function AgentKpis({ rows, locale }: { rows: AgentSummary[]; locale: string }) {
   const active = rows.filter((r) => r.leases_active > 0).length;
   const tiles = [
-    { icon: "support_agent", tone: "a", label: T(locale, "الوسطاء", "Agents"), value: String(rows.length), sub: `${active} ${T(locale, "لديهم عقود سارية", "with current deals")}` },
+    { icon: "support_agent", tone: "a", label: T(locale, "الوكلاء", "Agents"), value: String(rows.length), sub: `${active} ${T(locale, "لديهم عقود سارية", "with current deals")}` },
     { icon: "contract", tone: "b", label: T(locale, "عقود سارية بوساطتهم", "Current brokered leases"), value: String(rows.reduce((a, r) => a + r.leases_active, 0)), sub: `${sar(locale, rows.reduce((a, r) => a + r.rent_brokered, 0))} ${T(locale, "سنوياً", "/yr")}` },
     { icon: "paid", tone: "c", label: T(locale, "عمولات 12 شهراً", "Commission, 12 months"), value: sar(locale, rows.reduce((a, r) => a + r.commission_12m, 0)), sub: `${T(locale, "قادمة", "upcoming")}: ${sar(locale, rows.reduce((a, r) => a + r.commission_pending, 0))}` },
     { icon: "groups", tone: "d", label: T(locale, "ملاك مرتبطون", "Linked owners"), value: String(rows.reduce((a, r) => a + r.owners, 0)), sub: `${rows.reduce((a, r) => a + r.leases_expiring, 0)} ${T(locale, "عقد ينتهي خلال 60 يوماً", "leases end ≤ 60 days")}` },
@@ -58,7 +59,7 @@ export function AgentKpis({ rows, locale }: { rows: AgentSummary[]; locale: stri
   );
 }
 
-export function AgentCards({ rows, locale, onEdit, onDelete }: { rows: AgentSummary[]; locale: string; onEdit: (id: number) => void; onDelete?: (id: number) => void }) {
+export function AgentCards({ rows, locale, onEdit, onDelete, sel }: { rows: AgentSummary[]; locale: string; onEdit: (id: number) => void; onDelete?: (id: number) => void; sel?: Selection }) {
   const fmtD = (iso: string) => new Intl.DateTimeFormat(locale === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", { dateStyle: "medium" }).format(new Date(iso));
   const maxC = Math.max(1, ...rows.map((r) => r.commission_12m));
   return (
@@ -69,12 +70,13 @@ export function AgentCards({ rows, locale, onEdit, onDelete }: { rows: AgentSumm
         const name = agentName(r, locale);
         const href = `/${locale}/agents/${r.id}`;
         return (
-          <article key={r.id} className={`tc-card tc-card--${st.tone}`} style={{ ["--hue" as string]: hue, ["--i" as string]: i % 12 }}>
+          <article key={r.id} className={`tc-card tc-card--${st.tone}`} style={{ ["--hue" as string]: hue, ["--i" as string]: i % 12 }} data-picked={sel?.has(r.id) || undefined}>
+            {sel && <label className="tc-pick" onClick={(e) => e.stopPropagation()}><input type="checkbox" className="sel-box" checked={sel.has(r.id)} onChange={() => sel.toggle(r.id)} aria-label={locale === "ar" ? "تحديد" : "Select"} /></label>}
             <header className="tc-card__head">
               <Link href={href} className="tc-avatar">{initials(name)}</Link>
               <div className="tc-card__id">
                 <Link href={href} className="tc-card__name">{name}</Link>
-                <small>{T(locale, "وسيط عقاري", "Real-estate agent")}{r.avg_rate ? ` · ${r.avg_rate}% ${T(locale, "عمولة", "commission")}` : ""}</small>
+                <small>{T(locale, "وكيل عقاري", "Real-estate agent")}{r.avg_rate ? ` · ${r.avg_rate}% ${T(locale, "عمولة", "commission")}` : ""}</small>
               </div>
               <span className={`tc-state tc-state--${st.tone}`}><span className="ms ms-sm">{st.icon}</span>{T(locale, st.ar, st.en)}</span>
             </header>

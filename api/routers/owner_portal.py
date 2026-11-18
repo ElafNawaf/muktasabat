@@ -581,14 +581,14 @@ def statement_csv(
     from api.services.branded_xlsx import details_line, table_workbook, xlsx_response
 
     ar = locale == "ar"
-    income_h = (["التاريخ", "العقار", "الوحدة", "المستأجر", "رقم السند", "الإجمالي", "أتعاب الإدارة", "عمولة الوسيط", "رسوم إيجار", "الصافي"] if ar
+    income_h = (["التاريخ", "العقار", "الوحدة", "المستأجر", "رقم السند", "الإجمالي", "أتعاب الإدارة", "عمولة الوكيل", "رسوم إيجار", "الصافي"] if ar
                 else ["Date", "Property", "Unit", "Tenant", "Receipt", "Gross", "Management fee", "Agent fee", "Ejar fee", "Net"])
     income = [[x[k] for k in ("date", "building", "unit", "tenant", "receipt", "gross", "management_fee", "agent_fee", "ejar_fee", "net")] for x in st["income"]]
     exp_h = ["التاريخ", "الفئة", "الوصف", "العقار", "المورد", "المبلغ", "مخصوم"] if ar else ["Date", "Category", "Description", "Property", "Vendor", "Amount", "Deducted"]
     exps = [[x["date"], x["category"], x["description"], x["building"], x["vendor"], x["amount"], "✓" if x["deducted"] else ""] for x in st["expenses"]]
     t = st["totals"]
     labels = (
-        [("إجمالي المحصّل", "gross"), ("أتعاب الإدارة", "management_fee"), ("عمولة الوسيط", "agent_fee"), ("رسوم إيجار", "ejar_fee"), ("المصروفات المخصومة", "expenses"), ("الصافي المستحق للمالك", "net_payable")]
+        [("إجمالي المحصّل", "gross"), ("أتعاب الإدارة", "management_fee"), ("عمولة الوكيل", "agent_fee"), ("رسوم إيجار", "ejar_fee"), ("المصروفات المخصومة", "expenses"), ("الصافي المستحق للمالك", "net_payable")]
         if ar
         else [("Gross collected", "gross"), ("Management fees", "management_fee"), ("Agent fees", "agent_fee"), ("Ejar fees", "ejar_fee"), ("Deducted expenses", "expenses"), ("Net payable to owner", "net_payable")]
     )

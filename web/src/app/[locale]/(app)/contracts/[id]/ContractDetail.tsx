@@ -130,7 +130,7 @@ export function ContractDetail({ ov, locale }: { ov: ContractOverview; locale: s
             {c.insurance_amount > 0 && <div><dt>{T("التأمين", "Deposit")}</dt><dd>{sar(c.insurance_amount)}</dd></div>}
             <div><dt>{T("الكهرباء", "Electricity")}</dt><dd>{c.electricity_on_tenant ? T("على المستأجر", "Tenant pays") : T("على المالك", "Owner pays")}{c.electricity_meter_number && <span className="text-sec" dir="ltr"> · {c.electricity_meter_number}</span>}</dd></div>
             <div><dt>{T("المياه", "Water")}</dt><dd>{c.water_on_tenant ? T("على المستأجر", "Tenant pays") : T("على المالك", "Owner pays")}{c.water_meter_number && <span className="text-sec" dir="ltr"> · {c.water_meter_number}</span>}</dd></div>
-            {ov.agent && <div><dt>{T("الوسيط", "Agent")}</dt><dd><Link href={`${base}/agents/${ov.agent.id}`}>{ov.agent.name}</Link>{c.agent_percentage ? ` · ${c.agent_percentage}%` : ""}</dd></div>}
+            {ov.agent && <div><dt>{T("الوكيل", "Agent")}</dt><dd><Link href={`${base}/agents/${ov.agent.id}`}>{ov.agent.name}</Link>{c.agent_percentage ? ` · ${c.agent_percentage}%` : ""}</dd></div>}
             {ov.management_contract && <div><dt>{T("عقد إدارة الأملاك", "Management contract")}</dt><dd><Link href={`${base}/management-contracts?q=${encodeURIComponent(ov.management_contract.number)}`} dir="ltr">{ov.management_contract.number}</Link>{c.management_percentage ? ` · ${c.management_percentage}%` : ""}</dd></div>}
             {ov.tenant?.phone && <div><dt>{T("جوال المستأجر", "Tenant phone")}</dt><dd><a href={`tel:${ov.tenant.phone}`} dir="ltr">{ov.tenant.phone}</a></dd></div>}
             <div><dt>{T("أُنشئ", "Created")}</dt><dd>{date(c.created_at.slice(0, 10))}</dd></div>

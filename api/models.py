@@ -453,11 +453,11 @@ class Contract(Base):
     vat_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     # إجمالي العقد — rent + insurance + utilities + VAT
     total_amount: Mapped[float] = mapped_column(Float, default=0, nullable=False)
-    # نسبة الوسيط — agent commission %
+    # نسبة الوكيل — agent commission %
     agent_percentage: Mapped[float] = mapped_column(Float, default=0, nullable=False)
     # نسبة إدارة العقار — property management fee %
     management_percentage: Mapped[float] = mapped_column(Float, default=0, nullable=False)
-    # الوسيط المرتبط بالعقد — linked agent (owner↔company / lease commission)
+    # الوكيل المرتبط بالعقد — linked agent (owner↔company / lease commission)
     agent_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("agents.id", ondelete="SET NULL"), nullable=True
     )

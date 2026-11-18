@@ -38,7 +38,7 @@ ENTITIES: dict[str, dict[str, Any]] = {
     "building": {"model": Building, "module": "properties", "ar": "العقارات", "en": "Buildings", "icon": "apartment"},
     "unit": {"model": Unit, "module": "properties", "ar": "الوحدات", "en": "Units", "icon": "meeting_room"},
     "contract": {"model": Contract, "module": "contracts", "ar": "عقود الإيجار", "en": "Leases", "icon": "contract"},
-    "agent": {"model": Agent, "module": "agents", "ar": "الوسطاء", "en": "Agents", "icon": "support_agent"},
+    "agent": {"model": Agent, "module": "agents", "ar": "الوكلاء", "en": "Agents", "icon": "support_agent"},
 }
 TYPES = ("text", "textarea", "number", "date", "select", "multiselect", "checkbox", "phone", "email", "url")
 # A field may only change between these families, so saved values stay meaningful.
@@ -53,7 +53,7 @@ LABELS = {
     "phone": ("الجوال", "Mobile"), "email": ("البريد", "Email"), "national_id": ("رقم الهوية", "ID number"),
     "nationality": ("الجنسية", "Nationality"), "date_of_birth": ("تاريخ الميلاد", "Date of birth"), "iban": ("الآيبان", "IBAN"),
     "bank_name": ("البنك", "Bank"), "notes": ("ملاحظات", "Notes"), "owner_id": ("المالك (ربط)", "Owner (link)"),
-    "agent_id": ("الوسيط (ربط)", "Agent (link)"), "tenant_id": ("المستأجر (ربط)", "Tenant (link)"),
+    "agent_id": ("الوكيل (ربط)", "Agent (link)"), "tenant_id": ("المستأجر (ربط)", "Tenant (link)"),
     "building_id": ("العقار (ربط)", "Building (link)"), "unit_id": ("الوحدة (ربط)", "Unit (link)"),
     "management_contract_id": ("عقد الإدارة (ربط)", "Management contract (link)"), "assignee_id": ("الموظف المسؤول (ربط)", "Assignee (link)"),
     "contract_number": ("رقم العقد", "Contract number"), "ejar_contract_number": ("رقم عقد إيجار", "Ejar contract number"),
