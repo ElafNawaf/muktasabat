@@ -84,6 +84,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Create database tables on startup (same schema as api.models). For production, use managed migrations."""
+    # Fewer request workers (default 40) than database connections (30), so a request
+    # never waits on a connection that only another waiting worker could release.
+    import anyio.to_thread
+
+    anyio.to_thread.current_default_thread_limiter().total_tokens = 20
     import api.models  # noqa: F401 — register ORM mappers with Base.metadata
     import api.cms_models  # noqa: F401 — public-website CMS tables
     import api.workflow_models  # noqa: F401 — approval workflow policies & steps

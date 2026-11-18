@@ -8,7 +8,18 @@ settings = get_settings()
 # SQLite needs a special connect arg; PostgreSQL doesn't.
 connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
 
-engine = create_engine(settings.database_url, connect_args=connect_args, pool_pre_ping=True)
+_pool: dict = {}
+if settings.database_url.startswith("postgresql"):
+    # 2026-11-18: the API hung with every request worker waiting for a pooled connection
+    # while 13 connections sat "idle in transaction" (their release needed a free worker).
+    # Keep more connections than request workers (main.py caps workers at 20), fail fast
+    # instead of queueing, and let Postgres end any transaction left open for 5 minutes.
+    _pool = {"pool_size": 15, "max_overflow": 15, "pool_timeout": 10, "pool_recycle": 1800}
+    connect_args = {
+        "connect_timeout": 10,
+        "options": "-c idle_in_transaction_session_timeout=300000 -c statement_timeout=180000",
+    }
+engine = create_engine(settings.database_url, connect_args=connect_args, pool_pre_ping=True, **_pool)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
@@ -459,12 +470,23 @@ def ensure_expense_approval_columns(engine) -> None:
     )
 
 
-def get_db():
+async def get_db():
+    """Request session. Async on purpose: FastAPI runs a *sync* generator's cleanup on the
+    request worker pool, so a finished request kept its connection until a worker was free —
+    under load every worker waited for a connection and nothing was released (2026-11-18).
+    Closing here runs on the event loop and hands the connection straight back."""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
+def release_connection(db) -> None:
+    """End the read transaction a dependency opened, so the request doesn't sit on a pooled
+    connection while it waits for its next worker. Objects stay attached and reload on use."""
+    if db.in_transaction() and not (db.new or db.dirty or db.deleted):
+        db.rollback()
 
 
 def ensure_support_ticket_columns(engine) -> None:

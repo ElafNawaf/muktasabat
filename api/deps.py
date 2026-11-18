@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from api.database import get_db
+from api.database import get_db, release_connection
 from api.models import User
 from api.security import decode_token, token_matches_user
 
@@ -87,15 +87,17 @@ def get_current_user(
     # Revoked by a password change or "sign out of all devices".
     if not token_matches_user(payload, user):
         raise credentials_error
+    release_connection(db)
     return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def require_admin(user: CurrentUser) -> User:
+def require_admin(user: CurrentUser, db: DbSession) -> User:
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    release_connection(db)
     return user
 
 

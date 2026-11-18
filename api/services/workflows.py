@@ -470,10 +470,14 @@ async def escalation_loop() -> None:
 
     from api.database import SessionLocal
 
+    def _run() -> None:
+        with SessionLocal() as db:
+            escalate_due(db)
+
+    await asyncio.sleep(180)  # not during the deploy preflight
     while True:
         try:
-            with SessionLocal() as db:
-                escalate_due(db)
+            await asyncio.to_thread(_run)  # never block the event loop with database work
         except Exception:  # noqa: BLE001
             log.exception("workflow escalation failed")
         await asyncio.sleep(900)
