@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import {
   changeUserRole,
@@ -265,52 +265,57 @@ export function UsersClient({
     inactive: users.filter((u) => !u.is_active_user).length,
   };
 
+  // Save role permissions. Never call this from inside a state updater: React may
+  // replay updaters while the page refreshes, which caused an endless save loop
+  // (2026-11-18). Rapid toggles are coalesced into one save per role.
+  const pendingRoles = useRef<Map<string, Role>>(new Map());
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushing = useRef(false);
+  const flushRoles = async () => {
+    if (flushing.current) return;
+    flushing.current = true;
+    try {
+      while (pendingRoles.current.size > 0) {
+        const batch = Array.from(pendingRoles.current.values());
+        pendingRoles.current.clear();
+        for (const r of batch) {
+          const res = await updateRolePermissions(r.code, r.permissions as RolePermissions);
+          if (!res.ok) setError(res.error);
+        }
+      }
+    } finally {
+      flushing.current = false;
+      setSavingRole(false);
+    }
+  };
   const persistRole = (next: Role) => {
     if (next.system) return;
+    pendingRoles.current.set(next.code, next);
     setSavingRole(true);
     setError(null);
-    start(async () => {
-      const res = await updateRolePermissions(next.code, next.permissions as RolePermissions);
-      setSavingRole(false);
-      if (!res.ok) setError(res.error);
-    });
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => { void flushRoles(); }, 400);
+  };
+  const applyRole = (next: Role) => {
+    setRolesState((prev) => prev.map((r) => (r.code === next.code ? next : r)));
+    persistRole(next);
   };
 
   const togglePerm = (code: string, mod: ModuleId, action: PermissionAction) => {
-    setRolesState((prev) =>
-      prev.map((r) => {
-        if (r.code !== code) return r;
-        if (r.system) return r;
-        const cur = (r.permissions[mod] && r.permissions[mod]![action]) || 0;
-        const next: Role = {
-          ...r,
-          permissions: {
-            ...r.permissions,
-            [mod]: { ...(r.permissions[mod] ?? {}), [action]: cur ? 0 : 1 },
-          },
-        };
-        persistRole(next);
-        return next;
-      }),
-    );
+    const r = rolesState.find((x) => x.code === code);
+    if (!r || r.system) return;
+    const cur = (r.permissions[mod] && r.permissions[mod]![action]) || 0;
+    applyRole({
+      ...r,
+      permissions: { ...r.permissions, [mod]: { ...(r.permissions[mod] ?? {}), [action]: cur ? 0 : 1 } },
+    });
   };
 
   const toggleAllForModule = (code: string, mod: ModuleId, allOn: boolean) => {
-    setRolesState((prev) =>
-      prev.map((r) => {
-        if (r.code !== code) return r;
-        if (r.system) return r;
-        const filled = Object.fromEntries(
-          PERMISSION_ACTIONS.map((a) => [a, allOn ? 0 : 1]),
-        ) as Record<PermissionAction, 0 | 1>;
-        const next: Role = {
-          ...r,
-          permissions: { ...r.permissions, [mod]: filled },
-        };
-        persistRole(next);
-        return next;
-      }),
-    );
+    const r = rolesState.find((x) => x.code === code);
+    if (!r || r.system) return;
+    const filled = Object.fromEntries(PERMISSION_ACTIONS.map((a) => [a, allOn ? 0 : 1])) as Record<PermissionAction, 0 | 1>;
+    applyRole({ ...r, permissions: { ...r.permissions, [mod]: filled } });
   };
 
   const selectedRole = rolesState.find((r) => r.code === selectedRoleCode) ?? rolesState[0];
@@ -812,9 +817,7 @@ export function UsersClient({
                 actionLabel={(a) => tPerms(a)}
                 busy={savingRole}
                 onApply={(perms) => {
-                  const next: Role = { ...selectedRole, permissions: perms as Role["permissions"] };
-                  setRolesState((prev) => prev.map((r) => (r.code === next.code ? next : r)));
-                  persistRole(next);
+                  applyRole({ ...selectedRole, permissions: perms as Role["permissions"] });
                 }}
               />
             )}
