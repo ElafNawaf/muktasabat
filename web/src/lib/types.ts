@@ -423,6 +423,8 @@ export type Role = {
   color: string;
   system: boolean;
   permissions: Partial<Record<ModuleId, Partial<Record<PermissionAction, 0 | 1>>>>;
+  /** "assigned" = sees only the properties they're responsible for (and linked records). */
+  data_scope?: "all" | "assigned";
 };
 
 export const MODULE_IDS: ModuleId[] = [

@@ -1035,3 +1035,13 @@ export async function bulkDelete(entity: BulkEntity, ids: number[], locale = "ar
     return err(e, locale);
   }
 }
+
+export async function updateRoleScope(code: string, dataScope: "all" | "assigned"): Promise<ActionResult<Role>> {
+  try {
+    const data = await api.put<Role>(`/api/v1/roles/${code}/scope`, { data_scope: dataScope });
+    refreshAll();
+    return { ok: true, data };
+  } catch (e) {
+    return err(e);
+  }
+}

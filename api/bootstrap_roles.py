@@ -57,6 +57,7 @@ DEFAULT_ROLES: list[dict] = [
     },
     {
         "code": "manager",
+        "data_scope": "assigned",
         "label_en": "Property Manager",
         "label_ar": "مدير عقارات",
         "description_en": "Manage assigned buildings, contracts and payments. Cannot delete users.",

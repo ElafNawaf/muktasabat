@@ -319,6 +319,9 @@ def change_role(
     if user.is_super_admin and payload.role != "admin":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Hand super admin over to another administrator first")
     user.role = payload.role
+    from api.scope import forget as _forget_scope
+
+    _forget_scope(user.id)
     db.commit()
     db.refresh(user)
     return user

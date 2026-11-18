@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
-import { NoAccess } from "@/components/NoAccess";
 import { api } from "@/lib/api";
 import { requireAuth } from "@/lib/auth";
 import { canServer } from "@/lib/perm";
@@ -17,9 +16,13 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const me = await requireAuth(locale);
   if (!(await canServer(locale, "dashboard", "view"))) {
     // Landing page after sign-in: send roles without dashboard access to their own area.
+    // The company dashboard is for administrators only.
+    if (await canServer(locale, "properties", "view")) redirect(`/${locale}/properties`);
+    if (await canServer(locale, "maintenance", "view")) redirect(`/${locale}/maintenance`);
+    if (await canServer(locale, "payments", "view")) redirect(`/${locale}/payments`);
     if (await canServer(locale, "hr", "view")) redirect(`/${locale}/dashboard/people`);
     if (await canServer(locale, "website", "view")) redirect(`/${locale}/website`);
-    return <NoAccess locale={locale} title={t("title")} user={me} />;
+    redirect(`/${locale}/my-hr`);
   }
   const ar = locale === "ar";
 

@@ -8,6 +8,7 @@ import {
   deleteUser,
   toggleUserActive,
   updateRolePermissions,
+  updateRoleScope,
   type RolePermissions,
 } from "@/lib/actions";
 import {
@@ -807,6 +808,33 @@ export function UsersClient({
                 </div>
               </div>
             </div>
+
+            {!["admin", "owner", "tenant", "pending"].includes(selectedRole.code) && (
+              <div className={`card rs-scope ${selectedRole.data_scope === "assigned" ? "is-on" : ""}`}>
+                <span className="ms" aria-hidden>{selectedRole.data_scope === "assigned" ? "domain" : "public"}</span>
+                <div>
+                  <b>{locale === "ar" ? "نطاق البيانات" : "Data scope"}</b>
+                  <p className="text-sec">
+                    {selectedRole.data_scope === "assigned"
+                      ? (locale === "ar" ? "يرى المستخدمون بهذا الدور العقارات المسندة إليهم فقط (الموظف المسؤول في بيانات العقار) وكل ما يرتبط بها: الوحدات والعقود والمستأجرين والملاك والدفعات والمصروفات والصيانة والتجديد." : "Users with this role see only the properties assigned to them (the property's responsible employee) and everything linked: units, leases, tenants, owners, payments, expenses, maintenance and renewals.")
+                      : (locale === "ar" ? "يرى المستخدمون بهذا الدور كل السجلات التي تسمح بها صلاحياتهم." : "Users with this role see every record their permissions allow.")}
+                  </p>
+                </div>
+                <div className="rs-seg" role="radiogroup" aria-label={locale === "ar" ? "نطاق البيانات" : "Data scope"}>
+                  {(["assigned", "all"] as const).map((v) => (
+                    <button key={v} type="button" role="radio" aria-checked={(selectedRole.data_scope ?? "all") === v}
+                      className={(selectedRole.data_scope ?? "all") === v ? "is-on" : ""}
+                      onClick={() => {
+                        if ((selectedRole.data_scope ?? "all") === v) return;
+                        setRolesState((prev) => prev.map((r) => (r.code === selectedRole.code ? { ...r, data_scope: v } : r)));
+                        start(async () => { const res = await updateRoleScope(selectedRole.code, v); if (!res.ok) setError(res.error); });
+                      }}>
+                      {v === "assigned" ? (locale === "ar" ? "العقارات المسندة فقط" : "Assigned properties only") : (locale === "ar" ? "كل السجلات" : "All records")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {!selectedRole.system && recommended?.[selectedRole.code] && (
               <RoleRecommendation

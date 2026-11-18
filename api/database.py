@@ -113,6 +113,19 @@ def ensure_user_email_verification_columns(engine) -> None:
             conn.execute(text(stmt))
 
 
+def ensure_role_data_scope_column(engine) -> None:
+    """roles.data_scope. When first added, the Property Manager role becomes 'assigned'
+    (sees only the properties they are responsible for)."""
+    insp = inspect(engine)
+    if not insp.has_table("roles"):
+        return
+    if "data_scope" in {c["name"] for c in insp.get_columns("roles")}:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE roles ADD COLUMN data_scope VARCHAR(20) DEFAULT 'all' NOT NULL"))
+        conn.execute(text("UPDATE roles SET data_scope = 'assigned' WHERE code = 'manager'"))
+
+
 def ensure_building_assignee_column(engine) -> None:
     """Add buildings.assignee_id when DB predates it."""
     insp = inspect(engine)

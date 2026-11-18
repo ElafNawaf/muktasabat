@@ -41,13 +41,18 @@ def _validate_assignee(db, assignee_id: int | None) -> None:
 
 @router.post("", response_model=BuildingRead, status_code=status.HTTP_201_CREATED)
 def create_building(payload: BuildingCreate, db: DbSession, _user: Perm("properties", "create")):
-    if db.get(Owner, payload.owner_id) is None:
+    if db.get(Owner, payload.owner_id, execution_options={"skip_data_scope": True}) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Owner not found")
     _validate_assignee(db, payload.assignee_id)
     building = Building(**payload.model_dump())
+    from api.scope import SCOPE_KEY, forget
+
+    if db.info.get(SCOPE_KEY) is not None:
+        building.assignee_id = _user.id  # a property manager's new property is theirs
     db.add(building)
     db.commit()
     db.refresh(building)
+    forget(_user.id)
     return building
 
 
@@ -61,13 +66,16 @@ def update_building(
     building = db.get(Building, building_id)
     if building is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Building not found")
-    if db.get(Owner, payload.owner_id) is None:
+    if db.get(Owner, payload.owner_id, execution_options={"skip_data_scope": True}) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Owner not found")
     _validate_assignee(db, payload.assignee_id)
     for field, value in payload.model_dump().items():
         setattr(building, field, value)
     db.commit()
     db.refresh(building)
+    from api.scope import forget
+
+    forget()  # the responsible employee may have changed
     return building
 
 

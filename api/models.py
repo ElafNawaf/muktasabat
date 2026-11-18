@@ -737,6 +737,9 @@ class Role(Base):
     color: Mapped[str] = mapped_column(String(20), default="#6B7280")
     system: Mapped[bool] = mapped_column(Boolean, default=False)
     permissions: Mapped[dict] = mapped_column(JSON, default=dict)
+    # "all" = every record the permissions allow; "assigned" = only properties whose
+    # responsible employee is the user, and their linked records (see api/scope.py).
+    data_scope: Mapped[str] = mapped_column(String(20), default="all", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

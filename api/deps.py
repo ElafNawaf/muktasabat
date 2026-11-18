@@ -87,6 +87,9 @@ def get_current_user(
     # Revoked by a password change or "sign out of all devices".
     if not token_matches_user(payload, user):
         raise credentials_error
+    from api.scope import SCOPE_KEY, scope_for
+
+    db.info[SCOPE_KEY] = scope_for(db, user)
     release_connection(db)
     return user
 

@@ -14,6 +14,8 @@ DbSession = Annotated[Session, Depends(get_db)]
 def has_permission(db: Session, user: User, module: str, action: str) -> bool:
     if user.is_admin:
         return True
+    if module == "dashboard":
+        return False  # company-wide figures: administrators only
     # Per-person extras win over the role (granted = 1, taken away = 0).
     ov = ((getattr(user, "permission_overrides", None) or {}).get(module) or {})
     if action in ov and ov[action] is not None:

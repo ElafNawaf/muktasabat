@@ -5460,3 +5460,13 @@ li.py-req { display: grid; gap: 6px; }
 .tc-card { position: relative; }
 .tc-pick { position: absolute; top: 10px; inset-inline-end: 10px; z-index: 2; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: var(--color-surface); box-shadow: 0 1px 4px rgba(0,0,0,.12); cursor: pointer; }
 .tc-card[data-picked] { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* Role data scope (assigned properties only / all records) */
+.rs-scope { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.rs-scope > .ms { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--color-bg-deep); color: var(--color-text-secondary); }
+.rs-scope.is-on > .ms { background: var(--color-primary-soft); color: var(--color-primary); }
+.rs-scope > div:first-of-type { flex: 1 1 320px; }
+.rs-scope p { margin: 2px 0 0; font-size: 13px; line-height: 1.6; }
+.rs-seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--color-bg-deep); gap: 2px; }
+.rs-seg button { border: 0; background: transparent; padding: 7px 12px; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; color: var(--color-text-secondary); }
+.rs-seg button.is-on { background: var(--color-surface); color: var(--color-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.1); }

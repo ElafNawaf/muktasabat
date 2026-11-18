@@ -100,6 +100,9 @@ async def lifespan(app: FastAPI):
     ensure_user_profile_columns(engine)
     ensure_support_ticket_columns(engine)
     ensure_building_assignee_column(engine)
+    from api.database import ensure_role_data_scope_column
+
+    ensure_role_data_scope_column(engine)
     ensure_building_location_columns(engine)
     ensure_building_extended_columns(engine)
     ensure_contract_extended_columns(engine)

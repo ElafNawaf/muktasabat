@@ -1,4 +1,7 @@
+from typing import Literal
+
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from api.deps import AdminUser, CurrentUser, DbSession
@@ -49,6 +52,30 @@ def update_role_permissions(
     role.permissions = _normalize_permissions(payload.permissions)
     db.commit()
     db.refresh(role)
+    from api.scope import forget
+
+    forget()
+    return role
+
+
+class RoleScopeUpdate(BaseModel):
+    data_scope: Literal["all", "assigned"]
+
+
+@router.put("/{code}/scope", response_model=RoleRead)
+def update_role_scope(code: str, payload: RoleScopeUpdate, db: DbSession, _admin: AdminUser):
+    """'assigned' = users of this role see only the properties they're responsible for."""
+    role = db.get(Role, code)
+    if role is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
+    if role.code in ("admin", "owner", "tenant", "pending"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This role's data scope can't be changed")
+    role.data_scope = payload.data_scope
+    db.commit()
+    db.refresh(role)
+    from api.scope import forget
+
+    forget()
     return role
 
 

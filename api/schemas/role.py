@@ -15,6 +15,7 @@ class RoleRead(BaseModel):
     color: str
     system: bool
     permissions: dict
+    data_scope: str = "all"
 
 
 class RolePermissionsUpdate(BaseModel):
